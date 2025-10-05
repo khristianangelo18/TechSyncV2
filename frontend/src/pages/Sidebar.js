@@ -167,8 +167,8 @@ function Sidebar() {
       gap: '12px'
     },
     logoIcon: {
-      width: '32px',
-      height: '32px',
+      width: '64px',
+      height: '64px',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center'
@@ -631,7 +631,7 @@ function Sidebar() {
         <div style={styles.logoContainer}>
           <div style={styles.logoIcon}>
             <img 
-              src="/images/logo/TechSyncLogo.png" 
+              src="/images/logo/FinalLogo.png" 
               alt="TechSync Logo" 
               style={styles.logoImage}
             />

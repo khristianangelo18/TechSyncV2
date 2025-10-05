@@ -22,6 +22,7 @@ import ManageUsers from './pages/ManageUsers';
 import ProjectJoinPage from './pages/ProjectJoinPage';
 import TaskDetail from './pages/project/TaskDetail';
 import GitHubOAuthCallback from './components/GitHubOAuthCallback';
+import Learns from './pages/Learns';
 
 
 // Solo project components
@@ -55,8 +56,6 @@ const ScrollToTop = () => {
   return null;
 };
 
-// Placeholder components for missing pages
-const Learns = () => <div style={{ padding: '30px' }}>Learning resources coming soon...</div>;
 
 // Themed Loading Component with Animated Background
 const ThemedLoadingScreen = () => {

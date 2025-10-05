@@ -12,6 +12,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 const Learns = () => {
   const { user, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('courses');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -468,7 +469,13 @@ const Learns = () => {
 
                         {/* Action Button */}
                         <button
-                          onClick={() => enrolled ? null : handleEnrollCourse(course.id)}
+                          onClick={() => {
+                            if (enrolled) {
+                              navigate(`/course/${course.id}/learn`);
+                            } else {
+                              handleEnrollCourse(course.id);
+                            }
+                          }}
                           style={{
                             width: '100%',
                             padding: '0.75rem',
@@ -484,6 +491,14 @@ const Learns = () => {
                             justifyContent: 'center',
                             gap: '0.5rem',
                             transition: 'all 0.2s'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = 'translateY(-2px)';
+                            e.currentTarget.style.backgroundColor = enrolled ? '#059669' : '#3b82f6';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = 'translateY(0)';
+                            e.currentTarget.style.backgroundColor = enrolled ? '#10b981' : '#60a5fa';
                           }}
                         >
                           {enrolled ? (

@@ -24,6 +24,7 @@ import TaskDetail from './pages/project/TaskDetail';
 import GitHubOAuthCallback from './components/GitHubOAuthCallback';
 import Learns from './pages/Learns';
 import PersonalLearnings from './pages/PersonalLearnings';
+import CourseLearn from './pages/CourseLearn';
 
 
 // Solo project components
@@ -920,6 +921,15 @@ function App() {
                   } 
                 />
                 <Route path="/learns" element={<ProtectedRoute><PersonalLearnings /></ProtectedRoute>} />
+                {/* Course Learning Route */}
+                <Route 
+                  path="/course/:courseId/learn" 
+                  element={
+                    <ProtectedRoute>
+                      <CourseLearn />
+                    </ProtectedRoute>
+                  } 
+                />
                 <Route 
                   path="/help" 
                   element={

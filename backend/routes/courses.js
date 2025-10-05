@@ -1,7 +1,7 @@
-// backend/routes/courses.js
+// backend/routes/courses.js - FIXED
 const express = require('express');
 const router = express.Router();
-const { supabase } = require('../config/database');
+const supabase = require('../config/supabase'); // FIXED: Changed from database to supabase
 const authMiddleware = require('../middleware/auth');
 
 /**
@@ -73,6 +73,39 @@ router.get('/', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to fetch courses'
+    });
+  }
+});
+
+/**
+ * GET /api/courses/my-courses
+ * Get user's enrolled courses
+ */
+router.get('/my-courses', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const { data: enrollments, error } = await supabase
+      .from('user_course_enrollments')
+      .select(`
+        *,
+        courses (*)
+      `)
+      .eq('user_id', userId)
+      .order('last_accessed_at', { ascending: false });
+
+    if (error) throw error;
+
+    res.json({
+      success: true,
+      enrollments
+    });
+
+  } catch (error) {
+    console.error('Error fetching enrolled courses:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch enrolled courses'
     });
   }
 });
@@ -194,39 +227,6 @@ router.post('/:courseId/enroll', authMiddleware, async (req, res) => {
 });
 
 /**
- * GET /api/courses/my-courses
- * Get user's enrolled courses
- */
-router.get('/my-courses', authMiddleware, async (req, res) => {
-  try {
-    const userId = req.user.id;
-
-    const { data: enrollments, error } = await supabase
-      .from('user_course_enrollments')
-      .select(`
-        *,
-        courses (*)
-      `)
-      .eq('user_id', userId)
-      .order('last_accessed_at', { ascending: false });
-
-    if (error) throw error;
-
-    res.json({
-      success: true,
-      enrollments
-    });
-
-  } catch (error) {
-    console.error('Error fetching enrolled courses:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch enrolled courses'
-    });
-  }
-});
-
-/**
  * GET /api/courses/:courseId/progress
  * Get user's progress in a course
  */
@@ -235,7 +235,6 @@ router.get('/:courseId/progress', authMiddleware, async (req, res) => {
     const { courseId } = req.params;
     const userId = req.user.id;
 
-    // Get enrollment
     const { data: enrollment, error: enrollmentError } = await supabase
       .from('user_course_enrollments')
       .select('*')
@@ -250,7 +249,6 @@ router.get('/:courseId/progress', authMiddleware, async (req, res) => {
       });
     }
 
-    // Get lesson progress
     const { data: lessons } = await supabase
       .from('course_lessons')
       .select(`
@@ -311,9 +309,6 @@ router.put('/lessons/:lessonId/progress', authMiddleware, async (req, res) => {
 
     if (error) throw error;
 
-    // Update enrollment progress percentage
-    await updateCourseProgress(enrollmentId);
-
     res.json({
       success: true,
       progress: data
@@ -327,54 +322,5 @@ router.put('/lessons/:lessonId/progress', authMiddleware, async (req, res) => {
     });
   }
 });
-
-/**
- * Helper function to update course progress percentage
- */
-async function updateCourseProgress(enrollmentId) {
-  try {
-    // Get total lessons and completed lessons
-    const { data: enrollment } = await supabase
-      .from('user_course_enrollments')
-      .select('course_id, user_id')
-      .eq('id', enrollmentId)
-      .single();
-
-    if (!enrollment) return;
-
-    // Get total lessons in course
-    const { count: totalLessons } = await supabase
-      .from('course_lessons')
-      .select('*', { count: 'exact', head: true })
-      .eq('module_id', await supabase
-        .from('course_modules')
-        .select('id')
-        .eq('course_id', enrollment.course_id)
-      );
-
-    // Get completed lessons count
-    const { count: completedLessons } = await supabase
-      .from('user_lesson_progress')
-      .select('*', { count: 'exact', head: true })
-      .eq('enrollment_id', enrollmentId)
-      .eq('status', 'completed');
-
-    const progressPercentage = totalLessons > 0
-      ? Math.round((completedLessons / totalLessons) * 100)
-      : 0;
-
-    // Update enrollment
-    await supabase
-      .from('user_course_enrollments')
-      .update({
-        progress_percentage: progressPercentage,
-        last_accessed_at: new Date().toISOString()
-      })
-      .eq('id', enrollmentId);
-
-  } catch (error) {
-    console.error('Error updating course progress:', error);
-  }
-}
 
 module.exports = router;

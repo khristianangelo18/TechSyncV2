@@ -1,6 +1,7 @@
 //frontend/src/pages/Learns.js - Course-Based Learning Platform with Real Data
 
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Search, BookMarked, ExternalLink, Clock, TrendingUp, 
   PlayCircle, CheckCircle, Lock, Award, Code, Globe, 

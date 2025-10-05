@@ -1,6 +1,12 @@
-// frontend/src/components/ChallengeFailureAlert.js - COMPLETE FIXED VERSION
+// frontend/src/components/ChallengeFailureAlert.js
+// Updated to display internal course recommendations
+
 import React, { useState, useEffect } from 'react';
-import { X, BookOpen, ChevronRight, Target, Lightbulb, Youtube, Github, Star, TrendingUp, Clock, Save, Check } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { 
+  X, BookOpen, ChevronRight, Target, Lightbulb, Youtube, 
+  Github, Star, TrendingUp, Clock, Save, Check, GraduationCap 
+} from 'lucide-react';
 
 const ChallengeFailureAlert = ({ 
   alertData, 
@@ -13,7 +19,7 @@ const ChallengeFailureAlert = ({
   programmingLanguageId,
   difficultyLevel = 'beginner'
 }) => {
-  // Use alertData fields as fallback if provided
+  const navigate = useNavigate();
   const effectiveChallengeId = challengeId || alertData?.challengeId;
   const effectiveLanguageId = programmingLanguageId || alertData?.programmingLanguageId;
   const effectiveDifficulty = difficultyLevel || alertData?.difficultyLevel || 'beginner';
@@ -27,31 +33,14 @@ const ChallengeFailureAlert = ({
   const [fetchError, setFetchError] = useState(null);
 
   useEffect(() => {
-    console.log('🎯 ChallengeFailureAlert useEffect triggered:', {
-      'alertData?.shouldShow': alertData?.shouldShow,
-      effectiveChallengeId,
-      effectiveLanguageId,
-      'alertData?.attemptCount': alertData?.attemptCount
-    });
-
     if (alertData?.shouldShow && effectiveChallengeId && effectiveLanguageId) {
-      console.log('✅ All conditions met, calling fetchRecommendations...');
       fetchRecommendations();
-    } else {
-      console.log('❌ Conditions NOT met, skipping fetch');
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [alertData?.shouldShow, effectiveChallengeId, effectiveLanguageId]);
 
   const fetchRecommendations = async () => {
-    // ✅ FIX: Validate required fields before making request
-    // Don't validate userId - it comes from auth token
     if (!effectiveChallengeId || !effectiveLanguageId || !alertData?.attemptCount) {
-      console.error('❌ Missing required fields for recommendations:', {
-        effectiveChallengeId,
-        effectiveLanguageId,
-        attemptCount: alertData?.attemptCount
-      });
+      console.error('❌ Missing required fields for recommendations');
       setLoadingRecs(false);
       return;
     }
@@ -59,20 +48,9 @@ const ChallengeFailureAlert = ({
     setLoadingRecs(true);
     setFetchError(null);
     try {
-      console.log('📤 Sending recommendation request:', {
-        challengeId: effectiveChallengeId,
-        attemptCount: alertData.attemptCount,
-        programmingLanguageId: effectiveLanguageId,
-        difficultyLevel: effectiveDifficulty
-      });
-
-      // Add timeout to prevent endless loading
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-      // Use full URL to ensure request reaches backend
-      // Don't include /api in the base URL since REACT_APP_API_URL might already have it
-      // Ensure API_URL includes /api
       const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
       
       const response = await fetch(`${API_URL}/recommendations/challenge-failure`, {
@@ -82,7 +60,6 @@ const ChallengeFailureAlert = ({
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify({
-          // ✅ FIX: Don't send userId - backend gets it from auth token
           challengeId: effectiveChallengeId,
           attemptCount: alertData.attemptCount,
           programmingLanguageId: effectiveLanguageId,
@@ -93,11 +70,8 @@ const ChallengeFailureAlert = ({
 
       clearTimeout(timeoutId);
 
-      console.log('📥 Response status:', response.status);
-
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Failed to parse error response' }));
-        console.error('❌ API error:', errorData);
+        const errorData = await response.json().catch(() => ({ error: 'Failed to parse error' }));
         setFetchError(errorData.error || 'Failed to load recommendations');
         setRecommendations([]);
         setLoadingRecs(false);
@@ -105,23 +79,20 @@ const ChallengeFailureAlert = ({
       }
 
       const data = await response.json();
-      console.log('✅ Received recommendations:', data);
       
       if (data.success && data.recommendations) {
         setRecommendations(data.recommendations);
         setRecommendationIds(data.metadata?.recommendationIds || []);
         setMetadata(data.metadata);
       } else {
-        console.warn('No recommendations returned');
         setRecommendations([]);
       }
     } catch (error) {
       if (error.name === 'AbortError') {
-        console.error('❌ Request timeout: Recommendations took too long to load');
         setFetchError('Request timed out. Please try again.');
       } else {
         console.error('❌ Error fetching recommendations:', error);
-        setFetchError(error.message || 'Failed to load recommendations');
+        setFetchError('Failed to load recommendations');
       }
       setRecommendations([]);
     } finally {
@@ -129,623 +100,648 @@ const ChallengeFailureAlert = ({
     }
   };
 
-  const saveResource = async (resource, recommendationId) => {
-    setSavingStates(prev => ({ ...prev, [recommendationId]: true }));
-    
-    const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
-    
-    try {
-      // Track as clicked first
-      await fetch(`${API_URL}/recommendations/feedback`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          recommendationId,
-          action: 'clicked'
-        })
-      });
+  const handleSaveResource = async (resource, index) => {
+    setSavingStates(prev => ({ ...prev, [index]: 'saving' }));
 
-      // Save to personal learnings
-      const saveResponse = await fetch(`${API_URL}/recommendations/save-learning`, {
+    try {
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+      const response = await fetch(`${API_URL}/recommendations/save-to-personal`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify({
-          recommendationId,
+          recommendationId: recommendationIds[index],
           resource,
           languageId: effectiveLanguageId,
-          difficulty: metadata?.recommendedDifficulty || effectiveDifficulty
+          difficulty: effectiveDifficulty
         })
       });
 
-      if (saveResponse.ok) {
-        setSavedResources(prev => ({ ...prev, [recommendationId]: true }));
+      if (response.ok) {
+        setSavedResources(prev => ({ ...prev, [index]: true }));
+        setSavingStates(prev => ({ ...prev, [index]: 'saved' }));
+        setTimeout(() => {
+          setSavingStates(prev => ({ ...prev, [index]: null }));
+        }, 2000);
+      } else {
+        setSavingStates(prev => ({ ...prev, [index]: 'error' }));
+        setTimeout(() => {
+          setSavingStates(prev => ({ ...prev, [index]: null }));
+        }, 2000);
       }
     } catch (error) {
       console.error('Error saving resource:', error);
-    } finally {
-      setSavingStates(prev => ({ ...prev, [recommendationId]: false }));
+      setSavingStates(prev => ({ ...prev, [index]: 'error' }));
+      setTimeout(() => {
+        setSavingStates(prev => ({ ...prev, [index]: null }));
+      }, 2000);
     }
   };
 
-  if (!alertData || !alertData.shouldShow) {
-    return null;
-  }
-
-  const { attemptCount, message } = alertData;
+  const handleCourseClick = (courseId) => {
+    // Close alert and navigate to course
+    onClose();
+    navigate(`/courses/${courseId}/learn`);
+  };
 
   const getProviderIcon = (provider) => {
-    switch(provider) {
-      case 'youtube': return <Youtube size={14} />;
-      case 'github': return <Github size={14} />;
-      case 'dev.to': return <BookOpen size={14} />;
-      case 'freecodecamp': return <BookOpen size={14} />;
-      default: return <BookOpen size={14} />;
+    switch (provider) {
+      case 'youtube': return <Youtube size={16} />;
+      case 'github': return <Github size={16} />;
+      case 'freeCodeCamp': return <BookOpen size={16} />;
+      case 'internal_course': return <GraduationCap size={16} />;
+      default: return <Star size={16} />;
     }
   };
 
-  const getProviderStyle = (provider) => {
-    const styles = {
-      'youtube': { backgroundColor: '#ff000015', color: '#ff0000' },
-      'github': { backgroundColor: '#23272915', color: '#f0f6fc' },
-      'dev.to': { backgroundColor: '#0a0a2315', color: '#60a5fa' },
-      'freecodecamp': { backgroundColor: '#0a0a2315', color: '#0a0a23' },
-      'medium': { backgroundColor: '#00000015', color: '#ffffff' }
-    };
-    return styles[provider] || { backgroundColor: '#2d3748', color: '#60a5fa' };
-  };
-
-  const getSuggestions = (count) => {
-    if (count >= 15) {
-      return [
-        { icon: Target, text: "Start with the fundamentals - review basic syntax and concepts" },
-        { icon: BookOpen, text: "Follow a structured course or tutorial series" },
-        { icon: Lightbulb, text: "Practice with simpler problems before returning to this challenge" },
-        { icon: Target, text: "Join coding communities for peer support and guidance" }
-      ];
-    } else if (count >= 10) {
-      return [
-        { icon: Target, text: "Break the problem into smaller, manageable steps" },
-        { icon: BookOpen, text: "Review documentation and examples in the same language" },
-        { icon: Lightbulb, text: "Try solving similar but easier problems first" },
-        { icon: Target, text: "Take notes on what's confusing you" }
-      ];
-    } else {
-      return [
-        { icon: Target, text: "Double-check your logic and edge cases" },
-        { icon: BookOpen, text: "Review the challenge requirements carefully" },
-        { icon: Lightbulb, text: "Test your code with simple inputs first" }
-      ];
+  const getProviderColor = (provider) => {
+    switch (provider) {
+      case 'youtube': return '#FF0000';
+      case 'github': return '#333';
+      case 'freeCodeCamp': return '#0a0a23';
+      case 'internal_course': return '#60a5fa';
+      default: return '#6b7280';
     }
   };
 
-  const suggestions = getSuggestions(attemptCount);
+  const renderResource = (resource, index) => {
+    const isCourse = resource.provider === 'internal_course';
+    const isSaved = savedResources[index];
+    const savingState = savingStates[index];
 
-  return (
-    <>
-      <style>
-        {`
-          @keyframes slideIn {
-            from {
-              opacity: 0;
-              transform: scale(0.95);
-            }
-            to {
-              opacity: 1;
-              transform: scale(1);
-            }
-          }
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}
-      </style>
-      <div style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.7)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 10000,
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-        padding: '1rem'
-      }} onClick={(e) => e.target === e.currentTarget && onClose()}>
-        <div style={{
-          background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
-          borderRadius: '20px',
-          maxWidth: '800px',
-          width: '100%',
-          maxHeight: '90vh',
-          overflowY: 'auto',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-          animation: 'slideIn 0.3s ease-out',
-          border: '1px solid #334155'
-        }}>
-          <div style={{ padding: '2rem' }}>
+    if (isCourse) {
+      // Special rendering for internal courses
+      return (
+        <div
+          key={index}
+          onClick={() => handleCourseClick(resource.courseId)}
+          style={{
+            padding: '1rem',
+            backgroundColor: '#1a1d24',
+            border: '2px solid #60a5fa',
+            borderRadius: '12px',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            position: 'relative',
+            overflow: 'hidden'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = '#93c5fd';
+            e.currentTarget.style.transform = 'translateY(-2px)';
+            e.currentTarget.style.boxShadow = '0 4px 12px rgba(96, 165, 250, 0.3)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = '#60a5fa';
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = 'none';
+          }}
+        >
+
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+            {/* Course Icon */}
             <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'flex-start',
-              marginBottom: '1.5rem'
+              fontSize: '2.5rem',
+              flexShrink: 0
             }}>
-              <div style={{ flex: 1 }}>
-                <div style={{
-                  fontSize: '2rem',
-                  marginBottom: '0.5rem'
-                }}>💪</div>
-                <h2 style={{
-                  fontSize: '2rem',
-                  fontWeight: '700',
-                  color: '#fff',
-                  margin: 0,
-                  marginBottom: '0.5rem'
-                }}>
-                  Keep Going!
-                </h2>
-                <p style={{
-                  fontSize: '1.1rem',
-                  color: '#94a3b8',
-                  margin: 0
-                }}>
-                  Every expert was once a beginner
-                </p>
-              </div>
-              <button
-                onClick={onClose}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: '#94a3b8',
-                  cursor: 'pointer',
-                  padding: '0.5rem',
-                  borderRadius: '8px',
-                  transition: 'all 0.2s'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.backgroundColor = '#1e293b';
-                  e.target.style.color = '#fff';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.backgroundColor = 'transparent';
-                  e.target.style.color = '#94a3b8';
-                }}
-              >
-                <X size={24} />
-              </button>
+              {resource.icon}
             </div>
 
+            <div style={{ flex: 1 }}>
+              {/* Course Badge and Save Button Row */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '0.5rem'
+              }}>
+                <div style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                  padding: '0.25rem 0.5rem',
+                  backgroundColor: '#60a5fa20',
+                  color: '#60a5fa',
+                  borderRadius: '4px',
+                  fontSize: '0.75rem',
+                  fontWeight: '600'
+                }}>
+                  <GraduationCap size={12} />
+                  COURSE
+                </div>
+
+                {/* Save Button for Courses */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleSaveResource(resource, index);
+                  }}
+                  disabled={isSaved || savingState === 'saving'}
+                  style={{
+                    padding: '0.25rem 0.5rem',
+                    backgroundColor: isSaved ? '#10b981' : 'transparent',
+                    color: isSaved ? '#fff' : '#60a5fa',
+                    border: isSaved ? 'none' : '1px solid #60a5fa',
+                    borderRadius: '4px',
+                    cursor: isSaved ? 'default' : 'pointer',
+                    fontSize: '0.75rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.25rem',
+                    transition: 'all 0.2s',
+                    fontWeight: '500'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isSaved) {
+                      e.currentTarget.style.backgroundColor = '#60a5fa15';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isSaved) {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }
+                  }}
+                >
+                  {isSaved ? <Check size={12} /> : <Save size={12} />}
+                  {savingState === 'saving' ? 'Saving...' : isSaved ? 'Saved' : 'Save'}
+                </button>
+              </div>
+
+              <h4 style={{
+                fontSize: '1rem',
+                fontWeight: '600',
+                color: '#fff',
+                marginBottom: '0.5rem',
+                lineHeight: '1.4'
+              }}>
+                {resource.title}
+              </h4>
+
+              <p style={{
+                fontSize: '0.875rem',
+                color: '#9ca3af',
+                marginBottom: '0.75rem',
+                lineHeight: '1.5'
+              }}>
+                {resource.description}
+              </p>
+
+              {/* Course metadata */}
+              <div style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '1rem',
+                fontSize: '0.75rem',
+                color: '#6b7280'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                  <Clock size={12} />
+                  {resource.duration}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                  <BookOpen size={12} />
+                  {resource.lessonCount} lessons
+                </div>
+                <div style={{
+                  backgroundColor: '#10b98120',
+                  color: '#10b981',
+                  padding: '0.125rem 0.5rem',
+                  borderRadius: '4px',
+                  fontWeight: '600'
+                }}>
+                  {resource.difficulty}
+                </div>
+              </div>
+            </div>
+
+            <ChevronRight 
+              size={20} 
+              style={{ 
+                color: '#60a5fa',
+                flexShrink: 0,
+                marginTop: '0.5rem'
+              }} 
+            />
+          </div>
+        </div>
+      );
+    }
+
+    // Regular resource rendering (YouTube, Dev.to, etc.)
+    return (
+      <div
+        key={index}
+        style={{
+          padding: '1rem',
+          backgroundColor: '#1a1d24',
+          border: '1px solid #2d3748',
+          borderRadius: '8px',
+          transition: 'all 0.2s'
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.borderColor = '#4b5563';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.borderColor = '#2d3748';
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            color: getProviderColor(resource.provider),
+            fontSize: '0.75rem',
+            fontWeight: '600'
+          }}>
+            {getProviderIcon(resource.provider)}
+            {resource.provider.toUpperCase()}
+          </div>
+
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleSaveResource(resource, index);
+            }}
+            disabled={isSaved || savingState === 'saving'}
+            style={{
+              padding: '0.25rem 0.5rem',
+              backgroundColor: isSaved ? '#10b981' : 'transparent',
+              color: isSaved ? '#fff' : '#9ca3af',
+              border: isSaved ? 'none' : '1px solid #4b5563',
+              borderRadius: '4px',
+              cursor: isSaved ? 'default' : 'pointer',
+              fontSize: '0.75rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.25rem',
+              transition: 'all 0.2s'
+            }}
+          >
+            {isSaved ? <Check size={12} /> : <Save size={12} />}
+            {savingState === 'saving' ? 'Saving...' : isSaved ? 'Saved' : 'Save'}
+          </button>
+        </div>
+
+        <h4 style={{
+          fontSize: '0.875rem',
+          fontWeight: '500',
+          color: '#fff',
+          marginBottom: '0.5rem'
+        }}>
+          {resource.title}
+        </h4>
+
+        <p style={{
+          fontSize: '0.75rem',
+          color: '#9ca3af',
+          marginBottom: '0.75rem',
+          lineHeight: '1.4'
+        }}>
+          {resource.description || 'Learn more about this topic'}
+        </p>
+
+        <a
+          href={resource.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.25rem',
+            color: '#60a5fa',
+            fontSize: '0.75rem',
+            textDecoration: 'none',
+            fontWeight: '500'
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          View Resource
+          <ChevronRight size={14} />
+        </a>
+      </div>
+    );
+  };
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.8)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 1000,
+      padding: '1rem'
+    }}>
+      <div style={{
+        backgroundColor: '#0F1116',
+        borderRadius: '16px',
+        maxWidth: '900px',
+        width: '100%',
+        maxHeight: '90vh',
+        overflow: 'auto',
+        border: '1px solid #2d3748',
+        boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)'
+      }}>
+        {/* Header */}
+        <div style={{
+          padding: '1.5rem',
+          borderBottom: '1px solid #2d3748',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'start'
+        }}>
+          <div>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem',
+              marginBottom: '0.5rem'
+            }}>
+              <Target size={24} style={{ color: '#f59e0b' }} />
+              <h3 style={{
+                fontSize: '1.5rem',
+                fontWeight: 'bold',
+                color: '#fff',
+                margin: 0
+              }}>
+                Let's Get You Back on Track
+              </h3>
+            </div>
+            <p style={{
+              color: '#9ca3af',
+              fontSize: '0.875rem',
+              margin: 0
+            }}>
+              {alertData?.message || `We've curated resources to help you master ${challengeLanguage}`}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              padding: '0.5rem',
+              backgroundColor: 'transparent',
+              border: 'none',
+              color: '#9ca3af',
+              cursor: 'pointer',
+              borderRadius: '6px',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#1a1d24';
+              e.currentTarget.style.color = '#fff';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'transparent';
+              e.currentTarget.style.color = '#9ca3af';
+            }}
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div style={{ padding: '1.5rem' }}>
+          {/* Motivation Section */}
+          <div style={{
+            backgroundColor: '#1a1d24',
+            border: '1px solid #2d3748',
+            borderRadius: '12px',
+            padding: '1rem',
+            marginBottom: '1.5rem',
+            display: 'flex',
+            gap: '1rem',
+            alignItems: 'start'
+          }}>
+            <Lightbulb size={24} style={{ color: '#fbbf24', flexShrink: 0 }} />
+            <div>
+              <h4 style={{
+                fontSize: '1rem',
+                fontWeight: '600',
+                color: '#fff',
+                marginBottom: '0.5rem'
+              }}>
+                Keep Going! You're Learning
+              </h4>
+              <p style={{
+                fontSize: '0.875rem',
+                color: '#9ca3af',
+                lineHeight: '1.6',
+                margin: 0
+              }}>
+                Every failed attempt is progress in disguise. These resources are specifically chosen to help you understand {challengeLanguage} better and overcome this challenge.
+              </p>
+            </div>
+          </div>
+
+          {/* Metadata Stats */}
+          {metadata && (
             <div style={{
               display: 'flex',
               gap: '1rem',
-              alignItems: 'center',
               marginBottom: '1.5rem',
               flexWrap: 'wrap'
             }}>
               <div style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                backgroundColor: '#fef3c7',
-                color: '#92400e',
-                padding: '0.75rem 1.25rem',
-                borderRadius: '24px',
-                fontSize: '0.95rem',
-                fontWeight: '600',
-                gap: '0.5rem'
+                flex: 1,
+                minWidth: '150px',
+                backgroundColor: '#1a1d24',
+                padding: '0.75rem 1rem',
+                borderRadius: '8px',
+                border: '1px solid #2d3748'
               }}>
-                <TrendingUp size={16} />
-                {attemptCount} attempts - You're learning!
-              </div>
-              {metadata && (
-                <div style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  backgroundColor: '#dbeafe',
-                  color: '#1e40af',
-                  padding: '0.75rem 1.25rem',
-                  borderRadius: '24px',
-                  fontSize: '0.95rem',
-                  fontWeight: '600',
-                  gap: '0.5rem'
-                }}>
-                  <Target size={16} />
-                  Recommended: {metadata.recommendedDifficulty}
+                <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginBottom: '0.25rem' }}>
+                  Attempts
                 </div>
-              )}
-            </div>
-            
-            <div style={{
-              fontSize: '1.05rem',
-              lineHeight: '1.7',
-              color: '#d1d5db',
-              marginBottom: '2rem'
-            }}>
-              {message}
-            </div>
-            
-            <div style={{ marginBottom: '2rem' }}>
-              <h3 style={{
-                fontSize: '1.25rem',
-                fontWeight: '600',
-                color: '#fff',
-                marginBottom: '1rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
+                <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#fff' }}>
+                  {metadata.attemptCount}
+                </div>
+              </div>
+              <div style={{
+                flex: 1,
+                minWidth: '150px',
+                backgroundColor: '#1a1d24',
+                padding: '0.75rem 1rem',
+                borderRadius: '8px',
+                border: '1px solid #2d3748'
               }}>
-                <Lightbulb size={24} color="#fbbf24" />
-                Quick Tips
-              </h3>
+                <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginBottom: '0.25rem' }}>
+                  Recommended Level
+                </div>
+                <div style={{ 
+                  fontSize: '1rem', 
+                  fontWeight: '600', 
+                  color: '#60a5fa',
+                  textTransform: 'capitalize'
+                }}>
+                  {metadata.recommendedDifficulty}
+                </div>
+              </div>
+              <div style={{
+                flex: 1,
+                minWidth: '150px',
+                backgroundColor: '#1a1d24',
+                padding: '0.75rem 1rem',
+                borderRadius: '8px',
+                border: '1px solid #2d3748'
+              }}>
+                <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginBottom: '0.25rem' }}>
+                  Resources Found
+                </div>
+                <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#10b981' }}>
+                  {metadata.totalResources}
+                  {metadata.courseCount > 0 && (
+                    <span style={{ fontSize: '0.75rem', color: '#60a5fa', marginLeft: '0.5rem' }}>
+                      ({metadata.courseCount} courses)
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Recommendations Section */}
+          <div>
+            <h4 style={{
+              fontSize: '1.125rem',
+              fontWeight: '600',
+              color: '#fff',
+              marginBottom: '1rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}>
+              <TrendingUp size={20} style={{ color: '#10b981' }} />
+              Recommended Learning Resources
+            </h4>
+
+            {loadingRecs ? (
+              <div style={{
+                textAlign: 'center',
+                padding: '3rem 1rem',
+                color: '#9ca3af'
+              }}>
+                <div style={{
+                  width: '40px',
+                  height: '40px',
+                  border: '3px solid #2d3748',
+                  borderTop: '3px solid #60a5fa',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite',
+                  margin: '0 auto 1rem'
+                }} />
+                <p>Finding the best resources for you...</p>
+                <style>
+                  {`
+                    @keyframes spin {
+                      0% { transform: rotate(0deg); }
+                      100% { transform: rotate(360deg); }
+                    }
+                  `}
+                </style>
+              </div>
+            ) : fetchError ? (
+              <div style={{
+                textAlign: 'center',
+                padding: '2rem 1rem',
+                backgroundColor: '#7f1d1d20',
+                border: '1px solid #7f1d1d',
+                borderRadius: '8px',
+                color: '#fca5a5'
+              }}>
+                <p style={{ marginBottom: '0.5rem', fontWeight: '600' }}>
+                  Failed to load recommendations
+                </p>
+                <p style={{ fontSize: '0.875rem', color: '#9ca3af' }}>
+                  {fetchError}
+                </p>
+              </div>
+            ) : recommendations.length === 0 ? (
+              <div style={{
+                textAlign: 'center',
+                padding: '2rem 1rem',
+                backgroundColor: '#1a1d24',
+                border: '1px solid #2d3748',
+                borderRadius: '8px',
+                color: '#9ca3af'
+              }}>
+                <BookOpen size={48} style={{ margin: '0 auto 1rem', opacity: 0.5 }} />
+                <p>No recommendations available at the moment.</p>
+              </div>
+            ) : (
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-                gap: '0.75rem'
+                gap: '1rem',
+                gridTemplateColumns: '1fr'
               }}>
-                {suggestions.map((suggestion, idx) => {
-                  const IconComponent = suggestion.icon;
-                  return (
-                    <div
-                      key={idx}
-                      style={{
-                        backgroundColor: '#0f1116',
-                        border: '1px solid #2d3748',
-                        borderRadius: '8px',
-                        padding: '1rem',
-                        display: 'flex',
-                        alignItems: 'flex-start',
-                        gap: '0.75rem'
-                      }}
-                    >
-                      <IconComponent size={20} color="#60a5fa" style={{ flexShrink: 0, marginTop: '0.125rem' }} />
-                      <span style={{ color: '#d1d5db', fontSize: '0.9rem', lineHeight: '1.5' }}>
-                        {suggestion.text}
-                      </span>
-                    </div>
-                  );
-                })}
+                {recommendations.map((resource, index) => renderResource(resource, index))}
               </div>
-            </div>
+            )}
+          </div>
 
-            <div style={{ marginBottom: '2rem' }}>
-              <h3 style={{
-                fontSize: '1.25rem',
-                fontWeight: '600',
+          {/* Footer Actions */}
+          <div style={{
+            marginTop: '1.5rem',
+            paddingTop: '1.5rem',
+            borderTop: '1px solid #2d3748',
+            display: 'flex',
+            gap: '1rem',
+            justifyContent: 'flex-end',
+            flexWrap: 'wrap'
+          }}>
+            <button
+              onClick={onClose}
+              style={{
+                padding: '0.75rem 1.5rem',
+                backgroundColor: 'transparent',
+                color: '#9ca3af',
+                border: '1px solid #4b5563',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontWeight: '500',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#1a1d24';
+                e.currentTarget.style.color = '#fff';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+                e.currentTarget.style.color = '#9ca3af';
+              }}
+            >
+              Close
+            </button>
+            <button
+              onClick={onContinue}
+              style={{
+                padding: '0.75rem 1.5rem',
+                backgroundColor: '#60a5fa',
                 color: '#fff',
-                marginBottom: '1rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}>
-                <BookOpen size={24} color="#a78bfa" />
-                Recommended for You
-              </h3>
-              
-              {loadingRecs ? (
-                <div style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  padding: '3rem 2rem',
-                  gap: '1rem'
-                }}>
-                  <div style={{
-                    border: '3px solid #2d3748',
-                    borderTop: '3px solid #60a5fa',
-                    borderRadius: '50%',
-                    width: '40px',
-                    height: '40px',
-                    animation: 'spin 1s linear infinite'
-                  }} />
-                  <p style={{ color: '#9ca3af', fontSize: '0.9rem' }}>
-                    Finding the best resources for you...
-                  </p>
-                </div>
-              ) : fetchError ? (
-                <div style={{
-                  backgroundColor: '#7f1d1d',
-                  border: '1px solid #dc2626',
-                  borderRadius: '12px',
-                  padding: '1.5rem',
-                  textAlign: 'center'
-                }}>
-                  <p style={{ color: '#fca5a5', marginBottom: '0.5rem', fontWeight: '600' }}>
-                    Couldn't load recommendations
-                  </p>
-                  <p style={{ color: '#fecaca', fontSize: '0.9rem', marginBottom: '1rem' }}>
-                    {fetchError}
-                  </p>
-                  <button
-                    onClick={() => {
-                      setFetchError(null);
-                      fetchRecommendations();
-                    }}
-                    style={{
-                      padding: '0.5rem 1rem',
-                      backgroundColor: '#dc2626',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      fontSize: '0.9rem',
-                      fontWeight: '600'
-                    }}
-                    onMouseEnter={(e) => e.target.style.backgroundColor = '#b91c1c'}
-                    onMouseLeave={(e) => e.target.style.backgroundColor = '#dc2626'}
-                  >
-                    Try Again
-                  </button>
-                </div>
-              ) : recommendations.length > 0 ? (
-                <div>
-                  {recommendations.map((resource, idx) => {
-                    const recId = recommendationIds[idx];
-                    const isSaved = savedResources[recId];
-                    const isSaving = savingStates[recId];
-                    
-                    return (
-                      <div
-                        key={idx}
-                        style={{
-                          backgroundColor: '#0f1116',
-                          border: '1px solid #2d3748',
-                          borderRadius: '12px',
-                          padding: '1.25rem',
-                          marginBottom: '1rem',
-                          transition: 'all 0.3s'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.borderColor = '#60a5fa'}
-                        onMouseLeave={(e) => e.currentTarget.style.borderColor = '#2d3748'}
-                      >
-                        <div style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '0.25rem',
-                          padding: '0.25rem 0.75rem',
-                          borderRadius: '12px',
-                          fontSize: '0.75rem',
-                          fontWeight: '600',
-                          marginBottom: '0.75rem',
-                          ...getProviderStyle(resource.provider)
-                        }}>
-                          {getProviderIcon(resource.provider)}
-                          {resource.provider}
-                        </div>
-
-                        <h4 style={{
-                          fontSize: '1.05rem',
-                          fontWeight: '600',
-                          color: '#fff',
-                          margin: '0 0 0.75rem 0',
-                          lineHeight: '1.4'
-                        }}>
-                          {resource.title}
-                        </h4>
-
-                        {resource.description && (
-                          <p style={{
-                            fontSize: '0.9rem',
-                            color: '#9ca3af',
-                            margin: '0 0 1rem 0',
-                            lineHeight: '1.5'
-                          }}>
-                            {resource.description.substring(0, 150)}
-                            {resource.description.length > 150 ? '...' : ''}
-                          </p>
-                        )}
-
-                        <div style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '1rem',
-                          flexWrap: 'wrap',
-                          marginBottom: '1rem'
-                        }}>
-                          {resource.author && (
-                            <span style={{
-                              fontSize: '0.85rem',
-                              color: '#6b7280',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '0.25rem'
-                            }}>
-                              👤 {resource.author}
-                            </span>
-                          )}
-                          {resource.readTime && (
-                            <span style={{
-                              fontSize: '0.85rem',
-                              color: '#6b7280',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '0.25rem'
-                            }}>
-                              <Clock size={14} />
-                              {resource.readTime} min read
-                            </span>
-                          )}
-                          {resource.reactions && (
-                            <span style={{
-                              fontSize: '0.85rem',
-                              color: '#6b7280',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '0.25rem'
-                            }}>
-                              ❤️ {resource.reactions}
-                            </span>
-                          )}
-                          {resource.stars && (
-                            <span style={{
-                              fontSize: '0.85rem',
-                              color: '#6b7280',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '0.25rem'
-                            }}>
-                              <Star size={14} />
-                              {resource.stars.toLocaleString()}
-                            </span>
-                          )}
-                        </div>
-
-                        <div style={{
-                          display: 'flex',
-                          gap: '0.75rem',
-                          alignItems: 'center'
-                        }}>
-                          <a
-                            href={resource.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{
-                              flex: 1,
-                              padding: '0.75rem 1.25rem',
-                              backgroundColor: '#3b82f6',
-                              color: '#fff',
-                              textDecoration: 'none',
-                              borderRadius: '8px',
-                              fontSize: '0.9rem',
-                              fontWeight: '600',
-                              textAlign: 'center',
-                              transition: 'all 0.2s',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: '0.5rem'
-                            }}
-                            onMouseEnter={(e) => e.target.style.backgroundColor = '#2563eb'}
-                            onMouseLeave={(e) => e.target.style.backgroundColor = '#3b82f6'}
-                          >
-                            View Resource
-                            <ChevronRight size={16} />
-                          </a>
-                          
-                          <button
-                            onClick={() => saveResource(resource, recId)}
-                            disabled={isSaved || isSaving}
-                            style={{
-                              padding: '0.75rem',
-                              backgroundColor: isSaved ? '#10b981' : '#1e293b',
-                              color: '#fff',
-                              border: 'none',
-                              borderRadius: '8px',
-                              cursor: isSaved ? 'default' : 'pointer',
-                              transition: 'all 0.2s',
-                              opacity: isSaving ? 0.6 : 1
-                            }}
-                            onMouseEnter={(e) => {
-                              if (!isSaved) e.target.style.backgroundColor = '#334155';
-                            }}
-                            onMouseLeave={(e) => {
-                              if (!isSaved) e.target.style.backgroundColor = '#1e293b';
-                            }}
-                          >
-                            {isSaving ? (
-                              <div style={{
-                                width: '16px',
-                                height: '16px',
-                                border: '2px solid #fff',
-                                borderTopColor: 'transparent',
-                                borderRadius: '50%',
-                                animation: 'spin 0.6s linear infinite'
-                              }} />
-                            ) : isSaved ? (
-                              <Check size={16} />
-                            ) : (
-                              <Save size={16} />
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div style={{
-                  backgroundColor: '#0f1116',
-                  border: '1px solid #2d3748',
-                  borderRadius: '12px',
-                  padding: '2rem',
-                  textAlign: 'center'
-                }}>
-                  <BookOpen size={48} color="#6b7280" style={{ margin: '0 auto 1rem' }} />
-                  <p style={{ color: '#9ca3af', fontSize: '1rem', marginBottom: '0.5rem' }}>
-                    No recommendations available right now
-                  </p>
-                  <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>
-                    Try the tips above and keep practicing!
-                  </p>
-                </div>
-              )}
-            </div>
-            
-            <div style={{
-              display: 'flex',
-              gap: '1rem',
-              justifyContent: 'center',
-              paddingTop: '1rem',
-              borderTop: '1px solid #2d3748'
-            }}>
-              <button 
-                onClick={onClose}
-                style={{
-                  padding: '0.875rem 1.75rem',
-                  borderRadius: '8px',
-                  border: 'none',
-                  fontSize: '1rem',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  justifyContent: 'center',
-                  backgroundColor: '#2d3748',
-                  color: '#fff'
-                }}
-                onMouseEnter={(e) => e.target.style.backgroundColor = '#374151'}
-                onMouseLeave={(e) => e.target.style.backgroundColor = '#2d3748'}
-              >
-                Take a Break
-              </button>
-              <button 
-                onClick={onContinue}
-                style={{
-                  padding: '0.875rem 1.75rem',
-                  borderRadius: '8px',
-                  border: 'none',
-                  fontSize: '1rem',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  justifyContent: 'center',
-                  backgroundColor: '#3b82f6',
-                  color: '#fff'
-                }}
-                onMouseEnter={(e) => e.target.style.backgroundColor = '#2563eb'}
-                onMouseLeave={(e) => e.target.style.backgroundColor = '#3b82f6'}
-              >
-                Try Again
-                <ChevronRight size={20} />
-              </button>
-            </div>
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontWeight: '500',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#3b82f6';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#60a5fa';
+              }}
+            >
+              Try Again
+            </button>
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 };
 

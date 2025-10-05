@@ -1,4 +1,4 @@
-// backend/routes/recommendations.js - SUPABASE VERSION
+// backend/routes/recommendations.js - COMPLETE WITH INTERNAL COURSES
 const express = require('express');
 const router = express.Router();
 const supabase = require('../config/supabase');
@@ -10,7 +10,8 @@ const RESOURCE_PROVIDERS = {
   DEVTO: 'dev.to',
   YOUTUBE: 'youtube',
   FREECODECAMP: 'freecodecamp',
-  GITHUB: 'github'
+  GITHUB: 'github',
+  INTERNAL_COURSE: 'internal_course' // NEW: Internal courses
 };
 
 // Language-specific resource mapping
@@ -39,8 +40,131 @@ const LANGUAGE_RESOURCES = {
     tags: ['react', 'javascript', 'frontend'],
     youtube_queries: ['react tutorial', 'react hooks'],
     github_repos: ['react', 'awesome-react']
+  },
+  node: {
+    tags: ['nodejs', 'javascript', 'backend'],
+    youtube_queries: ['nodejs tutorial', 'node.js basics'],
+    github_repos: ['nodejs', 'awesome-nodejs']
+  },
+  typescript: {
+    tags: ['typescript', 'javascript', 'webdev'],
+    youtube_queries: ['typescript tutorial', 'typescript basics'],
+    github_repos: ['typescript', 'awesome-typescript']
   }
 };
+
+/**
+ * NEW: Fetch internal courses based on programming language
+ * @param {number} languageId - Programming language ID
+ * @param {string} languageName - Programming language name
+ * @param {string} difficulty - beginner, intermediate, advanced
+ * @param {number} limit - Number of courses to return
+ */
+async function fetchInternalCourses(languageId, languageName, difficulty, limit = 3) {
+  try {
+    console.log(`🎓 Fetching internal courses for: ${languageName} (ID: ${languageId}), difficulty: ${difficulty}`);
+
+    // Map language names to course search terms
+    const languageMap = {
+      'javascript': ['JavaScript', 'JS', 'ECMAScript'],
+      'python': ['Python'],
+      'java': ['Java'],
+      'typescript': ['TypeScript', 'TS'],
+      'react': ['React', 'React.js', 'ReactJS'],
+      'node': ['Node', 'Node.js', 'NodeJS'],
+      'angular': ['Angular'],
+      'vue': ['Vue', 'Vue.js', 'VueJS'],
+      'php': ['PHP'],
+      'ruby': ['Ruby'],
+      'go': ['Go', 'Golang'],
+      'rust': ['Rust'],
+      'c++': ['C++', 'CPP'],
+      'cpp': ['C++', 'CPP'],
+      'c#': ['C#', 'CSharp'],
+      'swift': ['Swift', 'iOS'],
+      'kotlin': ['Kotlin', 'Android'],
+      'sql': ['SQL', 'Database'],
+      'html': ['HTML', 'Web'],
+      'css': ['CSS', 'Styling']
+    };
+
+    const searchTerms = languageMap[languageName.toLowerCase()] || [languageName];
+    
+    // Build query to find courses matching the language
+    let query = supabase
+      .from('courses')
+      .select(`
+        id,
+        title,
+        slug,
+        description,
+        short_description,
+        level,
+        category,
+        icon_emoji,
+        thumbnail_url,
+        estimated_duration_hours,
+        total_lessons,
+        total_modules,
+        is_featured
+      `)
+      .eq('is_published', true);
+
+    // Filter by difficulty level
+    if (difficulty === 'beginner') {
+      query = query.eq('level', 'Beginner');
+    } else if (difficulty === 'intermediate') {
+      query = query.in('level', ['Beginner', 'Intermediate']);
+    } else if (difficulty === 'advanced') {
+      query = query.in('level', ['Intermediate', 'Advanced']);
+    }
+
+    // Search in title or description for language keywords
+    const orConditions = searchTerms
+      .map(term => `title.ilike.%${term}%,description.ilike.%${term}%,category.ilike.%${term}%`)
+      .join(',');
+    
+    query = query.or(orConditions);
+    query = query.limit(limit);
+
+    const { data: courses, error } = await query;
+
+    if (error) {
+      console.error('Error fetching internal courses:', error);
+      return [];
+    }
+
+    console.log(`✅ Found ${courses?.length || 0} internal courses`);
+
+    // Transform to recommendation format
+    return (courses || []).map(course => ({
+      provider: RESOURCE_PROVIDERS.INTERNAL_COURSE,
+      type: 'course',
+      title: course.title,
+      description: course.short_description || course.description,
+      url: `/courses/${course.id}/learn`, // Frontend route
+      courseId: course.id,
+      courseSlug: course.slug,
+      difficulty: course.level,
+      duration: `${course.estimated_duration_hours} hours`,
+      lessonCount: course.total_lessons,
+      moduleCount: course.total_modules,
+      icon: course.icon_emoji || '📚',
+      isFeatured: course.is_featured,
+      category: course.category,
+      thumbnail: course.thumbnail_url,
+      metadata: {
+        estimatedTime: `${course.estimated_duration_hours}h`,
+        format: 'Interactive Course',
+        isFree: true // Adjust based on your business model
+      }
+    }));
+
+  } catch (error) {
+    console.error('Error in fetchInternalCourses:', error);
+    return [];
+  }
+}
 
 /**
  * Fetch resources from Dev.to
@@ -82,7 +206,10 @@ async function fetchDevToResources(language, difficulty, limit = 3) {
  */
 async function fetchYouTubeResources(language, difficulty, limit = 3) {
   const apiKey = process.env.YOUTUBE_API_KEY;
-  if (!apiKey) return [];
+  if (!apiKey) {
+    console.log('⚠️  YouTube API key not found, skipping YouTube resources');
+    return [];
+  }
 
   try {
     const queries = LANGUAGE_RESOURCES[language.toLowerCase()]?.youtube_queries || ['programming tutorial'];
@@ -151,7 +278,10 @@ async function fetchFreeCodeCampResources(language, difficulty, limit = 2) {
  */
 async function fetchGitHubResources(language, limit = 2) {
   const token = process.env.GITHUB_TOKEN;
-  if (!token) return [];
+  if (!token) {
+    console.log('⚠️  GitHub token not found, skipping GitHub resources');
+    return [];
+  }
 
   try {
     const repos = LANGUAGE_RESOURCES[language.toLowerCase()]?.github_repos || ['programming'];
@@ -186,41 +316,75 @@ async function fetchGitHubResources(language, limit = 2) {
 }
 
 /**
- * Get aggregated resources from all providers
+ * UPDATED: Get aggregated resources from all providers (including internal courses)
  */
-async function getAggregatedResources(language, difficulty, attemptCount) {
-  const resources = await Promise.all([
-    fetchDevToResources(language, difficulty, 3),
-    fetchYouTubeResources(language, difficulty, 2),
-    fetchFreeCodeCampResources(language, difficulty, 1),
-    fetchGitHubResources(language, 1)
-  ]);
+async function getAggregatedResources(languageId, languageName, difficulty, attemptCount) {
+  try {
+    console.log(`🔍 Fetching resources for ${languageName} (ID: ${languageId}), difficulty: ${difficulty}, attempts: ${attemptCount}`);
 
-  const allResources = resources.flat();
+    // Fetch from all providers in parallel
+    const [internalCourses, devToResources, youtubeResources, fccResources, githubResources] = await Promise.all([
+      fetchInternalCourses(languageId, languageName, difficulty, 3),
+      fetchDevToResources(languageName, difficulty, 3),
+      fetchYouTubeResources(languageName, difficulty, 2),
+      fetchFreeCodeCampResources(languageName, difficulty, 1),
+      fetchGitHubResources(languageName, 1)
+    ]);
 
-  // Prioritize based on attempt count
-  if (attemptCount >= 15) {
-    return allResources
-      .filter(r => r.provider === RESOURCE_PROVIDERS.YOUTUBE || r.provider === RESOURCE_PROVIDERS.FREECODECAMP)
-      .slice(0, 6);
-  } else if (attemptCount >= 10) {
-    return allResources.slice(0, 6);
-  } else {
-    return allResources
-      .filter(r => r.provider === RESOURCE_PROVIDERS.DEVTO || r.provider === RESOURCE_PROVIDERS.FREECODECAMP)
-      .slice(0, 5);
+    // Prioritize based on attempt count
+    let allResources = [];
+    
+    // ALWAYS prioritize internal courses first, regardless of attempt count
+    if (attemptCount >= 15) {
+      // High failure rate: ALL courses first, then video tutorials
+      console.log('🔴 High failure rate - ALL courses first, then videos');
+      allResources = [
+        ...internalCourses,
+        ...youtubeResources,
+        ...fccResources,
+        ...devToResources,
+        ...githubResources
+      ];
+    } else if (attemptCount >= 10) {
+      // Medium failure rate: Courses first, then mixed content
+      console.log('🟡 Medium failure rate - courses first, then mixed');
+      allResources = [
+        ...internalCourses,
+        ...youtubeResources,
+        ...fccResources,
+        ...devToResources,
+        ...githubResources
+      ];
+    } else {
+      // Lower failure rate: Courses STILL first, then quick tutorials
+      console.log('🟢 Lower failure rate - courses first, then tutorials');
+      allResources = [
+        ...internalCourses,
+        ...youtubeResources.slice(0, 2),
+        ...devToResources.slice(0, 2),
+        ...fccResources,
+        ...githubResources
+      ];
+    }
+
+    console.log(`📚 Total resources aggregated: ${allResources.length}`);
+    console.log(`   - Courses: ${allResources.filter(r => r.provider === RESOURCE_PROVIDERS.INTERNAL_COURSE).length}`);
+    console.log(`   - External: ${allResources.filter(r => r.provider !== RESOURCE_PROVIDERS.INTERNAL_COURSE).length}`);
+
+    return allResources.slice(0, 8); // Limit to top 8 resources
+
+  } catch (error) {
+    console.error('Error aggregating resources:', error);
+    return [];
   }
 }
 
 /**
  * POST /api/recommendations/challenge-failure
- * Generate and log recommendations for failed challenge attempts
- * 
- * FIX: Use req.user.id from authMiddleware instead of userId from body
+ * UPDATED: Now includes internal course recommendations
  */
 router.post('/challenge-failure', authMiddleware, async (req, res) => {
   try {
-    // ✅ FIX: Get userId from authenticated user, not from request body
     const userId = req.user.id;
     
     const { 
@@ -254,7 +418,7 @@ router.post('/challenge-failure', authMiddleware, async (req, res) => {
     // 1. Get programming language details
     const { data: languageData, error: langError } = await supabase
       .from('programming_languages')
-      .select('name')
+      .select('id, name')
       .eq('id', programmingLanguageId)
       .single();
 
@@ -263,8 +427,9 @@ router.post('/challenge-failure', authMiddleware, async (req, res) => {
       return res.status(500).json({ success: false, error: 'Failed to fetch language' });
     }
 
-    const languageName = languageData?.name || 'javascript';
-    console.log('✅ Language found:', languageName);
+    const languageId = languageData.id;
+    const languageName = languageData.name || 'javascript';
+    console.log('✅ Language found:', languageName, 'ID:', languageId);
 
     // 2. Get user's proficiency level
     const { data: proficiencyData } = await supabase
@@ -289,14 +454,15 @@ router.post('/challenge-failure', authMiddleware, async (req, res) => {
 
     console.log('🎯 Recommended difficulty:', recommendedDifficulty);
 
-    // 4. Fetch resources from multiple providers
+    // 4. Fetch resources from all providers (including internal courses)
     const resources = await getAggregatedResources(
+      languageId,
       languageName, 
       recommendedDifficulty, 
       attemptCount
     );
 
-    console.log(`📚 Found ${resources.length} resources`);
+    console.log(`📚 Found ${resources.length} total resources`);
 
     // 5. Log each recommendation
     const recommendationIds = [];
@@ -338,6 +504,7 @@ router.post('/challenge-failure', authMiddleware, async (req, res) => {
           challengeId,
           attemptCount,
           recommendationCount: resources.length,
+          courseCount: resources.filter(r => r.provider === RESOURCE_PROVIDERS.INTERNAL_COURSE).length,
           difficulty: recommendedDifficulty
         },
         created_at: new Date().toISOString()
@@ -352,7 +519,10 @@ router.post('/challenge-failure', authMiddleware, async (req, res) => {
         userRating,
         recommendedDifficulty,
         attemptCount,
+        languageName,
         totalRecommendations: resources.length,
+        courseCount: resources.filter(r => r.provider === RESOURCE_PROVIDERS.INTERNAL_COURSE).length,
+        externalCount: resources.filter(r => r.provider !== RESOURCE_PROVIDERS.INTERNAL_COURSE).length,
         recommendationIds
       }
     });
@@ -367,10 +537,7 @@ router.post('/challenge-failure', authMiddleware, async (req, res) => {
   }
 });
 
-/**
- * POST /api/recommendations/feedback
- * Track user interaction with recommendations
- */
+// Keep all your existing routes below...
 router.post('/feedback', authMiddleware, async (req, res) => {
   try {
     const { 
@@ -381,7 +548,6 @@ router.post('/feedback', authMiddleware, async (req, res) => {
       effectivenessScore
     } = req.body;
 
-    // Update recommendation with feedback
     if (actionType === 'completed' && effectivenessScore) {
       await supabase
         .from('learning_recommendations')
@@ -392,7 +558,6 @@ router.post('/feedback', authMiddleware, async (req, res) => {
         .eq('id', recommendationId);
     }
 
-    // Log the feedback activity
     await supabase
       .from('user_activity')
       .insert({
@@ -418,10 +583,6 @@ router.post('/feedback', authMiddleware, async (req, res) => {
   }
 });
 
-/**
- * POST /api/recommendations/save-learning
- * Save a resource to personal learnings
- */
 router.post('/save-learning', authMiddleware, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -439,7 +600,6 @@ router.post('/save-learning', authMiddleware, async (req, res) => {
       });
     }
 
-    // Save to personal learnings table (using user_activity)
     const { data, error } = await supabase
       .from('user_activity')
       .insert({
@@ -459,7 +619,6 @@ router.post('/save-learning', authMiddleware, async (req, res) => {
 
     if (error) throw error;
 
-    // Update the recommendation as viewed/clicked
     await supabase
       .from('learning_recommendations')
       .update({
@@ -482,10 +641,6 @@ router.post('/save-learning', authMiddleware, async (req, res) => {
   }
 });
 
-/**
- * GET /api/recommendations/analytics/:userId
- * Get recommendation analytics for a user
- */
 router.get('/analytics/:userId', authMiddleware, async (req, res) => {
   try {
     const { userId } = req.params;
@@ -494,7 +649,6 @@ router.get('/analytics/:userId', authMiddleware, async (req, res) => {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - parseInt(timeRange));
 
-    // Get recommendation statistics
     let query = supabase
       .from('learning_recommendations')
       .select(`
@@ -512,7 +666,6 @@ router.get('/analytics/:userId', authMiddleware, async (req, res) => {
 
     if (error) throw error;
 
-    // Process statistics
     const stats = {};
     recommendations.forEach(rec => {
       const key = `${rec.programming_languages.name}-${rec.difficulty_level}`;
@@ -537,7 +690,6 @@ router.get('/analytics/:userId', authMiddleware, async (req, res) => {
         : null
     }));
 
-    // Get most effective resources
     const mostEffective = recommendations
       .filter(r => r.effectiveness_score)
       .sort((a, b) => b.effectiveness_score - a.effectiveness_score)
@@ -551,7 +703,6 @@ router.get('/analytics/:userId', authMiddleware, async (req, res) => {
         language_name: r.programming_languages.name
       }));
 
-    // Get patterns (simplified)
     const patterns = [];
     const last7Days = 7;
     for (let i = 0; i < last7Days; i++) {
@@ -590,10 +741,6 @@ router.get('/analytics/:userId', authMiddleware, async (req, res) => {
   }
 });
 
-/**
- * GET /api/recommendations/user-history/:userId
- * Get user's recommendation history
- */
 router.get('/user-history/:userId', authMiddleware, async (req, res) => {
   try {
     const { userId } = req.params;
@@ -641,21 +788,17 @@ router.get('/user-history/:userId', authMiddleware, async (req, res) => {
   }
 });
 
-/**
- * POST /api/recommendations/save-to-personal
- * Save a recommendation to user's personal learnings
- */
 router.post('/save-to-personal', authMiddleware, async (req, res) => {
   try {
     const { 
-      userId, 
       recommendationId,
       resource,
       languageId,
       difficulty
     } = req.body;
 
-    // Save to personal learnings table (we'll use user_activity for now or create a new table)
+    const userId = req.user.id;
+
     const { data, error } = await supabase
       .from('user_activity')
       .insert({
@@ -675,7 +818,6 @@ router.post('/save-to-personal', authMiddleware, async (req, res) => {
 
     if (error) throw error;
 
-    // Update the recommendation as viewed/clicked
     await supabase
       .from('learning_recommendations')
       .update({
@@ -698,10 +840,6 @@ router.post('/save-to-personal', authMiddleware, async (req, res) => {
   }
 });
 
-/**
- * GET /api/recommendations/personal-learnings/:userId
- * Get user's saved personal learning resources
- */
 router.get('/personal-learnings/:userId', authMiddleware, async (req, res) => {
   try {
     const { userId } = req.params;
@@ -719,7 +857,6 @@ router.get('/personal-learnings/:userId', authMiddleware, async (req, res) => {
 
     if (error) throw error;
 
-    // Filter by language if specified
     let learnings = data;
     if (languageId) {
       learnings = data.filter(item => 
@@ -727,7 +864,6 @@ router.get('/personal-learnings/:userId', authMiddleware, async (req, res) => {
       );
     }
 
-    // Format the response
     const formattedLearnings = learnings.map(item => ({
       id: item.id,
       savedAt: item.created_at,
@@ -751,16 +887,11 @@ router.get('/personal-learnings/:userId', authMiddleware, async (req, res) => {
   }
 });
 
-/**
- * DELETE /api/recommendations/personal-learnings/:activityId
- * Remove a resource from personal learnings
- */
 router.delete('/personal-learnings/:activityId', authMiddleware, async (req, res) => {
   try {
     const { activityId } = req.params;
     const userId = req.user.id;
 
-    // Delete the saved learning
     const { error } = await supabase
       .from('user_activity')
       .delete()

@@ -1,24 +1,48 @@
 // frontend/src/pages/PersonalLearnings.js
 import React, { useState, useEffect } from 'react';
-import { BookOpen, Youtube, Github, ExternalLink, Trash2, Clock, Star } from 'lucide-react';
+import { BookOpen, Youtube, Github, ExternalLink, Trash2, Clock, Star, GraduationCap } from 'lucide-react';
 
 const PersonalLearnings = ({ userId }) => {
   const [learnings, setLearnings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [enrollments, setEnrollments] = useState(new Set());
 
   useEffect(() => {
     if (userId) {
       fetchLearnings();
+      fetchEnrollments();
     }
   }, [userId]);
+
+  const fetchEnrollments = async () => {
+    try {
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+      const response = await fetch(`${API_URL}/courses/my-courses`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      const data = await response.json();
+      
+      if (data.success && data.enrollments) {
+        // Create a Set of enrolled course IDs
+        const enrolledCourseIds = new Set(
+          data.enrollments.map(enrollment => enrollment.course_id)
+        );
+        setEnrollments(enrolledCourseIds);
+      }
+    } catch (err) {
+      console.error('Error fetching enrollments:', err);
+    }
+  };
 
   const fetchLearnings = async () => {
     setLoading(true);
     setError(null);
     try {
       const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
-      // FIXED: Include userId in the URL path
       const response = await fetch(`${API_URL}/recommendations/personal-learnings/${userId}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -64,10 +88,22 @@ const PersonalLearnings = ({ userId }) => {
     }
   };
 
+  const handleCourseClick = (resource) => {
+    const courseId = getCourseId(resource);
+    if (courseId && isInternalCourse(resource)) {
+      // Navigate to course learn page
+      window.location.href = `/courses/${courseId}/learn`;
+    } else if (resource?.url) {
+      // Open external resource in new tab
+      window.open(resource.url, '_blank', 'noopener,noreferrer');
+    }
+  };
+
   const getProviderIcon = (provider) => {
     switch(provider?.toLowerCase()) {
       case 'youtube': return <Youtube size={16} />;
       case 'github': return <Github size={16} />;
+      case 'internal_course': return <GraduationCap size={16} />;
       default: return <BookOpen size={16} />;
     }
   };
@@ -77,9 +113,49 @@ const PersonalLearnings = ({ userId }) => {
       'youtube': '#ff0000',
       'github': '#333',
       'dev.to': '#0a0a23',
-      'freecodecamp': '#0a0a23'
+      'freecodecamp': '#0a0a23',
+      'internal_course': '#3b82f6'
     };
     return colors[provider?.toLowerCase()] || '#3b82f6';
+  };
+
+  const getProviderBadgeStyle = (provider) => {
+    if (provider?.toLowerCase() === 'internal_course') {
+      return {
+        backgroundColor: '#3b82f615',
+        color: '#3b82f6',
+        border: '1px solid #3b82f6'
+      };
+    }
+    return {
+      backgroundColor: `${getProviderColor(provider)}15`,
+      color: getProviderColor(provider)
+    };
+  };
+
+  const isInternalCourse = (resource) => {
+    return resource?.provider?.toLowerCase() === 'internal_course';
+  };
+
+  const getCourseId = (resource) => {
+    // Extract course ID from URL like "/courses/abc-123/learn"
+    if (resource?.url && isInternalCourse(resource)) {
+      const match = resource.url.match(/\/courses\/([^\/]+)/);
+      return match ? match[1] : null;
+    }
+    return resource?.courseId || null;
+  };
+
+  const isEnrolled = (resource) => {
+    const courseId = getCourseId(resource);
+    return courseId && enrollments.has(courseId);
+  };
+
+  const getButtonText = (resource) => {
+    if (isInternalCourse(resource)) {
+      return isEnrolled(resource) ? 'Go to Course' : 'View Resource';
+    }
+    return 'View Resource';
   };
 
   if (loading) {
@@ -139,21 +215,37 @@ const PersonalLearnings = ({ userId }) => {
           {learnings.map((learning) => {
             const resource = learning.resource || {};
             const provider = resource.provider || 'unknown';
+            const isCourse = isInternalCourse(resource);
+            const enrolled = isEnrolled(resource);
             
             return (
-              <div key={learning.id} style={styles.card}>
+              <div 
+                key={learning.id} 
+                style={{
+                  ...styles.card,
+                  ...(isCourse ? styles.courseCard : {})
+                }}
+              >
                 <div style={{
                   ...styles.providerBadge,
-                  backgroundColor: `${getProviderColor(provider)}15`,
-                  color: getProviderColor(provider)
+                  ...getProviderBadgeStyle(provider)
                 }}>
                   {getProviderIcon(provider)}
-                  <span>{provider}</span>
+                  <span style={{ textTransform: 'uppercase' }}>
+                    {isCourse ? 'COURSE' : provider}
+                  </span>
                 </div>
 
                 {learning.difficulty && (
                   <div style={styles.difficultyBadge}>
                     {learning.difficulty}
+                  </div>
+                )}
+
+                {/* Course Icon for internal courses */}
+                {isCourse && resource.icon && (
+                  <div style={styles.courseIcon}>
+                    {resource.icon}
                   </div>
                 )}
 
@@ -169,44 +261,82 @@ const PersonalLearnings = ({ userId }) => {
                   </p>
                 )}
 
-                <div style={styles.resourceMeta}>
-                  {resource.author && (
-                    <span style={styles.metaItem}>
-                      By {resource.author}
-                    </span>
-                  )}
-                  {resource.readTime && (
-                    <span style={styles.metaItem}>
-                      <Clock size={14} />
-                      {resource.readTime} min
-                    </span>
-                  )}
-                  {resource.reactions && (
-                    <span style={styles.metaItem}>
-                      <Star size={14} />
-                      {resource.reactions}
-                    </span>
-                  )}
-                </div>
+                {/* Course metadata */}
+                {isCourse && (
+                  <div style={styles.courseMeta}>
+                    {resource.duration && (
+                      <span style={styles.metaItem}>
+                        <Clock size={14} />
+                        {resource.duration}
+                      </span>
+                    )}
+                    {resource.lessonCount && (
+                      <span style={styles.metaItem}>
+                        <BookOpen size={14} />
+                        {resource.lessonCount} lessons
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {/* Regular resource metadata */}
+                {!isCourse && (
+                  <div style={styles.resourceMeta}>
+                    {resource.author && (
+                      <span style={styles.metaItem}>
+                        By {resource.author}
+                      </span>
+                    )}
+                    {resource.readTime && (
+                      <span style={styles.metaItem}>
+                        <Clock size={14} />
+                        {resource.readTime} min
+                      </span>
+                    )}
+                    {resource.reactions && (
+                      <span style={styles.metaItem}>
+                        <Star size={14} />
+                        {resource.reactions}
+                      </span>
+                    )}
+                  </div>
+                )}
 
                 <div style={styles.savedInfo}>
                   Saved {new Date(learning.savedAt).toLocaleDateString()}
                 </div>
 
                 <div style={styles.cardActions}>
-                  <a
-                    href={resource.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={styles.viewButton}
-                  >
-                    <ExternalLink size={16} />
-                    View Resource
-                  </a>
+                  {isCourse ? (
+                    <button
+                      onClick={() => handleCourseClick(resource)}
+                      style={{
+                        ...styles.viewButton,
+                        ...(enrolled ? styles.enrolledButton : {})
+                      }}
+                    >
+                      {enrolled ? (
+                        <GraduationCap size={16} />
+                      ) : (
+                        <ExternalLink size={16} />
+                      )}
+                      {getButtonText(resource)}
+                    </button>
+                  ) : (
+                    <a
+                      href={resource.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={styles.viewButton}
+                    >
+                      <ExternalLink size={16} />
+                      View Resource
+                    </a>
+                  )}
                   <button
                     onClick={() => handleRemove(learning.id)}
                     style={styles.removeButton}
-                    title="Remove from saved"
+                    title="Remove from saved resources"
                   >
                     <Trash2 size={16} />
                   </button>
@@ -222,27 +352,28 @@ const PersonalLearnings = ({ userId }) => {
 
 const styles = {
   container: {
-    minHeight: '100vh',
-    backgroundColor: '#0a0f1a',
-    color: 'white'
+    padding: '2rem',
+    maxWidth: '1400px',
+    margin: '0 auto'
   },
   header: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: '2rem',
-    flexWrap: 'wrap',
-    gap: '1rem'
+    gap: '2rem',
+    flexWrap: 'wrap'
   },
   title: {
     fontSize: '2rem',
     fontWeight: 'bold',
     color: 'white',
-    marginBottom: '0.5rem'
+    margin: '0 0 0.5rem 0'
   },
   subtitle: {
     fontSize: '1rem',
-    color: '#9ca3af'
+    color: '#9ca3af',
+    margin: 0
   },
   statsContainer: {
     display: 'flex',
@@ -252,10 +383,10 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     gap: '1rem',
-    backgroundColor: '#1e293b',
     padding: '1rem 1.5rem',
+    backgroundColor: '#1a1d24',
     borderRadius: '12px',
-    border: '1px solid #334155'
+    border: '1px solid #2d3748'
   },
   statNumber: {
     fontSize: '1.5rem',
@@ -271,33 +402,30 @@ const styles = {
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: '60vh',
-    gap: '1rem'
+    minHeight: '400px'
   },
   spinner: {
-    width: '48px',
-    height: '48px',
-    border: '4px solid #334155',
+    width: '50px',
+    height: '50px',
+    border: '4px solid #2d3748',
     borderTop: '4px solid #3b82f6',
     borderRadius: '50%',
     animation: 'spin 1s linear infinite'
   },
   loadingText: {
-    color: '#9ca3af',
-    fontSize: '1rem'
+    marginTop: '1rem',
+    color: '#9ca3af'
   },
   errorContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: '60vh',
-    gap: '1rem'
+    textAlign: 'center',
+    padding: '3rem',
+    backgroundColor: '#1a1d24',
+    borderRadius: '12px',
+    border: '1px solid #dc2626'
   },
   errorText: {
     color: '#dc2626',
-    fontSize: '1rem',
-    textAlign: 'center'
+    marginBottom: '1rem'
   },
   retryButton: {
     padding: '0.75rem 1.5rem',
@@ -306,28 +434,23 @@ const styles = {
     border: 'none',
     borderRadius: '8px',
     cursor: 'pointer',
-    fontSize: '1rem',
     fontWeight: '600'
   },
   emptyState: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: '60vh',
-    gap: '1rem',
-    textAlign: 'center'
+    textAlign: 'center',
+    padding: '4rem 2rem',
+    backgroundColor: '#1a1d24',
+    borderRadius: '12px',
+    border: '1px solid #2d3748'
   },
   emptyTitle: {
     fontSize: '1.5rem',
-    fontWeight: 'bold',
     color: 'white',
-    marginTop: '1rem'
+    margin: '1rem 0'
   },
   emptyText: {
-    fontSize: '1rem',
     color: '#9ca3af',
-    maxWidth: '500px'
+    fontSize: '1rem'
   },
   grid: {
     display: 'grid',
@@ -335,32 +458,40 @@ const styles = {
     gap: '1.5rem'
   },
   card: {
-    backgroundColor: '#1e293b',
-    border: '1px solid #334155',
+    backgroundColor: '#1a1d24',
     borderRadius: '12px',
+    border: '1px solid #2d3748',
     padding: '1.5rem',
     transition: 'all 0.2s'
+  },
+  courseCard: {
+    border: '2px solid #3b82f6',
+    backgroundColor: '#1a1d24'
   },
   providerBadge: {
     display: 'inline-flex',
     alignItems: 'center',
     gap: '0.5rem',
-    padding: '0.25rem 0.75rem',
-    borderRadius: '12px',
-    fontSize: '0.875rem',
+    padding: '0.5rem 0.75rem',
+    borderRadius: '6px',
+    fontSize: '0.75rem',
     fontWeight: '600',
     marginBottom: '1rem'
   },
   difficultyBadge: {
     display: 'inline-block',
-    padding: '0.25rem 0.75rem',
-    borderRadius: '12px',
+    padding: '0.25rem 0.5rem',
+    borderRadius: '4px',
     fontSize: '0.75rem',
     fontWeight: '600',
     backgroundColor: '#3b82f615',
     color: '#3b82f6',
     textTransform: 'capitalize',
     marginLeft: '0.5rem',
+    marginBottom: '1rem'
+  },
+  courseIcon: {
+    fontSize: '2.5rem',
     marginBottom: '1rem'
   },
   resourceTitle: {
@@ -375,6 +506,14 @@ const styles = {
     color: '#9ca3af',
     lineHeight: '1.5',
     marginBottom: '1rem'
+  },
+  courseMeta: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '1rem',
+    marginBottom: '1rem',
+    paddingBottom: '1rem',
+    borderBottom: '1px solid #334155'
   },
   resourceMeta: {
     display: 'flex',
@@ -411,10 +550,15 @@ const styles = {
     backgroundColor: '#3b82f6',
     color: 'white',
     textDecoration: 'none',
+    border: 'none',
     borderRadius: '8px',
     fontSize: '0.875rem',
     fontWeight: '600',
+    cursor: 'pointer',
     transition: 'all 0.2s'
+  },
+  enrolledButton: {
+    backgroundColor: '#10b981'
   },
   removeButton: {
     padding: '0.75rem',

@@ -1,9 +1,9 @@
-// frontend/src/pages/CourseLearn.js
+// frontend/src/pages/CourseLearn.js - Enhanced with proper content rendering
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, PlayCircle, CheckCircle, Lock, BookOpen, 
-  Clock, ChevronRight, ChevronDown 
+  Clock, ChevronRight, ChevronDown, Code, FileText, Video
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -126,14 +126,13 @@ const CourseLearn = () => {
   };
 
   const updateEnrollmentProgress = async (updatedProgress) => {
-    // Calculate progress percentage based on updated lesson progress
     const completedCount = Object.values(updatedProgress).filter(
       p => p?.status === 'completed'
     ).length;
     const progressPercentage = Math.round((completedCount / allLessons.length) * 100);
 
     try {
-      const response = await fetch(`${API_URL}/courses/${courseId}/enrollment/progress`, {
+      await fetch(`${API_URL}/courses/${courseId}/enrollment/progress`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -143,11 +142,6 @@ const CourseLearn = () => {
           progress_percentage: progressPercentage
         })
       });
-
-      const data = await response.json();
-      if (data.success && data.enrollment) {
-        setEnrollment(data.enrollment);
-      }
     } catch (error) {
       console.error('Error updating enrollment progress:', error);
     }
@@ -178,11 +172,7 @@ const CourseLearn = () => {
         };
         
         setLessonProgress(updatedProgress);
-
-        // Update overall enrollment progress
         await updateEnrollmentProgress(updatedProgress);
-
-        // Move to next lesson
         navigateToNextLesson();
       }
     } catch (error) {
@@ -196,7 +186,6 @@ const CourseLearn = () => {
       const nextLesson = allLessons[currentIndex + 1];
       setSelectedLesson(nextLesson);
       
-      // Expand the module containing the next lesson
       setExpandedModules(prev => ({
         ...prev,
         [nextLesson.moduleId]: true
@@ -210,7 +199,6 @@ const CourseLearn = () => {
       const prevLesson = allLessons[currentIndex - 1];
       setSelectedLesson(prevLesson);
       
-      // Expand the module containing the previous lesson
       setExpandedModules(prev => ({
         ...prev,
         [prevLesson.moduleId]: true
@@ -233,7 +221,16 @@ const CourseLearn = () => {
     } else if (progress?.status === 'in_progress') {
       return <PlayCircle size={16} style={{ color: '#60a5fa' }} />;
     } else {
-      return <PlayCircle size={16} style={{ color: '#6b7280' }} />;
+      // Icon based on lesson type
+      switch(lesson.lesson_type) {
+        case 'video':
+          return <Video size={16} style={{ color: '#6b7280' }} />;
+        case 'coding':
+        case 'project':
+          return <Code size={16} style={{ color: '#6b7280' }} />;
+        default:
+          return <FileText size={16} style={{ color: '#6b7280' }} />;
+      }
     }
   };
 
@@ -243,6 +240,240 @@ const CourseLearn = () => {
 
   const isLastLesson = () => {
     return allLessons.findIndex(l => l.id === selectedLesson?.id) === allLessons.length - 1;
+  };
+
+  // Helper function to extract YouTube video ID
+  const getYouTubeVideoId = (url) => {
+    if (!url) return null;
+    const regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[7].length === 11) ? match[7] : null;
+  };
+
+  // Render lesson content based on type
+  const renderLessonContent = () => {
+    if (!selectedLesson) return null;
+
+    const { lesson_type, video_url, content, code_template } = selectedLesson;
+
+    // VIDEO LESSON
+    if (lesson_type === 'video' && video_url) {
+      const videoId = getYouTubeVideoId(video_url);
+      
+      return (
+        <>
+          {/* YouTube Video Embed */}
+          {videoId && (
+            <div style={{
+              position: 'relative',
+              paddingBottom: '56.25%', // 16:9 aspect ratio
+              height: 0,
+              overflow: 'hidden',
+              marginBottom: '2rem',
+              borderRadius: '12px'
+            }}>
+              <iframe
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  borderRadius: '12px'
+                }}
+                src={`https://www.youtube.com/embed/${videoId}`}
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                title={selectedLesson.title}
+              />
+            </div>
+          )}
+          
+          {/* Video description/notes */}
+          {content && (
+            <div style={{
+              backgroundColor: '#1a1d24',
+              borderRadius: '12px',
+              padding: '2rem',
+              lineHeight: '1.8',
+              color: '#e5e7eb'
+            }}>
+              <h3 style={{ 
+                fontSize: '1.25rem', 
+                fontWeight: '600', 
+                marginBottom: '1rem',
+                color: '#fff'
+              }}>
+                Lesson Notes
+              </h3>
+              <div style={{ whiteSpace: 'pre-wrap' }}>
+                {content}
+              </div>
+            </div>
+          )}
+        </>
+      );
+    }
+
+    // CODING/PROJECT LESSON
+    if ((lesson_type === 'coding' || lesson_type === 'project') && code_template) {
+      return (
+        <>
+          {/* Instructions */}
+          {content && (
+            <div style={{
+              backgroundColor: '#1a1d24',
+              borderRadius: '12px',
+              padding: '2rem',
+              marginBottom: '2rem',
+              lineHeight: '1.8',
+              color: '#e5e7eb'
+            }}>
+              <h3 style={{ 
+                fontSize: '1.25rem', 
+                fontWeight: '600', 
+                marginBottom: '1rem',
+                color: '#fff'
+              }}>
+                📝 Instructions
+              </h3>
+              <div style={{ whiteSpace: 'pre-wrap' }}>
+                {content}
+              </div>
+            </div>
+          )}
+
+          {/* Code Template */}
+          <div style={{
+            backgroundColor: '#1a1d24',
+            borderRadius: '12px',
+            padding: '2rem'
+          }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '1rem'
+            }}>
+              <h3 style={{ 
+                fontSize: '1.25rem', 
+                fontWeight: '600',
+                color: '#fff'
+              }}>
+                💻 Code Template
+              </h3>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(code_template);
+                  alert('Code copied to clipboard!');
+                }}
+                style={{
+                  padding: '0.5rem 1rem',
+                  backgroundColor: '#2d3748',
+                  color: '#60a5fa',
+                  border: '1px solid #60a5fa',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                  fontWeight: '500'
+                }}
+              >
+                Copy Code
+              </button>
+            </div>
+            <pre style={{
+              backgroundColor: '#0d1117',
+              padding: '1.5rem',
+              borderRadius: '8px',
+              overflow: 'auto',
+              fontSize: '0.875rem',
+              lineHeight: '1.6',
+              border: '1px solid #2d3748'
+            }}>
+              <code style={{ color: '#e5e7eb' }}>
+                {code_template}
+              </code>
+            </pre>
+            <div style={{
+              marginTop: '1rem',
+              padding: '1rem',
+              backgroundColor: '#60a5fa15',
+              border: '1px solid #60a5fa',
+              borderRadius: '8px',
+              color: '#60a5fa',
+              fontSize: '0.875rem'
+            }}>
+              <strong>💡 Tip:</strong> Copy this code to your local editor (VS Code, CodePen, etc.) and complete the TODOs to finish the exercise!
+            </div>
+          </div>
+        </>
+      );
+    }
+
+    // TEXT LESSON (default)
+    return (
+      <div style={{
+        backgroundColor: '#1a1d24',
+        borderRadius: '12px',
+        padding: '2rem'
+      }}>
+        {content ? (
+          <div style={{ 
+            lineHeight: '1.8', 
+            color: '#e5e7eb',
+            whiteSpace: 'pre-wrap'
+          }}>
+            {content.split('\n').map((line, index) => {
+              // Basic markdown-like parsing
+              if (line.startsWith('# ')) {
+                return (
+                  <h2 key={index} style={{ 
+                    fontSize: '1.75rem', 
+                    fontWeight: 'bold', 
+                    marginTop: '2rem',
+                    marginBottom: '1rem',
+                    color: '#fff'
+                  }}>
+                    {line.substring(2)}
+                  </h2>
+                );
+              }
+              if (line.startsWith('## ')) {
+                return (
+                  <h3 key={index} style={{ 
+                    fontSize: '1.5rem', 
+                    fontWeight: '600', 
+                    marginTop: '1.5rem',
+                    marginBottom: '0.75rem',
+                    color: '#fff'
+                  }}>
+                    {line.substring(3)}
+                  </h3>
+                );
+              }
+              if (line.startsWith('```')) {
+                // Skip code fence markers
+                return null;
+              }
+              if (line.trim() === '') {
+                return <br key={index} />;
+              }
+              return <p key={index} style={{ marginBottom: '0.5rem' }}>{line}</p>;
+            })}
+          </div>
+        ) : (
+          <div>
+            <p style={{ marginBottom: '1rem' }}>
+              Lesson content will be available here. Stay tuned!
+            </p>
+            <p style={{ color: '#9ca3af', fontStyle: 'italic' }}>
+              Full lesson content coming soon.
+            </p>
+          </div>
+        )}
+      </div>
+    );
   };
 
   if (loading) {
@@ -279,28 +510,10 @@ const CourseLearn = () => {
       <div style={{
         minHeight: '100vh',
         backgroundColor: '#0F1116',
-        color: '#fff',
         padding: '2rem',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexDirection: 'column'
+        color: '#fff'
       }}>
-        <h2 style={{ marginBottom: '1rem' }}>Course not found</h2>
-        <button
-          onClick={() => navigate('/learns')}
-          style={{
-            padding: '0.75rem 1.5rem',
-            backgroundColor: '#60a5fa',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            fontWeight: '500'
-          }}
-        >
-          Back to Courses
-        </button>
+        <p>Course not found</p>
       </div>
     );
   }
@@ -312,8 +525,7 @@ const CourseLearn = () => {
       minHeight: '100vh',
       backgroundColor: '#0F1116',
       display: 'flex',
-      flexDirection: 'column',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+      flexDirection: 'column'
     }}>
       {/* Header */}
       <div style={{
@@ -321,24 +533,26 @@ const CourseLearn = () => {
         borderBottom: '1px solid #2d3748',
         padding: '1rem 2rem'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <button
-              onClick={() => navigate('/learns')}
+              onClick={() => navigate('/courses')}
               style={{
                 padding: '0.5rem',
                 backgroundColor: 'transparent',
                 color: '#9ca3af',
                 border: 'none',
+                borderRadius: '6px',
                 cursor: 'pointer',
                 display: 'flex',
-                alignItems: 'center',
-                fontSize: '0.875rem',
-                fontWeight: '500'
+                alignItems: 'center'
               }}
             >
-              <ArrowLeft size={20} style={{ marginRight: '0.5rem' }} />
-              Back to Courses
+              <ArrowLeft size={20} />
             </button>
             <div style={{ height: '24px', width: '1px', backgroundColor: '#2d3748' }} />
             <h1 style={{
@@ -446,7 +660,7 @@ const CourseLearn = () => {
                               {lessonIndex + 1}. {lesson.title}
                             </div>
                             <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.125rem' }}>
-                              {lesson.duration_minutes} min
+                              {lesson.estimated_duration_minutes} min
                             </div>
                           </div>
                           {progress?.status === 'completed' && (
@@ -481,7 +695,8 @@ const CourseLearn = () => {
                   borderRadius: '4px',
                   fontSize: '0.75rem',
                   fontWeight: '600',
-                  marginBottom: '1rem'
+                  marginBottom: '1rem',
+                  textTransform: 'capitalize'
                 }}>
                   {selectedLesson.lesson_type || 'Text'}
                 </div>
@@ -497,7 +712,7 @@ const CourseLearn = () => {
                   fontSize: '1rem',
                   marginBottom: '1rem'
                 }}>
-                  {selectedLesson.description || 'Understanding JavaScript and its role in web development'}
+                  {selectedLesson.description}
                 </p>
                 <div style={{
                   display: 'flex',
@@ -508,7 +723,7 @@ const CourseLearn = () => {
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                     <Clock size={14} />
-                    {selectedLesson.duration_minutes} minutes
+                    {selectedLesson.estimated_duration_minutes} minutes
                   </div>
                   {lessonProgress[selectedLesson.id]?.status === 'completed' && (
                     <div style={{
@@ -524,28 +739,8 @@ const CourseLearn = () => {
                 </div>
               </div>
 
-              {/* Lesson Content */}
-              <div style={{
-                backgroundColor: '#1a1d24',
-                borderRadius: '12px',
-                padding: '2rem',
-                marginBottom: '2rem'
-              }}>
-                {selectedLesson.content ? (
-                  <div style={{ lineHeight: '1.8', color: '#e5e7eb' }}>
-                    {selectedLesson.content}
-                  </div>
-                ) : (
-                  <div>
-                    <p style={{ marginBottom: '1rem' }}>
-                      Lesson content will be available here. Stay tuned!
-                    </p>
-                    <p style={{ color: '#9ca3af', fontStyle: 'italic' }}>
-                      Full lesson content coming soon. This is a placeholder to demonstrate the course structure.
-                    </p>
-                  </div>
-                )}
-              </div>
+              {/* Dynamic Lesson Content */}
+              {renderLessonContent()}
 
               {/* Lesson Navigation */}
               <div style={{

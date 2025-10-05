@@ -1,4 +1,4 @@
-// backend/app.js - FINAL FIXED VERSION WITH SOLO PROJECT ROUTES
+// backend/app.js - WITH RECOMMENDATIONS ROUTE ADDED
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -26,9 +26,10 @@ const commentsRoutes = require('./routes/comments');
 const notificationsRoutes = require('./routes/notifications');
 const githubRoutes = require('./routes/github');
 const friendsRoutes = require('./routes/friends');
-
-// ✅ NEW: Import solo project routes
 const soloProjectRoutes = require('./routes/soloProjectRoutes');
+
+// ✅ NEW: Import recommendations routes
+const recommendationsRoutes = require('./routes/recommendations');
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -131,7 +132,7 @@ if (process.env.NODE_ENV === 'development') {
 // Test database connection on startup
 const supabase = require('./config/supabase');
 
-// API Routes - FIXED: Correct mounting order and paths
+// API Routes
 
 // 1. Independent routes first
 app.use('/api/auth', authRoutes);
@@ -146,16 +147,16 @@ app.use('/api/comments', commentsRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/github', githubRoutes);
 app.use('/api/friends', friendsRoutes);
-
-// ✅ NEW: Solo project routes (add this line)
 app.use('/api/solo-projects', soloProjectRoutes);
 
-// 2. Project-nested routes - FIXED: Mount under /api/projects
-// These routes handle: /api/projects/:projectId/tasks/* and /api/projects/:projectId/members/*
-app.use('/api/projects', taskRoutes);         // ✅ Now handles /api/projects/:projectId/tasks
-app.use('/api/projects', projectMemberRoutes); // ✅ Now handles /api/projects/:projectId/members
+// ✅ NEW: Recommendations route
+app.use('/api/recommendations', recommendationsRoutes);
 
-// 3. General project routes last - handles remaining /api/projects/*
+// 2. Project-nested routes
+app.use('/api/projects', taskRoutes);
+app.use('/api/projects', projectMemberRoutes);
+
+// 3. General project routes last
 app.use('/api/projects', projectRoutes);
 
 // Health check endpoint
@@ -168,7 +169,7 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Root endpoint with correct documentation
+// Root endpoint with documentation
 app.get('/', (req, res) => {
   res.json({
     success: true,
@@ -178,12 +179,13 @@ app.get('/', (req, res) => {
       health: '/health',
       auth: '/api/auth',
       projects: '/api/projects',
-      'solo-projects': '/api/solo-projects',        // ✅ NEW: Added to documentation
-      tasks: '/api/projects/:projectId/tasks',     // ✅ Correct path
-      members: '/api/projects/:projectId/members', // ✅ Correct path
+      'solo-projects': '/api/solo-projects',
+      tasks: '/api/projects/:projectId/tasks',
+      members: '/api/projects/:projectId/members',
       'aichat': '/api/ai-chat',
       challenges: '/api/challenges',
-      github: '/api/github'
+      github: '/api/github',
+      recommendations: '/api/recommendations' // ✅ NEW: Added to documentation
     }
   });
 });
@@ -216,43 +218,43 @@ const io = new Server(server, {
   transports: ['websocket', 'polling']
 });
 
-// Setup socket handlers - FIXED: Check if socketHandler exists and has setupSocketHandlers
+// Setup socket handlers
 try {
   const setupSocketHandlers = require('./utils/socketHandler');
   if (typeof setupSocketHandlers === 'function') {
     setupSocketHandlers(io);
   } else {
-    console.log('⚠️  Socket handler not found or not a function, skipping socket setup');
+    console.log('Socket handler not found or not a function, skipping socket setup');
   }
 } catch (error) {
-  console.log('⚠️  Socket handler file not found, skipping socket setup:', error.message);
+  console.log('Socket handler file not found, skipping socket setup:', error.message);
 }
 
 // Graceful shutdown handler
 process.on('SIGTERM', () => {
-  console.log('🛑 SIGTERM received. Shutting down gracefully...');
+  console.log('SIGTERM received. Shutting down gracefully...');
   server.close(() => {
-    console.log('✅ HTTP server closed.');
+    console.log('HTTP server closed.');
     process.exit(0);
   });
 });
 
 process.on('SIGINT', () => {
-  console.log('🛑 SIGINT received. Shutting down gracefully...');
+  console.log('SIGINT received. Shutting down gracefully...');
   server.close(() => {
-    console.log('✅ HTTP server closed.');
+    console.log('HTTP server closed.');
     process.exit(0);
   });
 });
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (error) => {
-  console.error('💥 Uncaught Exception:', error);
+  console.error('Uncaught Exception:', error);
   process.exit(1);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('💥 Unhandled Rejection at:', promise, 'reason:', reason);
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
   process.exit(1);
 });
 

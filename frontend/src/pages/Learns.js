@@ -1,5 +1,8 @@
+//frontend/src/pages/learns.js
+
 import React, { useState, useEffect } from 'react';
 import { Search, BookMarked, ExternalLink, Clock, TrendingUp, Filter, X, Globe, Zap, Atom, Code, Monitor, GraduationCap, BookOpen, Laptop } from 'lucide-react';
+import PersonalLearnings from '../components/PersonalLearnings';
 
 const Learns = () => {
   const [articles, setArticles] = useState([]);
@@ -9,6 +12,7 @@ const Learns = () => {
   const [bookmarkedArticles, setBookmarkedArticles] = useState([]);
   const [showBookmarked, setShowBookmarked] = useState(false);
   const [showPersonalLearnings, setShowPersonalLearnings] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
 
   const popularTags = [
     { id: 'all', name: 'All Topics', icon: Globe },
@@ -20,6 +24,12 @@ const Learns = () => {
     { id: 'tutorial', name: 'Tutorials', icon: BookOpen },
     { id: 'programming', name: 'Programming', icon: Laptop }
   ];
+
+  useEffect(() => {
+    // Get current user from localStorage or your auth context
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    setCurrentUser(user);
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -36,8 +46,10 @@ const Learns = () => {
       }
     };
 
-    fetchData();
-  }, [selectedTag]);
+    if (!showPersonalLearnings) {
+      fetchData();
+    }
+  }, [selectedTag, showPersonalLearnings]);
 
   const toggleBookmark = (article) => {
     const isBookmarked = bookmarkedArticles.some(b => b.id === article.id);
@@ -95,7 +107,7 @@ const Learns = () => {
                 My Personal Learnings
               </h1>
               <p style={{ color: '#9ca3af', fontSize: '1.1rem' }}>
-                Track your learning journey and document your progress
+                Your saved learning resources from challenges
               </p>
             </div>
             <button
@@ -121,7 +133,10 @@ const Learns = () => {
             </button>
           </div>
 
-          
+          {/* Personal Learnings Component */}
+          {currentUser && currentUser.id && (
+            <PersonalLearnings userId={currentUser.id} />
+          )}
         </div>
       ) : (
         // Original Learning Resources Page

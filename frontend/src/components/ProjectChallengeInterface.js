@@ -880,6 +880,12 @@ const ProjectChallengeInterface = ({ projectId, onClose, onSuccess }) => {
             onClose={handleAlertClose}
             onContinue={handleAlertContinue}
             projectTitle={challenge?.project?.title || 'this project'}
+            // Required props
+            userId={JSON.parse(localStorage.getItem('user') || '{}').id}
+            challengeId={challenge?.challenge?.id}
+            programmingLanguageId={challenge?.challenge?.programming_language_id}
+            challengeLanguage={challenge?.challenge?.programming_languages?.name || 'javascript'}
+            difficultyLevel={challenge?.challenge?.difficulty_level || 'beginner'}
           />
         )}
       </>
@@ -1363,12 +1369,18 @@ const ProjectChallengeInterface = ({ projectId, onClose, onSuccess }) => {
         </div>
       </div>
 
-      {showAlert && alertData && (
+      {showAlert && alertData && challenge && (
         <ChallengeFailureAlert
           alertData={alertData}
           onClose={handleAlertClose}
           onContinue={handleAlertContinue}
           projectTitle={challenge?.project?.title || 'this project'}
+          // Required props for recommendations API
+          userId={JSON.parse(localStorage.getItem('user') || '{}').id}
+          challengeId={challenge?.challenge?.id}
+          programmingLanguageId={challenge?.challenge?.programming_language_id}
+          challengeLanguage={challenge?.challenge?.programming_languages?.name || 'javascript'}
+          difficultyLevel={challenge?.challenge?.difficulty_level || 'beginner'}
         />
       )}
     </>

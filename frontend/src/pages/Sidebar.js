@@ -631,7 +631,7 @@ function Sidebar() {
         <div style={styles.logoContainer}>
           <div style={styles.logoIcon}>
             <img 
-              src="/images/logo/FinalLogo.png" 
+              src="/images/logo/logotwo.png" 
               alt="TechSync Logo" 
               style={styles.logoImage}
             />

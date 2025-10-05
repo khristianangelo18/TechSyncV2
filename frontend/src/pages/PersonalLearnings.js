@@ -1,8 +1,10 @@
 // frontend/src/pages/PersonalLearnings.js
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { BookOpen, Youtube, Github, ExternalLink, Trash2, Clock, Star, GraduationCap } from 'lucide-react';
 
 const PersonalLearnings = ({ userId }) => {
+  const navigate = useNavigate();
   const [learnings, setLearnings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -88,14 +90,53 @@ const PersonalLearnings = ({ userId }) => {
     }
   };
 
-  const handleCourseClick = (resource) => {
+  const handleCourseClick = async (resource) => {
     const courseId = getCourseId(resource);
+    console.log('🎯 handleCourseClick - Course ID:', courseId);
+    console.log('🎯 handleCourseClick - Resource:', resource);
+    
     if (courseId && isInternalCourse(resource)) {
-      // Navigate to course learn page
-      window.location.href = `/courses/${courseId}/learn`;
+      const enrolled = isEnrolled(resource);
+      console.log('📚 Is enrolled:', enrolled);
+      
+      // If not enrolled, enroll first
+      if (!enrolled) {
+        try {
+          const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+          console.log('📝 Enrolling in course:', courseId);
+          const response = await fetch(`${API_URL}/courses/${courseId}/enroll`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          const data = await response.json();
+          
+          if (data.success) {
+            console.log('✅ Successfully enrolled');
+            // Update enrollments
+            setEnrollments(prev => new Set([...prev, courseId]));
+          } else {
+            console.error('❌ Enrollment failed:', data);
+          }
+        } catch (err) {
+          console.error('❌ Error enrolling in course:', err);
+          alert('Failed to enroll in course');
+          return;
+        }
+      }
+      
+      // Navigate to course learn page using React Router
+      const targetPath = `/course/${courseId}/learn`;
+      console.log('🚀 Navigating to:', targetPath);
+      navigate(targetPath);
     } else if (resource?.url) {
       // Open external resource in new tab
+      console.log('🔗 Opening external URL:', resource.url);
       window.open(resource.url, '_blank', 'noopener,noreferrer');
+    } else {
+      console.error('❌ No course ID or URL found');
     }
   };
 
@@ -138,12 +179,19 @@ const PersonalLearnings = ({ userId }) => {
   };
 
   const getCourseId = (resource) => {
-    // Extract course ID from URL like "/courses/abc-123/learn"
+    console.log('🔍 Getting course ID from resource:', resource);
+    
+    // Extract course ID from URL like "/course/abc-123/learn" or "/courses/abc-123/learn"
     if (resource?.url && isInternalCourse(resource)) {
-      const match = resource.url.match(/\/courses\/([^\/]+)/);
-      return match ? match[1] : null;
+      const match = resource.url.match(/\/courses?\/([^\/]+)/);
+      const courseId = match ? match[1] : null;
+      console.log('📍 Extracted course ID from URL:', courseId);
+      return courseId;
     }
-    return resource?.courseId || null;
+    
+    const courseId = resource?.courseId || null;
+    console.log('📍 Course ID from resource.courseId:', courseId);
+    return courseId;
   };
 
   const isEnrolled = (resource) => {
@@ -153,7 +201,7 @@ const PersonalLearnings = ({ userId }) => {
 
   const getButtonText = (resource) => {
     if (isInternalCourse(resource)) {
-      return isEnrolled(resource) ? 'Go to Course' : 'View Resource';
+      return isEnrolled(resource) ? 'Go to Course' : 'Start Course';
     }
     return 'View Resource';
   };

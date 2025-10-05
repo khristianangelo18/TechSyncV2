@@ -407,8 +407,8 @@ function Login() {
       borderRadius: '12px'
     },
     logoIcon: {
-      width: '40px',
-      height: '40px',
+      width: '70px',
+      height: '70px',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -880,7 +880,7 @@ function Login() {
           >
             <div style={styles.logoIcon} className="logo-icon">
               <img 
-                src="/images/logo/TechSyncLogo.png" 
+                src="/images/logo/logofour.png" 
                 alt="TechSync Logo" 
                 style={styles.logoImage}
               />
@@ -1081,8 +1081,8 @@ function Login() {
         >
           <div style={styles.logoIcon} className="logo-icon">
             <img 
-              src="/images/logo/TechSyncLogo.png" 
-              alt="TechSync Logo" 
+              src="/images/logo/logotwo.png" 
+              alt="" 
               style={styles.logoImage}
             />
           </div>

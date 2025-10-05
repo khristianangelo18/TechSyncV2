@@ -2,21 +2,24 @@
 import React, { useState, useEffect } from 'react';
 import { BookOpen, Youtube, Github, ExternalLink, Trash2, Clock, Star } from 'lucide-react';
 
-const PersonalLearnings = () => {
+const PersonalLearnings = ({ userId }) => {
   const [learnings, setLearnings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetchLearnings();
-  }, []);
+    if (userId) {
+      fetchLearnings();
+    }
+  }, [userId]);
 
   const fetchLearnings = async () => {
     setLoading(true);
     setError(null);
     try {
       const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
-      const response = await fetch(`${API_URL}/recommendations/personal-learnings`, {
+      // FIXED: Include userId in the URL path
+      const response = await fetch(`${API_URL}/recommendations/personal-learnings/${userId}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -25,9 +28,9 @@ const PersonalLearnings = () => {
       const data = await response.json();
       
       if (data.success) {
-        setLearnings(data.learnings);
+        setLearnings(data.learnings || []);
       } else {
-        setError('Failed to load saved resources');
+        setError(data.error || 'Failed to load saved resources');
       }
     } catch (err) {
       console.error('Error fetching learnings:', err);
@@ -38,7 +41,8 @@ const PersonalLearnings = () => {
   };
 
   const handleRemove = async (activityId) => {
-    if (!window.confirm('Are you sure you want to remove this resource?')) return;
+    if (!window.confirm('Are you sure you want to remove this resource?'))
+      return;
 
     try {
       const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
@@ -133,38 +137,35 @@ const PersonalLearnings = () => {
       ) : (
         <div style={styles.grid}>
           {learnings.map((learning) => {
-            const resource = learning.resource;
-            if (!resource) return null;
-
+            const resource = learning.resource || {};
+            const provider = resource.provider || 'unknown';
+            
             return (
               <div key={learning.id} style={styles.card}>
                 <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  marginBottom: '0.75rem'
+                  ...styles.providerBadge,
+                  backgroundColor: `${getProviderColor(provider)}15`,
+                  color: getProviderColor(provider)
                 }}>
-                  <div style={{
-                    ...styles.providerBadge,
-                    backgroundColor: `${getProviderColor(resource.provider)}15`,
-                    color: getProviderColor(resource.provider)
-                  }}>
-                    {getProviderIcon(resource.provider)}
-                    <span>{resource.provider || 'Resource'}</span>
-                  </div>
-                  {learning.difficulty && (
-                    <div style={styles.difficultyBadge}>
-                      {learning.difficulty}
-                    </div>
-                  )}
+                  {getProviderIcon(provider)}
+                  <span>{provider}</span>
                 </div>
 
-                <h3 style={styles.resourceTitle}>{resource.title}</h3>
-                
+                {learning.difficulty && (
+                  <div style={styles.difficultyBadge}>
+                    {learning.difficulty}
+                  </div>
+                )}
+
+                <h3 style={styles.resourceTitle}>
+                  {resource.title || 'Untitled Resource'}
+                </h3>
+
                 {resource.description && (
                   <p style={styles.resourceDescription}>
-                    {resource.description.substring(0, 150)}
-                    {resource.description.length > 150 ? '...' : ''}
+                    {resource.description.length > 150 
+                      ? resource.description.substring(0, 150) + '...' 
+                      : resource.description}
                   </p>
                 )}
 
@@ -223,7 +224,6 @@ const styles = {
   container: {
     minHeight: '100vh',
     backgroundColor: '#0a0f1a',
-    padding: '2rem',
     color: 'white'
   },
   header: {
@@ -236,31 +236,30 @@ const styles = {
   },
   title: {
     fontSize: '2rem',
-    fontWeight: '700',
+    fontWeight: 'bold',
     color: 'white',
-    margin: '0 0 0.5rem 0'
+    marginBottom: '0.5rem'
   },
   subtitle: {
-    color: '#9ca3af',
     fontSize: '1rem',
-    margin: 0
+    color: '#9ca3af'
   },
   statsContainer: {
     display: 'flex',
     gap: '1rem'
   },
   statBox: {
-    backgroundColor: '#1e293b',
-    padding: '1rem 1.5rem',
-    borderRadius: '12px',
     display: 'flex',
     alignItems: 'center',
     gap: '1rem',
+    backgroundColor: '#1e293b',
+    padding: '1rem 1.5rem',
+    borderRadius: '12px',
     border: '1px solid #334155'
   },
   statNumber: {
     fontSize: '1.5rem',
-    fontWeight: '700',
+    fontWeight: 'bold',
     color: 'white'
   },
   statLabel: {
@@ -272,27 +271,33 @@ const styles = {
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: '400px',
+    minHeight: '60vh',
     gap: '1rem'
   },
   spinner: {
+    width: '48px',
+    height: '48px',
     border: '4px solid #334155',
     borderTop: '4px solid #3b82f6',
     borderRadius: '50%',
-    width: '50px',
-    height: '50px',
     animation: 'spin 1s linear infinite'
   },
   loadingText: {
-    color: '#9ca3af'
+    color: '#9ca3af',
+    fontSize: '1rem'
   },
   errorContainer: {
-    textAlign: 'center',
-    padding: '2rem'
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: '60vh',
+    gap: '1rem'
   },
   errorText: {
-    color: '#ef4444',
-    marginBottom: '1rem'
+    color: '#dc2626',
+    fontSize: '1rem',
+    textAlign: 'center'
   },
   retryButton: {
     padding: '0.75rem 1.5rem',
@@ -301,24 +306,28 @@ const styles = {
     border: 'none',
     borderRadius: '8px',
     cursor: 'pointer',
-    fontSize: '1rem'
+    fontSize: '1rem',
+    fontWeight: '600'
   },
   emptyState: {
-    textAlign: 'center',
-    padding: '4rem 2rem',
-    backgroundColor: '#1e293b',
-    borderRadius: '16px',
-    border: '1px solid #334155'
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: '60vh',
+    gap: '1rem',
+    textAlign: 'center'
   },
   emptyTitle: {
     fontSize: '1.5rem',
+    fontWeight: 'bold',
     color: 'white',
-    marginTop: '1rem',
-    marginBottom: '0.5rem'
+    marginTop: '1rem'
   },
   emptyText: {
+    fontSize: '1rem',
     color: '#9ca3af',
-    fontSize: '1rem'
+    maxWidth: '500px'
   },
   grid: {
     display: 'grid',
@@ -339,16 +348,20 @@ const styles = {
     padding: '0.25rem 0.75rem',
     borderRadius: '12px',
     fontSize: '0.875rem',
-    fontWeight: '600'
+    fontWeight: '600',
+    marginBottom: '1rem'
   },
   difficultyBadge: {
+    display: 'inline-block',
     padding: '0.25rem 0.75rem',
     borderRadius: '12px',
     fontSize: '0.75rem',
     fontWeight: '600',
     backgroundColor: '#3b82f615',
     color: '#3b82f6',
-    textTransform: 'capitalize'
+    textTransform: 'capitalize',
+    marginLeft: '0.5rem',
+    marginBottom: '1rem'
   },
   resourceTitle: {
     fontSize: '1.125rem',

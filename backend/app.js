@@ -30,6 +30,7 @@ const soloProjectRoutes = require('./routes/soloProjectRoutes');
 
 // ✅ NEW: Import recommendations routes
 const recommendationsRoutes = require('./routes/recommendations');
+const coursesRoutes = require('./routes/courses');
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -151,6 +152,7 @@ app.use('/api/solo-projects', soloProjectRoutes);
 
 // ✅ NEW: Recommendations route
 app.use('/api/recommendations', recommendationsRoutes);
+app.use('/api/courses', coursesRoutes);
 
 // 2. Project-nested routes
 app.use('/api/projects', taskRoutes);

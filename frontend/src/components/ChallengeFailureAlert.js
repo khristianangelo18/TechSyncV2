@@ -33,9 +33,9 @@ const ChallengeFailureAlert = ({
 
   const fetchRecommendations = async () => {
     // Validate required fields before making request
-    if (!userId || !effectiveChallengeId || !effectiveLanguageId || !alertData?.attemptCount) {
-      console.error('Missing required fields for recommendations:', {
-        userId,
+    // ✅ FIX: Don't validate userId - it comes from auth token
+    if (!effectiveChallengeId || !effectiveLanguageId || !alertData?.attemptCount) {
+      console.error('❌ Missing required fields for recommendations:', {
         effectiveChallengeId,
         effectiveLanguageId,
         attemptCount: alertData?.attemptCount
@@ -46,6 +46,13 @@ const ChallengeFailureAlert = ({
 
     setLoadingRecs(true);
     try {
+      console.log('📤 Sending recommendation request:', {
+        challengeId: effectiveChallengeId,
+        attemptCount: alertData.attemptCount,
+        programmingLanguageId: effectiveLanguageId,
+        difficultyLevel: effectiveDifficulty
+      });
+
       const response = await fetch('/api/recommendations/challenge-failure', {
         method: 'POST',
         headers: {
@@ -53,7 +60,7 @@ const ChallengeFailureAlert = ({
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify({
-          userId,
+          // ✅ FIX: Don't send userId - backend gets it from auth token
           challengeId: effectiveChallengeId,
           attemptCount: alertData.attemptCount,
           programmingLanguageId: effectiveLanguageId,
@@ -61,7 +68,18 @@ const ChallengeFailureAlert = ({
         })
       });
 
+      console.log('📥 Response status:', response.status);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('❌ API error:', errorData);
+        setRecommendations([]);
+        setLoadingRecs(false);
+        return;
+      }
+
       const data = await response.json();
+      console.log('✅ Received recommendations:', data);
       
       if (data.success) {
         setRecommendations(data.recommendations);
@@ -69,7 +87,7 @@ const ChallengeFailureAlert = ({
         setMetadata(data.metadata);
       }
     } catch (error) {
-      console.error('Error fetching recommendations:', error);
+      console.error('❌ Error fetching recommendations:', error);
       setRecommendations([]);
     } finally {
       setLoadingRecs(false);

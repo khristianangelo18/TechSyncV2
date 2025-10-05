@@ -215,22 +215,39 @@ async function getAggregatedResources(language, difficulty, attemptCount) {
 /**
  * POST /api/recommendations/challenge-failure
  * Generate and log recommendations for failed challenge attempts
+ * 
+ * FIX: Use req.user.id from authMiddleware instead of userId from body
  */
 router.post('/challenge-failure', authMiddleware, async (req, res) => {
   try {
+    // ✅ FIX: Get userId from authenticated user, not from request body
+    const userId = req.user.id;
+    
     const { 
-      userId, 
       challengeId, 
       attemptCount, 
       programmingLanguageId,
       difficultyLevel 
     } = req.body;
 
+    console.log('📊 Challenge failure request:', {
+      userId,
+      challengeId,
+      attemptCount,
+      programmingLanguageId,
+      difficultyLevel
+    });
+
     // Validate input
-    if (!userId || !challengeId || !attemptCount || !programmingLanguageId) {
+    if (!challengeId || !attemptCount || !programmingLanguageId) {
+      console.error('❌ Missing required fields:', {
+        challengeId: !!challengeId,
+        attemptCount: !!attemptCount,
+        programmingLanguageId: !!programmingLanguageId
+      });
       return res.status(400).json({
         success: false,
-        error: 'Missing required fields'
+        error: 'Missing required fields: challengeId, attemptCount, or programmingLanguageId'
       });
     }
 
@@ -242,11 +259,12 @@ router.post('/challenge-failure', authMiddleware, async (req, res) => {
       .single();
 
     if (langError) {
-      console.error('Error fetching language:', langError);
+      console.error('❌ Error fetching language:', langError);
       return res.status(500).json({ success: false, error: 'Failed to fetch language' });
     }
 
     const languageName = languageData?.name || 'javascript';
+    console.log('✅ Language found:', languageName);
 
     // 2. Get user's proficiency level
     const { data: proficiencyData } = await supabase
@@ -257,6 +275,7 @@ router.post('/challenge-failure', authMiddleware, async (req, res) => {
       .single();
 
     const userRating = proficiencyData?.rating || 1200;
+    console.log('📈 User rating:', userRating);
 
     // 3. Determine recommended difficulty
     let recommendedDifficulty = 'beginner';
@@ -268,12 +287,16 @@ router.post('/challenge-failure', authMiddleware, async (req, res) => {
       recommendedDifficulty = 'advanced';
     }
 
+    console.log('🎯 Recommended difficulty:', recommendedDifficulty);
+
     // 4. Fetch resources from multiple providers
     const resources = await getAggregatedResources(
       languageName, 
       recommendedDifficulty, 
       attemptCount
     );
+
+    console.log(`📚 Found ${resources.length} resources`);
 
     // 5. Log each recommendation
     const recommendationIds = [];
@@ -295,6 +318,8 @@ router.post('/challenge-failure', authMiddleware, async (req, res) => {
         recommendationIds.push(data.id);
       }
     }
+
+    console.log(`✅ Logged ${recommendationIds.length} recommendations`);
 
     // 6. Log user activity
     const { data: challengeData } = await supabase
@@ -318,6 +343,8 @@ router.post('/challenge-failure', authMiddleware, async (req, res) => {
         created_at: new Date().toISOString()
       });
 
+    console.log('✅ Recommendations generated successfully');
+
     res.json({
       success: true,
       recommendations: resources,
@@ -331,7 +358,7 @@ router.post('/challenge-failure', authMiddleware, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error generating recommendations:', error);
+    console.error('❌ Error generating recommendations:', error);
     res.status(500).json({ 
       success: false, 
       error: 'Failed to generate recommendations',

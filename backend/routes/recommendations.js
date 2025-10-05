@@ -419,6 +419,70 @@ router.post('/feedback', authMiddleware, async (req, res) => {
 });
 
 /**
+ * POST /api/recommendations/save-learning
+ * Save a resource to personal learnings
+ */
+router.post('/save-learning', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { 
+      recommendationId, 
+      resource,
+      languageId,
+      difficulty 
+    } = req.body;
+
+    if (!recommendationId || !resource) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: recommendationId and resource'
+      });
+    }
+
+    // Save to personal learnings table (using user_activity)
+    const { data, error } = await supabase
+      .from('user_activity')
+      .insert({
+        user_id: userId,
+        activity_type: 'saved_learning_resource',
+        activity_data: {
+          recommendationId,
+          resource,
+          languageId,
+          difficulty,
+          savedAt: new Date().toISOString()
+        },
+        created_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    // Update the recommendation as viewed/clicked
+    await supabase
+      .from('learning_recommendations')
+      .update({
+        completed_at: new Date().toISOString()
+      })
+      .eq('id', recommendationId);
+
+    res.json({
+      success: true,
+      message: 'Resource saved to personal learnings',
+      savedResource: data
+    });
+
+  } catch (error) {
+    console.error('Error saving to personal learnings:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to save resource' 
+    });
+  }
+});
+
+/**
  * GET /api/recommendations/analytics/:userId
  * Get recommendation analytics for a user
  */

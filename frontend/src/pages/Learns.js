@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Search, BookMarked, ExternalLink, Clock, TrendingUp, Filter, X, Globe, Zap, Atom, Code, Monitor, GraduationCap, BookOpen, Laptop } from 'lucide-react';
-import PersonalLearnings from '../components/PersonalLearnings';
+import PersonalLearnings from '../pages/PersonalLearnings';
 
 const Learns = () => {
   const [articles, setArticles] = useState([]);

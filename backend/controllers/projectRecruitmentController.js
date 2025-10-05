@@ -34,15 +34,15 @@ const generateComfortingMessage = (attemptCount, projectTitle) => {
   const messages = [
     {
       threshold: 15,
-      message: `You've made ${attemptCount} attempts at "${projectTitle}" - that shows incredible persistence! Sometimes it helps to step back and approach the problem from a different angle. Consider reaching out to the community for tips, or exploring similar but simpler projects to build your confidence. You've got this! 🚀`
+      message: `You've made ${attemptCount} attempts at "${projectTitle}" - that shows incredible persistence! Sometimes it helps to step back and approach the problem from a different angle. Consider reaching out to the community for tips, or exploring similar but simpler projects to build your confidence. You've got this!`
     },
     {
       threshold: 10,
-      message: `We notice you've been persistently trying to join "${projectTitle}". Your determination is admirable! However, you might want to take a short break, review some coding tutorials, or try some easier projects first. Remember, every expert was once a beginner! 🌟`
+      message: `We notice you've been persistently trying to join "${projectTitle}". Your determination is admirable! However, you might want to take a short break, review some coding tutorials, or try some easier projects first. Remember, every expert was once a beginner!`
     },
     {
       threshold: 7,
-      message: `It seems like you're having a hard time entering the "${projectTitle}" project and answering the challenge. Don't worry, coding challenges can be tricky! Consider reviewing the requirements again, or perhaps this project might be more advanced than your current skill level. Keep practicing and you'll get there! 💪`
+      message: `It seems like you're having a hard time entering the "${projectTitle}" project and answering the challenge. Don't worry, coding challenges can be tricky! Consider reviewing the requirements again, or perhaps this project might be more advanced than your current skill level. Keep practicing and you'll get there!`
     }
   ];
 
@@ -209,11 +209,11 @@ function evaluateCodeSubmission(code, project) {
 function generateDetailedFeedback(score, details, primaryLanguage) {
   let fb = '';
   if (score >= 80) {
-    fb = '🎉 Excellent work! Your solution demonstrates strong programming skills with proper structure and logic.';
+    fb = 'Excellent work! Your solution demonstrates strong programming skills with proper structure and logic.';
   } else if (score >= 70) {
-    fb = '✅ Good job! Your solution meets the requirements and shows solid programming understanding.';
+    fb = 'Good job! Your solution meets the requirements and shows solid programming understanding.';
   } else if (score >= 50) {
-    fb = '⚠️ Your solution shows some programming knowledge but needs improvement. ';
+    fb = 'Your solution shows some programming knowledge but needs improvement. ';
     const suggestions = [];
     if (!details.hasFunction) suggestions.push('define proper functions or methods');
     if (!details.hasLogic) suggestions.push('add conditional logic and control structures');
@@ -221,9 +221,9 @@ function generateDetailedFeedback(score, details, primaryLanguage) {
     if (!details.properStructure) suggestions.push('improve code formatting and structure');
     if (suggestions.length > 0) fb += 'Try to: ' + suggestions.slice(0, 2).join(', ') + '.';
   } else if (score >= 25) {
-    fb = '❌ Your solution needs significant improvement. Write a complete, functional solution that addresses the problem requirements.';
+    fb = 'Your solution needs significant improvement. Write a complete, functional solution that addresses the problem requirements.';
   } else {
-    fb = '❌ Your solution appears incomplete or incorrect. Review the challenge requirements and implement a proper solution.';
+    fb = 'Your solution appears incomplete or incorrect. Review the challenge requirements and implement a proper solution.';
   }
   return fb;
 }
@@ -286,7 +286,7 @@ const getProjectChallenge = async (req, res) => {
 
     // Create temporary challenge if none exists
     if (!selectedChallenge) {
-      const langForTemp = projPrimaryLang?.programming_languages || { id: 63, name: 'JavaScript' };
+      const langForTemp = projPrimaryLang?.programming_languages || { id: 2, name: 'JavaScript' };
       selectedChallenge = {
         id: `temp_${projectId}_${Date.now()}`,
         project_id: projectId,
@@ -365,15 +365,14 @@ const canAttemptChallenge = async (req, res) => {
     // Get challenge info for alertData
     const { data: challengeData } = await supabase
       .from('coding_challenges')
-      .select('id, programming_language_id, difficulty_level')
+      .select('id, difficulty_level')
       .eq('project_id', projectId)
       .single();
 
-    // Determine programming language ID
+    // ALWAYS get language ID from project, not challenge (to avoid Judge0 ID confusion)
     const plId = project?.project_languages?.find(pl => pl.is_primary)?.programming_languages?.id ||
                  project?.project_languages?.[0]?.programming_languages?.id ||
-                 challengeData?.programming_language_id ||
-                 1;
+                 2; // Default to JavaScript (id: 2)
 
     // Helper to create complete alertData
     const createAlertData = (shouldShow, failedCount, message) => {
@@ -382,7 +381,6 @@ const canAttemptChallenge = async (req, res) => {
         shouldShow: true,
         attemptCount: failedCount,
         message: message,
-        // ✅ Include IDs for recommendations API
         challengeId: challengeData?.id,
         programmingLanguageId: plId,
         difficultyLevel: challengeData?.difficulty_level || 'beginner'
@@ -637,7 +635,6 @@ const submitChallengeAttempt = async (req, res) => {
       if (challengeId && !String(challengeId).startsWith('temp_')) {
         const plId = project.project_languages?.find(pl => pl.is_primary)?.language_id ||
                      project.project_languages?.[0]?.language_id ||
-                     challenge?.programming_language_id ||
                      null;
 
         if (plId) {
@@ -653,30 +650,28 @@ const submitChallengeAttempt = async (req, res) => {
       console.warn('Rating update failed (non-blocking):', e.message);
     }
 
-    // ✅ FIX: Alert data on fail with complete information
+    // Alert data on fail - ALWAYS use project language ID, not challenge's Judge0 ID
     let alertData = null;
     if (!passed) {
       const failedAttemptsCount = await getFailedAttemptsCount(userId, projectId);
       if (failedAttemptsCount >= 7) {
         const title = project.title || 'this project';
         
-        // Get programming language ID for recommendations
+        // ALWAYS get language ID from project (YOUR database IDs), never from challenge
         const plId = project.project_languages?.find(pl => pl.is_primary)?.language_id ||
                      project.project_languages?.[0]?.language_id ||
-                     challenge?.programming_language_id ||
-                     1; // Default to JavaScript (id: 1)
+                     2; // Default to JavaScript (id: 2)
         
         alertData = {
           shouldShow: true,
           attemptCount: failedAttemptsCount,
           message: generateComfortingMessage(failedAttemptsCount, title),
-          // ✅ NEW: Include these fields for recommendations API
           challengeId: challenge?.id,
           programmingLanguageId: plId,
           difficultyLevel: challenge?.difficulty_level || 'beginner'
         };
         
-        console.log('✅ Alert data created:', alertData);
+        console.log('Alert data created:', alertData);
       }
     }
 

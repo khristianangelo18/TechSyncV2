@@ -23,6 +23,7 @@ import ProjectJoinPage from './pages/ProjectJoinPage';
 import TaskDetail from './pages/project/TaskDetail';
 import GitHubOAuthCallback from './components/GitHubOAuthCallback';
 import Learns from './pages/Learns';
+import PersonalLearnings from './pages/PersonalLearnings';
 
 
 // Solo project components
@@ -918,7 +919,7 @@ function App() {
                     </ProtectedRoute>
                   } 
                 />
-                
+                <Route path="/learns" element={<ProtectedRoute><PersonalLearnings /></ProtectedRoute>} />
                 <Route 
                   path="/help" 
                   element={

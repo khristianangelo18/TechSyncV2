@@ -71,9 +71,11 @@ const ChallengeFailureAlert = ({
       const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
       // Use full URL to ensure request reaches backend
-      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      // Don't include /api in the base URL since REACT_APP_API_URL might already have it
+      // Ensure API_URL includes /api
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
       
-      const response = await fetch(`${API_URL}/api/recommendations/challenge-failure`, {
+      const response = await fetch(`${API_URL}/recommendations/challenge-failure`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -130,11 +132,11 @@ const ChallengeFailureAlert = ({
   const saveResource = async (resource, recommendationId) => {
     setSavingStates(prev => ({ ...prev, [recommendationId]: true }));
     
-    const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+    const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
     
     try {
       // Track as clicked first
-      await fetch(`${API_URL}/api/recommendations/feedback`, {
+      await fetch(`${API_URL}/recommendations/feedback`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -147,7 +149,7 @@ const ChallengeFailureAlert = ({
       });
 
       // Save to personal learnings
-      const saveResponse = await fetch(`${API_URL}/api/recommendations/save-learning`, {
+      const saveResponse = await fetch(`${API_URL}/recommendations/save-learning`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -323,4 +323,61 @@ router.put('/lessons/:lessonId/progress', authMiddleware, async (req, res) => {
   }
 });
 
+/**
+ * PUT /api/courses/:courseId/enrollment/progress
+ * Update enrollment progress percentage
+ */
+router.put('/:courseId/enrollment/progress', authMiddleware, async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const { progress_percentage } = req.body;
+    const userId = req.user.id;
+
+    // Validate progress percentage
+    if (typeof progress_percentage !== 'number' || progress_percentage < 0 || progress_percentage > 100) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid progress percentage'
+      });
+    }
+
+    // Update enrollment progress
+    const { data: enrollment, error } = await supabase
+      .from('user_course_enrollments')
+      .update({
+        progress_percentage,
+        last_accessed_at: new Date().toISOString()
+      })
+      .eq('user_id', userId)
+      .eq('course_id', courseId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Supabase error:', error);
+      throw error;
+    }
+
+    if (!enrollment) {
+      return res.status(404).json({
+        success: false,
+        error: 'Enrollment not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      enrollment
+    });
+
+  } catch (error) {
+    console.error('Error updating enrollment progress:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update enrollment progress'
+    });
+  }
+});
+
+
 module.exports = router;

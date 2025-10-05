@@ -1369,7 +1369,19 @@ const ProjectChallengeInterface = ({ projectId, onClose, onSuccess }) => {
         </div>
       </div>
 
-      {showAlert && alertData && challenge && (
+      {showAlert && alertData && challenge && (() => {
+        console.log('🔍 ALERT RENDERING - Props being passed:', {
+          showAlert,
+          'alertData.shouldShow': alertData?.shouldShow,
+          'alertData.attemptCount': alertData?.attemptCount,
+          'alertData.message': alertData?.message,
+          challengeId: challenge?.challenge?.id,
+          programmingLanguageId: challenge?.challenge?.programming_language_id,
+          userId: JSON.parse(localStorage.getItem('user') || '{}').id,
+          'challenge structure': challenge
+        });
+        return true;
+      })() && (
         <ChallengeFailureAlert
           alertData={alertData}
           onClose={handleAlertClose}

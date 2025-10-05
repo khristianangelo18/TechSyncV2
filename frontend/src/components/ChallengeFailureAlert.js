@@ -1,3 +1,4 @@
+// frontend/src/components/ChallengeFailureAlert.js - COMPLETE FIXED VERSION
 import React, { useState, useEffect } from 'react';
 import { X, BookOpen, ChevronRight, Target, Lightbulb, Youtube, Github, Star, TrendingUp, Clock, Save, Check } from 'lucide-react';
 
@@ -23,17 +24,28 @@ const ChallengeFailureAlert = ({
   const [metadata, setMetadata] = useState(null);
   const [savedResources, setSavedResources] = useState({});
   const [savingStates, setSavingStates] = useState({});
+  const [fetchError, setFetchError] = useState(null);
 
   useEffect(() => {
+    console.log('🎯 ChallengeFailureAlert useEffect triggered:', {
+      'alertData?.shouldShow': alertData?.shouldShow,
+      effectiveChallengeId,
+      effectiveLanguageId,
+      'alertData?.attemptCount': alertData?.attemptCount
+    });
+
     if (alertData?.shouldShow && effectiveChallengeId && effectiveLanguageId) {
+      console.log('✅ All conditions met, calling fetchRecommendations...');
       fetchRecommendations();
+    } else {
+      console.log('❌ Conditions NOT met, skipping fetch');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [alertData?.shouldShow, effectiveChallengeId, effectiveLanguageId]);
 
   const fetchRecommendations = async () => {
-    // Validate required fields before making request
-    // ✅ FIX: Don't validate userId - it comes from auth token
+    // ✅ FIX: Validate required fields before making request
+    // Don't validate userId - it comes from auth token
     if (!effectiveChallengeId || !effectiveLanguageId || !alertData?.attemptCount) {
       console.error('❌ Missing required fields for recommendations:', {
         effectiveChallengeId,
@@ -45,6 +57,7 @@ const ChallengeFailureAlert = ({
     }
 
     setLoadingRecs(true);
+    setFetchError(null);
     try {
       console.log('📤 Sending recommendation request:', {
         challengeId: effectiveChallengeId,
@@ -53,7 +66,14 @@ const ChallengeFailureAlert = ({
         difficultyLevel: effectiveDifficulty
       });
 
-      const response = await fetch('/api/recommendations/challenge-failure', {
+      // Add timeout to prevent endless loading
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+
+      // Use full URL to ensure request reaches backend
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      
+      const response = await fetch(`${API_URL}/api/recommendations/challenge-failure`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -65,14 +85,18 @@ const ChallengeFailureAlert = ({
           attemptCount: alertData.attemptCount,
           programmingLanguageId: effectiveLanguageId,
           difficultyLevel: effectiveDifficulty
-        })
+        }),
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       console.log('📥 Response status:', response.status);
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({ error: 'Failed to parse error response' }));
         console.error('❌ API error:', errorData);
+        setFetchError(errorData.error || 'Failed to load recommendations');
         setRecommendations([]);
         setLoadingRecs(false);
         return;
@@ -81,13 +105,22 @@ const ChallengeFailureAlert = ({
       const data = await response.json();
       console.log('✅ Received recommendations:', data);
       
-      if (data.success) {
+      if (data.success && data.recommendations) {
         setRecommendations(data.recommendations);
-        setRecommendationIds(data.metadata.recommendationIds);
+        setRecommendationIds(data.metadata?.recommendationIds || []);
         setMetadata(data.metadata);
+      } else {
+        console.warn('No recommendations returned');
+        setRecommendations([]);
       }
     } catch (error) {
-      console.error('❌ Error fetching recommendations:', error);
+      if (error.name === 'AbortError') {
+        console.error('❌ Request timeout: Recommendations took too long to load');
+        setFetchError('Request timed out. Please try again.');
+      } else {
+        console.error('❌ Error fetching recommendations:', error);
+        setFetchError(error.message || 'Failed to load recommendations');
+      }
       setRecommendations([]);
     } finally {
       setLoadingRecs(false);
@@ -97,55 +130,39 @@ const ChallengeFailureAlert = ({
   const saveResource = async (resource, recommendationId) => {
     setSavingStates(prev => ({ ...prev, [recommendationId]: true }));
     
+    const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+    
     try {
       // Track as clicked first
-      await fetch('/api/recommendations/feedback', {
+      await fetch(`${API_URL}/api/recommendations/feedback`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify({
-          userId,
           recommendationId,
-          actionType: 'saved',
-          timestamp: new Date().toISOString()
+          action: 'clicked'
         })
       });
 
       // Save to personal learnings
-      const response = await fetch('/api/recommendations/save-to-personal', {
+      const saveResponse = await fetch(`${API_URL}/api/recommendations/save-learning`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify({
-          userId,
           recommendationId,
-          resource: {
-            title: resource.title,
-            url: resource.url,
-            description: resource.description,
-            provider: resource.provider,
-            author: resource.author,
-            readTime: resource.readTime,
-            reactions: resource.reactions,
-            stars: resource.stars,
-            tags: resource.tags,
-            coverImage: resource.coverImage,
-            thumbnail: resource.thumbnail
-          },
+          resource,
           languageId: effectiveLanguageId,
-          difficulty: resource.difficulty || metadata?.recommendedDifficulty
+          difficulty: metadata?.recommendedDifficulty || effectiveDifficulty
         })
       });
 
-      const data = await response.json();
-      
-      if (data.success) {
+      if (saveResponse.ok) {
         setSavedResources(prev => ({ ...prev, [recommendationId]: true }));
-        console.log('Resource saved successfully!');
       }
     } catch (error) {
       console.error('Error saving resource:', error);
@@ -242,59 +259,73 @@ const ChallengeFailureAlert = ({
         padding: '1rem'
       }} onClick={(e) => e.target === e.currentTarget && onClose()}>
         <div style={{
-          backgroundColor: '#1a1d24',
-          borderRadius: '16px',
-          maxWidth: '900px',
+          background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+          borderRadius: '20px',
+          maxWidth: '800px',
           width: '100%',
           maxHeight: '90vh',
           overflowY: 'auto',
-          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
           animation: 'slideIn 0.3s ease-out',
-          border: '1px solid #2d3748'
+          border: '1px solid #334155'
         }}>
-          <div style={{
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            padding: '2rem',
-            borderRadius: '16px 16px 0 0',
-            position: 'relative',
-            textAlign: 'center'
-          }}>
-            <button 
-              onClick={onClose}
-              style={{
-                position: 'absolute',
-                top: '1rem',
-                right: '1rem',
-                background: 'rgba(255,255,255,0.2)',
-                border: 'none',
-                color: 'white',
-                width: '32px',
-                height: '32px',
-                borderRadius: '50%',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                transition: 'all 0.2s'
-              }}
-              onMouseEnter={(e) => e.target.style.backgroundColor = 'rgba(255,255,255,0.3)'}
-              onMouseLeave={(e) => e.target.style.backgroundColor = 'rgba(255,255,255,0.2)'}
-            >
-              <X size={20} />
-            </button>
-            <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>💪</div>
-            <h2 style={{ fontSize: '2rem', fontWeight: 'bold', color: 'white', margin: '0 0 0.5rem 0' }}>
-              Keep Going!
-            </h2>
-            <p style={{ color: 'rgba(255,255,255,0.9)', fontSize: '1.1rem', margin: 0 }}>
-              Every expert was once a beginner
-            </p>
-          </div>
-          
           <div style={{ padding: '2rem' }}>
             <div style={{
               display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-start',
+              marginBottom: '1.5rem'
+            }}>
+              <div style={{ flex: 1 }}>
+                <div style={{
+                  fontSize: '2rem',
+                  marginBottom: '0.5rem'
+                }}>💪</div>
+                <h2 style={{
+                  fontSize: '2rem',
+                  fontWeight: '700',
+                  color: '#fff',
+                  margin: 0,
+                  marginBottom: '0.5rem'
+                }}>
+                  Keep Going!
+                </h2>
+                <p style={{
+                  fontSize: '1.1rem',
+                  color: '#94a3b8',
+                  margin: 0
+                }}>
+                  Every expert was once a beginner
+                </p>
+              </div>
+              <button
+                onClick={onClose}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#94a3b8',
+                  cursor: 'pointer',
+                  padding: '0.5rem',
+                  borderRadius: '8px',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.backgroundColor = '#1e293b';
+                  e.target.style.color = '#fff';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.backgroundColor = 'transparent';
+                  e.target.style.color = '#94a3b8';
+                }}
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div style={{
+              display: 'flex',
               gap: '1rem',
+              alignItems: 'center',
               marginBottom: '1.5rem',
               flexWrap: 'wrap'
             }}>
@@ -309,7 +340,7 @@ const ChallengeFailureAlert = ({
                 fontWeight: '600',
                 gap: '0.5rem'
               }}>
-                <span style={{ fontSize: '1.25rem' }}>📊</span>
+                <TrendingUp size={16} />
                 {attemptCount} attempts - You're learning!
               </div>
               {metadata && (
@@ -399,9 +430,11 @@ const ChallengeFailureAlert = ({
               {loadingRecs ? (
                 <div style={{
                   display: 'flex',
+                  flexDirection: 'column',
                   justifyContent: 'center',
                   alignItems: 'center',
-                  padding: '2rem'
+                  padding: '3rem 2rem',
+                  gap: '1rem'
                 }}>
                   <div style={{
                     border: '3px solid #2d3748',
@@ -411,6 +444,44 @@ const ChallengeFailureAlert = ({
                     height: '40px',
                     animation: 'spin 1s linear infinite'
                   }} />
+                  <p style={{ color: '#9ca3af', fontSize: '0.9rem' }}>
+                    Finding the best resources for you...
+                  </p>
+                </div>
+              ) : fetchError ? (
+                <div style={{
+                  backgroundColor: '#7f1d1d',
+                  border: '1px solid #dc2626',
+                  borderRadius: '12px',
+                  padding: '1.5rem',
+                  textAlign: 'center'
+                }}>
+                  <p style={{ color: '#fca5a5', marginBottom: '0.5rem', fontWeight: '600' }}>
+                    Couldn't load recommendations
+                  </p>
+                  <p style={{ color: '#fecaca', fontSize: '0.9rem', marginBottom: '1rem' }}>
+                    {fetchError}
+                  </p>
+                  <button
+                    onClick={() => {
+                      setFetchError(null);
+                      fetchRecommendations();
+                    }}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      backgroundColor: '#dc2626',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '0.9rem',
+                      fontWeight: '600'
+                    }}
+                    onMouseEnter={(e) => e.target.style.backgroundColor = '#b91c1c'}
+                    onMouseLeave={(e) => e.target.style.backgroundColor = '#dc2626'}
+                  >
+                    Try Again
+                  </button>
                 </div>
               ) : recommendations.length > 0 ? (
                 <div>
@@ -457,120 +528,139 @@ const ChallengeFailureAlert = ({
                         }}>
                           {resource.title}
                         </h4>
-                        
+
                         {resource.description && (
                           <p style={{
-                            color: '#9ca3af',
                             fontSize: '0.9rem',
-                            lineHeight: '1.5',
-                            margin: '0 0 0.75rem 0',
-                            display: '-webkit-box',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden'
+                            color: '#9ca3af',
+                            margin: '0 0 1rem 0',
+                            lineHeight: '1.5'
                           }}>
-                            {resource.description}
+                            {resource.description.substring(0, 150)}
+                            {resource.description.length > 150 ? '...' : ''}
                           </p>
                         )}
-                        
+
                         <div style={{
                           display: 'flex',
                           alignItems: 'center',
                           gap: '1rem',
-                          fontSize: '0.85rem',
-                          color: '#6b7280',
-                          marginBottom: '1rem',
-                          flexWrap: 'wrap'
+                          flexWrap: 'wrap',
+                          marginBottom: '1rem'
                         }}>
+                          {resource.author && (
+                            <span style={{
+                              fontSize: '0.85rem',
+                              color: '#6b7280',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.25rem'
+                            }}>
+                              👤 {resource.author}
+                            </span>
+                          )}
                           {resource.readTime && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                            <span style={{
+                              fontSize: '0.85rem',
+                              color: '#6b7280',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.25rem'
+                            }}>
                               <Clock size={14} />
-                              {resource.readTime} min
-                            </div>
+                              {resource.readTime} min read
+                            </span>
                           )}
                           {resource.reactions && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                              <TrendingUp size={14} />
-                              {resource.reactions}
-                            </div>
+                            <span style={{
+                              fontSize: '0.85rem',
+                              color: '#6b7280',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.25rem'
+                            }}>
+                              ❤️ {resource.reactions}
+                            </span>
                           )}
                           {resource.stars && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                            <span style={{
+                              fontSize: '0.85rem',
+                              color: '#6b7280',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.25rem'
+                            }}>
                               <Star size={14} />
                               {resource.stars.toLocaleString()}
-                            </div>
-                          )}
-                          {resource.author && (
-                            <div style={{ marginLeft: 'auto', color: '#9ca3af' }}>
-                              by {resource.author}
-                            </div>
+                            </span>
                           )}
                         </div>
-
-                        {resource.tags && resource.tags.length > 0 && (
-                          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-                            {resource.tags.slice(0, 3).map((tag, tagIdx) => (
-                              <span
-                                key={tagIdx}
-                                style={{
-                                  padding: '0.25rem 0.5rem',
-                                  backgroundColor: '#2d3748',
-                                  color: '#60a5fa',
-                                  borderRadius: '4px',
-                                  fontSize: '0.75rem'
-                                }}
-                              >
-                                #{tag}
-                              </span>
-                            ))}
-                          </div>
-                        )}
 
                         <div style={{
                           display: 'flex',
                           gap: '0.75rem',
-                          paddingTop: '1rem',
-                          borderTop: '1px solid #2d3748'
+                          alignItems: 'center'
                         }}>
+                          <a
+                            href={resource.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              flex: 1,
+                              padding: '0.75rem 1.25rem',
+                              backgroundColor: '#3b82f6',
+                              color: '#fff',
+                              textDecoration: 'none',
+                              borderRadius: '8px',
+                              fontSize: '0.9rem',
+                              fontWeight: '600',
+                              textAlign: 'center',
+                              transition: 'all 0.2s',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '0.5rem'
+                            }}
+                            onMouseEnter={(e) => e.target.style.backgroundColor = '#2563eb'}
+                            onMouseLeave={(e) => e.target.style.backgroundColor = '#3b82f6'}
+                          >
+                            View Resource
+                            <ChevronRight size={16} />
+                          </a>
+                          
                           <button
                             onClick={() => saveResource(resource, recId)}
                             disabled={isSaved || isSaving}
                             style={{
-                              flex: 1,
-                              padding: '0.625rem 1.25rem',
-                              backgroundColor: isSaved ? '#10b981' : '#3b82f6',
+                              padding: '0.75rem',
+                              backgroundColor: isSaved ? '#10b981' : '#1e293b',
                               color: '#fff',
                               border: 'none',
-                              borderRadius: '6px',
-                              cursor: isSaved || isSaving ? 'default' : 'pointer',
-                              fontSize: '0.9rem',
-                              fontWeight: '600',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: '0.5rem',
+                              borderRadius: '8px',
+                              cursor: isSaved ? 'default' : 'pointer',
                               transition: 'all 0.2s',
-                              opacity: isSaving ? 0.7 : 1
+                              opacity: isSaving ? 0.6 : 1
                             }}
                             onMouseEnter={(e) => {
-                              if (!isSaved && !isSaving) e.target.style.backgroundColor = '#2563eb';
+                              if (!isSaved) e.target.style.backgroundColor = '#334155';
                             }}
                             onMouseLeave={(e) => {
-                              if (!isSaved && !isSaving) e.target.style.backgroundColor = '#3b82f6';
+                              if (!isSaved) e.target.style.backgroundColor = '#1e293b';
                             }}
                           >
                             {isSaving ? (
-                              <>Saving...</>
+                              <div style={{
+                                width: '16px',
+                                height: '16px',
+                                border: '2px solid #fff',
+                                borderTopColor: 'transparent',
+                                borderRadius: '50%',
+                                animation: 'spin 0.6s linear infinite'
+                              }} />
                             ) : isSaved ? (
-                              <>
-                                <Check size={16} />
-                                Saved to My Learnings
-                              </>
+                              <Check size={16} />
                             ) : (
-                              <>
-                                <Save size={16} />
-                                Save to My Learnings
-                              </>
+                              <Save size={16} />
                             )}
                           </button>
                         </div>
@@ -580,12 +670,19 @@ const ChallengeFailureAlert = ({
                 </div>
               ) : (
                 <div style={{
-                  textAlign: 'center',
+                  backgroundColor: '#0f1116',
+                  border: '1px solid #2d3748',
+                  borderRadius: '12px',
                   padding: '2rem',
-                  color: '#6b7280'
+                  textAlign: 'center'
                 }}>
-                  <BookOpen size={32} style={{ margin: '0 auto 0.5rem' }} />
-                  <p>Check out our Learning Resources page for tutorials and guides</p>
+                  <BookOpen size={48} color="#6b7280" style={{ margin: '0 auto 1rem' }} />
+                  <p style={{ color: '#9ca3af', fontSize: '1rem', marginBottom: '0.5rem' }}>
+                    No recommendations available right now
+                  </p>
+                  <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>
+                    Try the tips above and keep practicing!
+                  </p>
                 </div>
               )}
             </div>

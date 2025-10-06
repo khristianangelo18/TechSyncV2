@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Eye, EyeOff, Home } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 // Isolated background styles - never changes
 const backgroundStyles = {
@@ -963,7 +964,27 @@ function Login() {
               {loading ? 'Signing in...' : 'Login'}
             </button>
           </form>
-          
+          <div style={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            marginTop: '-10px',
+            marginBottom: '20px'
+          }}>
+            <Link 
+              to="/forgot-password" 
+              style={{
+                fontSize: '14px',
+                color: '#667eea',
+                textDecoration: 'none',
+                fontWeight: '500',
+                transition: 'color 0.2s'
+              }}
+              onMouseEnter={(e) => e.target.style.color = '#764ba2'}
+              onMouseLeave={(e) => e.target.style.color = '#667eea'}
+            >
+              Forgot Password?
+            </Link>
+          </div>
           
           <div style={{
             ...styles.switchText,

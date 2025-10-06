@@ -25,6 +25,8 @@ import GitHubOAuthCallback from './components/GitHubOAuthCallback';
 import Learns from './pages/Learns';
 import PersonalLearnings from './pages/PersonalLearnings';
 import CourseLearn from './pages/CourseLearn';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 
 
 // Solo project components
@@ -683,6 +685,9 @@ function App() {
                     </PublicRoute>
                   } 
                 />
+
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
 
                 <Route 
                   path="/onboarding" 

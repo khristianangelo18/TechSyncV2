@@ -30,7 +30,7 @@ class CourseSeeder {
             await this.getOrCreateAdminUser();
             
             // Clear existing course data (optional - comment out if you want to keep existing data)
-            // await this.clearExistingCourses();
+            await this.clearExistingCourses();
 
             // Seed courses
             await this.seedJavaScriptCourse();
@@ -116,7 +116,7 @@ class CourseSeeder {
             .from('courses')
             .insert([{
                 title: 'JavaScript Fundamentals',
-                slug: 'javascript-fundamentals',
+                slug: 'javascript-fundamentals-v2', // Changed slug
                 description: 'Master the core concepts of JavaScript programming. Learn variables, functions, objects, arrays, and modern ES6+ features.',
                 short_description: 'Learn JavaScript from scratch with hands-on examples',
                 level: 'Beginner',

@@ -8,13 +8,14 @@ const PersonalLearnings = ({ userId }) => {
   const [learnings, setLearnings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [enrollments, setEnrollments] = useState(new Set());
+  const [enrollments, setEnrollments] = useState(new Map());
 
   useEffect(() => {
     if (userId) {
       fetchLearnings();
       fetchEnrollments();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   const fetchEnrollments = async () => {
@@ -29,11 +30,18 @@ const PersonalLearnings = ({ userId }) => {
       const data = await response.json();
       
       if (data.success && data.enrollments) {
-        // Create a Set of enrolled course IDs
-        const enrolledCourseIds = new Set(
-          data.enrollments.map(enrollment => enrollment.course_id)
+        // Create a Map with course_id as key and enrollment data as value
+        const enrollmentMap = new Map(
+          data.enrollments.map(enrollment => [
+            enrollment.course_id,
+            {
+              id: enrollment.id,
+              progress: enrollment.progress_percentage || 0,
+              lastAccessed: enrollment.last_accessed_at
+            }
+          ])
         );
-        setEnrollments(enrolledCourseIds);
+        setEnrollments(enrollmentMap);
       }
     } catch (err) {
       console.error('Error fetching enrollments:', err);
@@ -90,6 +98,43 @@ const PersonalLearnings = ({ userId }) => {
     }
   };
 
+  const isInternalCourse = (resource) => {
+    return resource?.provider?.toLowerCase() === 'internal_course';
+  };
+
+  const getCourseId = (resource) => {
+    console.log('🔍 Getting course ID from resource:', resource);
+    
+    // Extract course ID from URL like "/course/abc-123/learn" or "/courses/abc-123/learn"
+    if (resource?.url && isInternalCourse(resource)) {
+      const match = resource.url.match(/\/courses?\/([^/]+)/);
+      const courseId = match ? match[1] : null;
+      console.log('📍 Extracted course ID from URL:', courseId);
+      return courseId;
+    }
+    
+    const courseId = resource?.courseId || null;
+    console.log('📍 Course ID from resource.courseId:', courseId);
+    return courseId;
+  };
+
+  const isEnrolled = (resource) => {
+    const courseId = getCourseId(resource);
+    return courseId && enrollments.has(courseId);
+  };
+
+  const getEnrollmentData = (resource) => {
+    const courseId = getCourseId(resource);
+    return courseId ? enrollments.get(courseId) : null;
+  };
+
+  const getButtonText = (resource) => {
+    if (isInternalCourse(resource)) {
+      return isEnrolled(resource) ? 'Go to Course' : 'Start Course';
+    }
+    return 'View Resource';
+  };
+
   const handleCourseClick = async (resource) => {
     const courseId = getCourseId(resource);
     console.log('🎯 handleCourseClick - Course ID:', courseId);
@@ -116,7 +161,13 @@ const PersonalLearnings = ({ userId }) => {
           if (data.success) {
             console.log('✅ Successfully enrolled');
             // Update enrollments
-            setEnrollments(prev => new Set([...prev, courseId]));
+            const enrollmentMap = new Map(enrollments);
+            enrollmentMap.set(courseId, {
+              id: data.enrollment?.id,
+              progress: 0,
+              lastAccessed: new Date()
+            });
+            setEnrollments(enrollmentMap);
           } else {
             console.error('❌ Enrollment failed:', data);
           }
@@ -172,38 +223,6 @@ const PersonalLearnings = ({ userId }) => {
       backgroundColor: `${getProviderColor(provider)}15`,
       color: getProviderColor(provider)
     };
-  };
-
-  const isInternalCourse = (resource) => {
-    return resource?.provider?.toLowerCase() === 'internal_course';
-  };
-
-  const getCourseId = (resource) => {
-    console.log('🔍 Getting course ID from resource:', resource);
-    
-    // Extract course ID from URL like "/course/abc-123/learn" or "/courses/abc-123/learn"
-    if (resource?.url && isInternalCourse(resource)) {
-      const match = resource.url.match(/\/courses?\/([^\/]+)/);
-      const courseId = match ? match[1] : null;
-      console.log('📍 Extracted course ID from URL:', courseId);
-      return courseId;
-    }
-    
-    const courseId = resource?.courseId || null;
-    console.log('📍 Course ID from resource.courseId:', courseId);
-    return courseId;
-  };
-
-  const isEnrolled = (resource) => {
-    const courseId = getCourseId(resource);
-    return courseId && enrollments.has(courseId);
-  };
-
-  const getButtonText = (resource) => {
-    if (isInternalCourse(resource)) {
-      return isEnrolled(resource) ? 'Go to Course' : 'Start Course';
-    }
-    return 'View Resource';
   };
 
   if (loading) {
@@ -265,6 +284,8 @@ const PersonalLearnings = ({ userId }) => {
             const provider = resource.provider || 'unknown';
             const isCourse = isInternalCourse(resource);
             const enrolled = isEnrolled(resource);
+            const enrollmentData = getEnrollmentData(resource);
+            const progress = enrollmentData?.progress || 0;
             
             return (
               <div 
@@ -290,7 +311,6 @@ const PersonalLearnings = ({ userId }) => {
                   </div>
                 )}
 
-                {/* Course Icon for internal courses */}
                 {isCourse && resource.icon && (
                   <div style={styles.courseIcon}>
                     {resource.icon}
@@ -309,7 +329,6 @@ const PersonalLearnings = ({ userId }) => {
                   </p>
                 )}
 
-                {/* Course metadata */}
                 {isCourse && (
                   <div style={styles.courseMeta}>
                     {resource.duration && (
@@ -327,7 +346,6 @@ const PersonalLearnings = ({ userId }) => {
                   </div>
                 )}
 
-                {/* Regular resource metadata */}
                 {!isCourse && (
                   <div style={styles.resourceMeta}>
                     {resource.author && (
@@ -347,6 +365,23 @@ const PersonalLearnings = ({ userId }) => {
                         {resource.reactions}
                       </span>
                     )}
+                  </div>
+                )}
+
+                {isCourse && enrolled && (
+                  <div style={styles.progressContainer}>
+                    <div style={styles.progressHeader}>
+                      <span style={styles.progressLabel}>Progress</span>
+                      <span style={styles.progressPercent}>{Math.round(progress)}%</span>
+                    </div>
+                    <div style={styles.progressBarBg}>
+                      <div 
+                        style={{
+                          ...styles.progressBarFill,
+                          width: `${progress}%`
+                        }}
+                      />
+                    </div>
                   </div>
                 )}
 
@@ -583,6 +618,42 @@ const styles = {
     color: '#6b7280',
     marginBottom: '1rem'
   },
+  progressContainer: {
+    marginBottom: '1rem',
+    padding: '1rem',
+    backgroundColor: '#0F1116',
+    borderRadius: '8px',
+    border: '1px solid #2d3748'
+  },
+  progressHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '0.5rem'
+  },
+  progressLabel: {
+    fontSize: '0.875rem',
+    color: '#9ca3af',
+    fontWeight: '500'
+  },
+  progressPercent: {
+    fontSize: '0.875rem',
+    color: '#60a5fa',
+    fontWeight: '600'
+  },
+  progressBarBg: {
+    width: '100%',
+    height: '8px',
+    backgroundColor: '#1a1d24',
+    borderRadius: '4px',
+    overflow: 'hidden'
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: '#60a5fa',
+    borderRadius: '4px',
+    transition: 'width 0.3s ease'
+  },
   cardActions: {
     display: 'flex',
     gap: '0.75rem',
@@ -605,8 +676,11 @@ const styles = {
     cursor: 'pointer',
     transition: 'all 0.2s'
   },
-  enrolledButton: {
+  continueButton: {
     backgroundColor: '#10b981'
+  },
+  startButton: {
+    backgroundColor: '#3b82f6'
   },
   removeButton: {
     padding: '0.75rem',

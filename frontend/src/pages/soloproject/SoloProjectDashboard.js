@@ -1,10 +1,11 @@
-// frontend/src/pages/soloproject/SoloProjectDashboard.js - COMPLETE ALIGNED VERSION
+// frontend/src/pages/soloproject/SoloProjectDashboard.js - CORRECTED WITH AWARDS
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import SoloProjectService from '../../services/soloProjectService';
 import { taskService } from '../../services/taskService';
-import { BarChart3, Target, Clock, TrendingUp, Plus, StickyNote, FileText } from 'lucide-react';
+import { BarChart3, Target, Clock, TrendingUp, Plus, StickyNote, FileText, Award, Trophy } from 'lucide-react';
+import AwardsDisplay from '../../components/AwardsDisplay';
 
 // Background symbols component - ALIGNED WITH OTHER DASHBOARDS
 const BackgroundSymbols = () => (
@@ -17,237 +18,39 @@ const BackgroundSymbols = () => (
     zIndex: 1,
     pointerEvents: 'none'
   }}>
-    <div style={{
-      position: 'absolute',
-      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      fontStyle: 'normal',
-      fontWeight: 900,
-      fontSize: '24px',
-      lineHeight: '29px',
-      userSelect: 'none',
-      pointerEvents: 'none',
-      left: '52.81%', top: '48.12%', color: '#2E3344', transform: 'rotate(-10.79deg)'
-    }}>&#60;/&#62;</div>
-    <div style={{
-      position: 'absolute',
-      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      fontStyle: 'normal',
-      fontWeight: 900,
-      fontSize: '24px',
-      lineHeight: '29px',
-      userSelect: 'none',
-      pointerEvents: 'none',
-      left: '28.19%', top: '71.22%', color: '#292A2E', transform: 'rotate(-37.99deg)'
-    }}>&#60;/&#62;</div>
-    <div style={{
-      position: 'absolute',
-      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      fontStyle: 'normal',
-      fontWeight: 900,
-      fontSize: '24px',
-      lineHeight: '29px',
-      userSelect: 'none',
-      pointerEvents: 'none',
-      left: '95.09%', top: '48.12%', color: '#ABB5CE', transform: 'rotate(34.77deg)'
-    }}>&#60;/&#62;</div>
-    <div style={{
-      position: 'absolute',
-      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      fontStyle: 'normal',
-      fontWeight: 900,
-      fontSize: '24px',
-      lineHeight: '29px',
-      userSelect: 'none',
-      pointerEvents: 'none',
-      left: '86.46%', top: '15.33%', color: '#2E3344', transform: 'rotate(28.16deg)'
-    }}>&#60;/&#62;</div>
-    <div style={{
-      position: 'absolute',
-      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      fontStyle: 'normal',
-      fontWeight: 900,
-      fontSize: '24px',
-      lineHeight: '29px',
-      userSelect: 'none',
-      pointerEvents: 'none',
-      left: '7.11%', top: '80.91%', color: '#ABB5CE', transform: 'rotate(24.5deg)'
-    }}>&#60;/&#62;</div>
-    <div style={{
-      position: 'absolute',
-      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      fontStyle: 'normal',
-      fontWeight: 900,
-      fontSize: '24px',
-      lineHeight: '29px',
-      userSelect: 'none',
-      pointerEvents: 'none',
-      left: '48.06%', top: '8.5%', color: '#ABB5CE', transform: 'rotate(25.29deg)'
-    }}>&#60;/&#62;</div>
-    <div style={{
-      position: 'absolute',
-      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      fontStyle: 'normal',
-      fontWeight: 900,
-      fontSize: '24px',
-      lineHeight: '29px',
-      userSelect: 'none',
-      pointerEvents: 'none',
-      left: '72.84%', top: '4.42%', color: '#2E3344', transform: 'rotate(-19.68deg)'
-    }}>&#60;/&#62;</div>
-    <div style={{
-      position: 'absolute',
-      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      fontStyle: 'normal',
-      fontWeight: 900,
-      fontSize: '24px',
-      lineHeight: '29px',
-      userSelect: 'none',
-      pointerEvents: 'none',
-      left: '9.6%', top: '0%', color: '#1F232E', transform: 'rotate(-6.83deg)'
-    }}>&#60;/&#62;</div>
-    <div style={{
-      position: 'absolute',
-      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      fontStyle: 'normal',
-      fontWeight: 900,
-      fontSize: '24px',
-      lineHeight: '29px',
-      userSelect: 'none',
-      pointerEvents: 'none',
-      left: '31.54%', top: '54.31%', color: '#6C758E', transform: 'rotate(25.29deg)'
-    }}>&#60;/&#62;</div>
-    <div style={{
-      position: 'absolute',
-      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      fontStyle: 'normal',
-      fontWeight: 900,
-      fontSize: '24px',
-      lineHeight: '29px',
-      userSelect: 'none',
-      pointerEvents: 'none',
-      left: '25.28%', top: '15.89%', color: '#1F232E', transform: 'rotate(-6.83deg)'
-    }}>&#60;/&#62;</div>
-    <div style={{
-      position: 'absolute',
-      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      fontStyle: 'normal',
-      fontWeight: 900,
-      fontSize: '24px',
-      lineHeight: '29px',
-      userSelect: 'none',
-      pointerEvents: 'none',
-      left: '48.55%', top: '82.45%', color: '#292A2E', transform: 'rotate(-10.79deg)'
-    }}>&#60;/&#62;</div>
-    <div style={{
-      position: 'absolute',
-      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      fontStyle: 'normal',
-      fontWeight: 900,
-      fontSize: '24px',
-      lineHeight: '29px',
-      userSelect: 'none',
-      pointerEvents: 'none',
-      left: '24.41%', top: '92.02%', color: '#2E3344', transform: 'rotate(18.2deg)'
-    }}>&#60;/&#62;</div>
-    <div style={{
-      position: 'absolute',
-      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      fontStyle: 'normal',
-      fontWeight: 900,
-      fontSize: '24px',
-      lineHeight: '29px',
-      userSelect: 'none',
-      pointerEvents: 'none',
-      left: '0%', top: '12.8%', color: '#ABB5CE', transform: 'rotate(37.85deg)'
-    }}>&#60;/&#62;</div>
-    <div style={{
-      position: 'absolute',
-      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      fontStyle: 'normal',
-      fontWeight: 900,
-      fontSize: '24px',
-      lineHeight: '29px',
-      userSelect: 'none',
-      pointerEvents: 'none',
-      left: '81.02%', top: '94.27%', color: '#6C758E', transform: 'rotate(-37.99deg)'
-    }}>&#60;/&#62;</div>
-    <div style={{
-      position: 'absolute',
-      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      fontStyle: 'normal',
-      fontWeight: 900,
-      fontSize: '24px',
-      lineHeight: '29px',
-      userSelect: 'none',
-      pointerEvents: 'none',
-      left: '96.02%', top: '0%', color: '#2E3344', transform: 'rotate(-37.99deg)'
-    }}>&#60;/&#62;</div>
-    <div style={{
-      position: 'absolute',
-      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      fontStyle: 'normal',
-      fontWeight: 900,
-      fontSize: '24px',
-      lineHeight: '29px',
-      userSelect: 'none',
-      pointerEvents: 'none',
-      left: '0.07%', top: '41.2%', color: '#6C758E', transform: 'rotate(-10.79deg)'
-    }}>&#60;/&#62;</div>
-    <div style={{
-      position: 'absolute',
-      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      fontStyle: 'normal',
-      fontWeight: 900,
-      fontSize: '24px',
-      lineHeight: '29px',
-      userSelect: 'none',
-      pointerEvents: 'none',
-      left: '15%', top: '35%', color: '#3A4158', transform: 'rotate(15deg)'
-    }}>&#60;/&#62;</div>
-    <div style={{
-      position: 'absolute',
-      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      fontStyle: 'normal',
-      fontWeight: 900,
-      fontSize: '24px',
-      lineHeight: '29px',
-      userSelect: 'none',
-      pointerEvents: 'none',
-      left: '65%', top: '25%', color: '#5A6B8C', transform: 'rotate(-45deg)'
-    }}>&#60;/&#62;</div>
-    <div style={{
-      position: 'absolute',
-      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      fontStyle: 'normal',
-      fontWeight: 900,
-      fontSize: '24px',
-      lineHeight: '29px',
-      userSelect: 'none',
-      pointerEvents: 'none',
-      left: '85%', top: '65%', color: '#2B2F3E', transform: 'rotate(30deg)'
-    }}>&#60;/&#62;</div>
-    <div style={{
-      position: 'absolute',
-      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      fontStyle: 'normal',
-      fontWeight: 900,
-      fontSize: '24px',
-      lineHeight: '29px',
-      userSelect: 'none',
-      pointerEvents: 'none',
-      left: '42%', top: '35%', color: '#4F5A7A', transform: 'rotate(-20deg)'
-    }}>&#60;/&#62;</div>
-    <div style={{
-      position: 'absolute',
-      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      fontStyle: 'normal',
-      fontWeight: 900,
-      fontSize: '24px',
-      lineHeight: '29px',
-      userSelect: 'none',
-      pointerEvents: 'none',
-      left: '12%', top: '60%', color: '#8A94B8', transform: 'rotate(40deg)'
-    }}>&#60;/&#62;</div>
+    {[
+      { left: '52.81%', top: '48.12%', color: '#2E3344', rotate: '-10.79deg' },
+      { left: '28.19%', top: '71.22%', color: '#292A2E', rotate: '-37.99deg' },
+      { left: '95.09%', top: '48.12%', color: '#ABB5CE', rotate: '34.77deg' },
+      { left: '86.46%', top: '15.33%', color: '#2E3344', rotate: '28.16deg' },
+      { left: '7.11%', top: '80.91%', color: '#ABB5CE', rotate: '24.5deg' },
+      { left: '48.06%', top: '8.5%', color: '#ABB5CE', rotate: '25.29deg' },
+      { left: '72.84%', top: '4.42%', color: '#2E3344', rotate: '-19.68deg' },
+      { left: '9.6%', top: '0%', color: '#1F232E', rotate: '-6.83deg' },
+      { left: '31.54%', top: '54.31%', color: '#6C758E', rotate: '25.29deg' },
+      { left: '25.28%', top: '15.89%', color: '#1F232E', rotate: '-6.83deg' },
+      { left: '48.55%', top: '82.45%', color: '#292A2E', rotate: '-10.79deg' },
+      { left: '24.41%', top: '92.02%', color: '#2E3344', rotate: '18.2deg' },
+      { left: '0%', top: '12.8%', color: '#ABB5CE', rotate: '37.85deg' },
+      { left: '81.02%', top: '94.27%', color: '#6C758E', rotate: '-37.99deg' },
+      { left: '96.02%', top: '0%', color: '#2E3344', rotate: '-37.99deg' },
+      { left: '0.07%', top: '41.2%', color: '#6C758E', rotate: '-10.79deg' }
+    ].map((pos, i) => (
+      <div key={i} style={{
+        position: 'absolute',
+        fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        fontStyle: 'normal',
+        fontWeight: 900,
+        fontSize: '24px',
+        lineHeight: '29px',
+        userSelect: 'none',
+        pointerEvents: 'none',
+        left: pos.left,
+        top: pos.top,
+        color: pos.color,
+        transform: `rotate(${pos.rotate})`
+      }}>&#60;/&#62;</div>
+    ))}
   </div>
 );
 
@@ -274,6 +77,48 @@ function SoloProjectDashboard() {
   const [loading, setLoading] = useState(true);
   const [loadingActivity, setLoadingActivity] = useState(false);
   const [error, setError] = useState('');
+  const [showAwardNotification, setShowAwardNotification] = useState(false);
+  const [newAward, setNewAward] = useState(null);
+
+  // Check for awards
+  const checkForAwards = async () => {
+    try {
+      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+      const headers = {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+      };
+
+      // Check project completion award
+      const completionResponse = await fetch(`${apiUrl}/awards/check/completion/${projectId}`, {
+        method: 'POST',
+        headers
+      });
+      const completionData = await completionResponse.json();
+      
+      if (completionData.awarded) {
+        setNewAward(completionData.award);
+        setShowAwardNotification(true);
+        setTimeout(() => setShowAwardNotification(false), 5000);
+        return;
+      }
+
+      // Check weekly challenge award
+      const challengeResponse = await fetch(`${apiUrl}/awards/check/challenges/${projectId}`, {
+        method: 'POST',
+        headers
+      });
+      const challengeData = await challengeResponse.json();
+      
+      if (challengeData.awarded) {
+        setNewAward(challengeData.award);
+        setShowAwardNotification(true);
+        setTimeout(() => setShowAwardNotification(false), 5000);
+      }
+    } catch (error) {
+      console.error('Error checking for awards:', error);
+    }
+  };
 
   // Fetch dashboard data using NEW backend API
   const fetchDashboardData = useCallback(async () => {
@@ -281,19 +126,15 @@ function SoloProjectDashboard() {
       setLoading(true);
       setError('');
 
-      console.log('Fetching dashboard data for solo project:', projectId);
-
-      // Use the new SoloProjectService for dashboard data
       const response = await SoloProjectService.getDashboardData(projectId);
       
       if (response.success) {
         const { project: projectData, stats } = response.data;
         setProject(projectData);
         setProjectStats(stats);
-        console.log('Dashboard data fetched successfully:', stats);
       }
 
-      // Still fetch tasks using existing task service for consistency
+      // Fetch tasks
       try {
         const tasksResponse = await taskService.getProjectTasks(projectId);
         if (tasksResponse.success) {
@@ -301,7 +142,6 @@ function SoloProjectDashboard() {
         }
       } catch (taskError) {
         console.warn('Could not fetch tasks:', taskError);
-        // This is okay, dashboard will still work without task details
       }
 
     } catch (error) {
@@ -316,40 +156,14 @@ function SoloProjectDashboard() {
   const fetchRecentActivity = useCallback(async () => {
     try {
       setLoadingActivity(true);
-      
-      console.log('Fetching recent activity for solo project:', projectId);
-
-      // Use the new SoloProjectService for recent activity
       const response = await SoloProjectService.getRecentActivity(projectId, 10);
       
       if (response.success) {
         setRecentActivity(response.data.activities || []);
-        console.log('Recent activity fetched successfully');
       }
     } catch (error) {
       console.warn('Could not fetch recent activity:', error);
-      // Fallback to mock data if API fails (for development)
-      const mockActivity = [
-        {
-          id: 1,
-          activity_type: 'task_completed',
-          activity_data: {
-            action: 'completed task',
-            target: 'Implement user authentication'
-          },
-          created_at: new Date(Date.now() - 2 * 60 * 60 * 1000) // 2 hours ago
-        },
-        {
-          id: 2,
-          activity_type: 'task_started',
-          activity_data: {
-            action: 'started working on',
-            target: 'Database schema design'
-          },
-          created_at: new Date(Date.now() - 4 * 60 * 60 * 1000) // 4 hours ago
-        }
-      ];
-      setRecentActivity(mockActivity);
+      setRecentActivity([]);
     } finally {
       setLoadingActivity(false);
     }
@@ -360,6 +174,13 @@ function SoloProjectDashboard() {
     fetchRecentActivity();
   }, [fetchDashboardData, fetchRecentActivity]);
 
+  // Check awards when completion rate changes
+  useEffect(() => {
+    if (projectStats?.completionRate > 0) {
+      checkForAwards();
+    }
+  }, [projectStats?.completionRate]);
+
   // Helper function to log activity
   const logActivity = useCallback(async (action, target, type) => {
     try {
@@ -368,7 +189,6 @@ function SoloProjectDashboard() {
         target,
         type
       });
-      // Refresh activity after logging
       fetchRecentActivity();
     } catch (error) {
       console.error('Failed to log activity:', error);
@@ -378,9 +198,7 @@ function SoloProjectDashboard() {
   // Quick actions
   const handleQuickTaskCreate = async () => {
     try {
-      // Navigate to solo project goals instead of group project tasks
-      navigate(`/soloproject/${projectId}/goals`);
-      // Log activity
+      navigate(`/solo-project/${projectId}/goals`);
       await logActivity('navigated to', 'Tasks page', 'project_updated');
     } catch (error) {
       console.error('Failed to navigate to tasks:', error);
@@ -389,8 +207,7 @@ function SoloProjectDashboard() {
 
   const handleQuickGoalCreate = async () => {
     try {
-      navigate(`/soloproject/${projectId}/goals`);
-      // Log activity
+      navigate(`/solo-project/${projectId}/goals`);
       await logActivity('navigated to', 'Goals page', 'project_updated');
     } catch (error) {
       console.error('Failed to navigate to goals:', error);
@@ -399,8 +216,7 @@ function SoloProjectDashboard() {
 
   const handleQuickNoteCreate = async () => {
     try {
-      navigate(`/soloproject/${projectId}/notes`);
-      // Log activity
+      navigate(`/solo-project/${projectId}/notes`);
       await logActivity('navigated to', 'Notes page', 'project_updated');
     } catch (error) {
       console.error('Failed to navigate to notes:', error);
@@ -451,13 +267,26 @@ function SoloProjectDashboard() {
     );
   }
 
-  // Get recent tasks for display
   const recentTasks = tasks.slice(0, 5);
 
   return (
     <div style={styles.container}>
-      {/* Background Code Symbols */}
       <BackgroundSymbols />
+
+      {/* Award Notification */}
+      {showAwardNotification && newAward && (
+        <div style={styles.awardNotification}>
+          <Trophy size={32} style={{ color: newAward.award_color }} />
+          <div>
+            <div style={{ fontWeight: '600', fontSize: '16px', marginBottom: '4px' }}>
+              🎉 New Award Earned!
+            </div>
+            <div style={{ fontSize: '14px', opacity: 0.9 }}>
+              {newAward.award_title}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Header */}
       <div style={styles.header}>
@@ -467,12 +296,7 @@ function SoloProjectDashboard() {
         </div>
       </div>
 
-      {/* Error Message */}
-      {error && (
-        <div style={styles.errorMessage}>
-          {error}
-        </div>
-      )}
+      {error && <div style={styles.errorMessage}>{error}</div>}
 
       {/* Welcome Section */}
       <div style={styles.welcomeSection}>
@@ -483,15 +307,9 @@ function SoloProjectDashboard() {
           {project?.title || 'Your Solo Project'} • Keep up the great work!
         </p>
         
-        {/* Progress Bar */}
         <div style={styles.progressContainer}>
           <div style={styles.progressBar}>
-            <div 
-              style={{
-                ...styles.progressFill,
-                width: `${projectStats.completionRate}%`
-              }}
-            />
+            <div style={{ ...styles.progressFill, width: `${projectStats.completionRate}%` }} />
           </div>
           <p style={styles.progressText}>
             {projectStats.completionRate}% Complete • {projectStats.completedTasks} of {projectStats.totalTasks} tasks done
@@ -501,59 +319,42 @@ function SoloProjectDashboard() {
 
       {/* Analytics Cards */}
       <div style={styles.analyticsGrid}>
-        {/* Task Statistics */}
         <div style={styles.analyticsCard}>
           <div style={styles.analyticsHeader}>
             <h3 style={styles.analyticsTitle}>Total Tasks</h3>
             <BarChart3 size={24} style={styles.analyticsIcon} />
           </div>
           <div style={styles.analyticsValue}>{projectStats.totalTasks}</div>
-          <div style={styles.analyticsSubtext}>
-            {projectStats.inProgressTasks} in progress
-          </div>
+          <div style={styles.analyticsSubtext}>{projectStats.inProgressTasks} in progress</div>
         </div>
 
-        {/* Goal Statistics */}
         <div style={styles.analyticsCard}>
           <div style={styles.analyticsHeader}>
             <h3 style={styles.analyticsTitle}>Goals Set</h3>
             <Target size={24} style={styles.analyticsIcon} />
           </div>
           <div style={styles.analyticsValue}>{projectStats.totalGoals}</div>
-          <div style={styles.analyticsSubtext}>
-            {projectStats.activeGoals} active goals
-          </div>
+          <div style={styles.analyticsSubtext}>{projectStats.activeGoals} active goals</div>
         </div>
 
-        {/* Time Today */}
         <div style={styles.analyticsCard}>
           <div style={styles.analyticsHeader}>
             <h3 style={styles.analyticsTitle}>Time Today</h3>
             <Clock size={24} style={styles.analyticsIcon} />
           </div>
           <div style={styles.analyticsValue}>{projectStats.timeSpentToday}h</div>
-          <div style={styles.analyticsSubtext}>
-            {projectStats.streakDays} day streak
-          </div>
+          <div style={styles.analyticsSubtext}>{projectStats.streakDays} day streak</div>
         </div>
 
-        {/* Completion Rate */}
         <div style={styles.analyticsCard}>
           <div style={styles.analyticsHeader}>
             <h3 style={styles.analyticsTitle}>Completion Rate</h3>
             <TrendingUp size={24} style={styles.analyticsIcon} />
           </div>
           <div style={styles.analyticsValue}>{projectStats.completionRate}%</div>
-          <div style={styles.analyticsSubtext}>
-            {projectStats.completedTasks} completed
-          </div>
+          <div style={styles.analyticsSubtext}>{projectStats.completedTasks} completed</div>
           <div style={styles.progressBar}>
-            <div 
-              style={{
-                ...styles.progressFill,
-                width: `${projectStats.completionRate}%`
-              }}
-            />
+            <div style={{ ...styles.progressFill, width: `${projectStats.completionRate}%` }} />
           </div>
         </div>
       </div>
@@ -610,6 +411,15 @@ function SoloProjectDashboard() {
         </div>
       </div>
 
+      {/* 🏆 AWARDS SECTION - THIS WAS MISSING! */}
+      <div style={styles.awardsSection}>
+        <h3 style={styles.sectionTitle}>
+          <Award size={20} style={{ color: '#FFD700', marginRight: '8px' }} />
+          Your Awards
+        </h3>
+        <AwardsDisplay projectId={projectId} compact={false} />
+      </div>
+
       {/* Main Content Grid */}
       <div style={styles.contentGrid}>
         {/* Recent Tasks */}
@@ -618,7 +428,7 @@ function SoloProjectDashboard() {
             <h3 style={styles.cardTitle}>Recent Tasks</h3>
             <button 
               style={styles.viewAllButton}
-              onClick={() => navigate(`/soloproject/${projectId}/goals`)}
+              onClick={() => navigate(`/solo-project/${projectId}/goals`)}
             >
               View All →
             </button>
@@ -637,9 +447,7 @@ function SoloProjectDashboard() {
                       {task.status.replace('_', ' ')}
                     </span>
                     <h4 style={styles.taskTitle}>{task.title}</h4>
-                    <p style={styles.taskMeta}>
-                      {task.priority} priority
-                    </p>
+                    <p style={styles.taskMeta}>{task.priority} priority</p>
                   </div>
                 </div>
               ))
@@ -701,7 +509,6 @@ function SoloProjectDashboard() {
   );
 }
 
-// Complete styles object
 const styles = {
   container: {
     minHeight: 'calc(100vh - 40px)',
@@ -711,15 +518,27 @@ const styles = {
     overflow: 'hidden',
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
     padding: '20px',
-    paddingLeft: '270px', // Match other dashboards sidebar spacing
-    marginLeft: '-150px'   // Match other dashboards sidebar spacing
+    paddingLeft: '270px',
+    marginLeft: '-150px'
+  },
+  awardNotification: {
+    position: 'fixed',
+    top: '20px',
+    right: '20px',
+    backgroundColor: 'rgba(16, 185, 129, 0.95)',
+    color: 'white',
+    padding: '20px 24px',
+    borderRadius: '12px',
+    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+    zIndex: 9999,
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    maxWidth: '400px'
   },
   header: {
     position: 'relative',
     zIndex: 10,
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     marginBottom: '30px',
     padding: '0 0 20px 0',
     borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
@@ -750,10 +569,7 @@ const styles = {
     fontSize: '24px',
     fontWeight: 'bold',
     color: 'white',
-    marginBottom: '12px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px'
+    marginBottom: '12px'
   },
   welcomeMessage: {
     color: '#d1d5db',
@@ -773,7 +589,7 @@ const styles = {
   },
   progressFill: {
     height: '100%',
-    background: 'linear-gradient(90deg, #a855f7, #7c3aed)', // Purple theme for solo
+    background: 'linear-gradient(90deg, #a855f7, #7c3aed)',
     transition: 'width 0.3s ease'
   },
   progressText: {
@@ -796,8 +612,7 @@ const styles = {
     borderRadius: '16px',
     padding: '25px',
     backdropFilter: 'blur(20px)',
-    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
-    transition: 'all 0.3s ease'
+    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)'
   },
   analyticsHeader: {
     display: 'flex',
@@ -812,12 +627,12 @@ const styles = {
     margin: 0
   },
   analyticsIcon: {
-    color: '#a855f7' // Purple theme for solo projects
+    color: '#a855f7'
   },
   analyticsValue: {
     fontSize: '32px',
     fontWeight: 'bold',
-    color: '#a855f7', // Purple theme for solo projects
+    color: '#a855f7',
     margin: '10px 0'
   },
   analyticsSubtext: {
@@ -833,7 +648,9 @@ const styles = {
     color: 'white',
     fontSize: '20px',
     fontWeight: 'bold',
-    margin: '0 0 16px 0'
+    margin: '0 0 16px 0',
+    display: 'flex',
+    alignItems: 'center'
   },
   quickActions: {
     display: 'flex',
@@ -845,7 +662,7 @@ const styles = {
     alignItems: 'center',
     gap: '8px',
     padding: '12px 20px',
-    background: 'linear-gradient(to right, #a855f7, #7c3aed)', // Purple theme for solo
+    background: 'linear-gradient(to right, #a855f7, #7c3aed)',
     color: 'white',
     border: 'none',
     borderRadius: '8px',
@@ -857,6 +674,18 @@ const styles = {
   },
   quickActionIcon: {
     flexShrink: 0
+  },
+  // 🏆 AWARDS SECTION STYLES - THIS WAS MISSING!
+  awardsSection: {
+    position: 'relative',
+    zIndex: 10,
+    background: 'linear-gradient(135deg, rgba(26, 28, 32, 0.95), rgba(15, 17, 22, 0.90))',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    borderRadius: '16px',
+    padding: '32px',
+    backdropFilter: 'blur(20px)',
+    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+    marginBottom: '32px'
   },
   contentGrid: {
     position: 'relative',
@@ -889,7 +718,7 @@ const styles = {
   viewAllButton: {
     background: 'none',
     border: 'none',
-    color: '#a855f7', // Purple theme for solo
+    color: '#a855f7',
     fontSize: '14px',
     cursor: 'pointer',
     fontWeight: '500'
@@ -960,7 +789,7 @@ const styles = {
   activityTarget: {
     fontWeight: '400',
     marginLeft: '4px',
-    color: '#a855f7' // Purple theme for solo
+    color: '#a855f7'
   },
   activityTime: {
     fontSize: '12px',

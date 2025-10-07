@@ -1,5 +1,166 @@
 // backend/controllers/soloProjectController.js - FIXED VERSION
 const supabase = require('../config/supabase');
+const awardsController = require('./awardsController');
+
+const checkAndAwardProgress = async (projectId, userId) => {
+  try {
+    console.log('🎯 Checking for awards eligibility:', { projectId, userId });
+
+    // Check project completion award
+    const completionCheck = await checkProjectCompletionInternal(projectId, userId);
+    
+    // Check weekly challenge award
+    const challengeCheck = await checkWeeklyChallengeInternal(projectId, userId);
+
+    return {
+      completion: completionCheck,
+      challenges: challengeCheck
+    };
+  } catch (error) {
+    console.error('Error checking awards:', error);
+    return null;
+  }
+};
+
+const checkProjectCompletionInternal = async (projectId, userId) => {
+  try {
+    const { data: goals } = await supabase
+      .from('solo_project_goals')
+      .select('status, progress')
+      .eq('project_id', projectId)
+      .eq('user_id', userId);
+
+    const totalGoals = goals?.length || 0;
+    const completedGoals = goals?.filter(g => g.status === 'completed').length || 0;
+    const completionPercentage = totalGoals > 0 ? (completedGoals / totalGoals) * 100 : 0;
+
+    if (completionPercentage >= 100) {
+      // Check if award already exists
+      const { data: existingAward } = await supabase
+        .from('user_awards')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('project_id', projectId)
+        .eq('award_type', 'project_completion')
+        .single();
+
+      if (!existingAward) {
+        // Get project details
+        const { data: project } = await supabase
+          .from('projects')
+          .select('title')
+          .eq('id', projectId)
+          .single();
+
+        // Create award
+        const { data: newAward } = await supabase
+          .from('user_awards')
+          .insert({
+            user_id: userId,
+            project_id: projectId,
+            award_type: 'project_completion',
+            award_title: '🏆 Project Master',
+            award_description: 'Completed a solo project with 100% progress',
+            award_icon: 'trophy',
+            award_color: '#FFD700',
+            metadata: {
+              completion_percentage: completionPercentage,
+              total_goals: totalGoals,
+              completed_goals: completedGoals,
+              project_title: project?.title
+            }
+          })
+          .select()
+          .single();
+
+        console.log('✅ Project completion award granted!');
+        return { awarded: true, award: newAward };
+      }
+    }
+
+    return { awarded: false, completionPercentage };
+  } catch (error) {
+    console.error('Error checking project completion:', error);
+    return { awarded: false, error: error.message };
+  }
+};
+
+// Internal function for checking weekly challenges (called automatically)
+const checkWeeklyChallengeInternal = async (projectId, userId) => {
+  try {
+    // Get project programming language
+    const { data: project } = await supabase
+      .from('projects')
+      .select('id, title, project_languages(programming_language_id)')
+      .eq('id', projectId)
+      .single();
+
+    const languageId = project?.project_languages?.[0]?.programming_language_id;
+    if (!languageId) return { awarded: false, reason: 'No language set' };
+
+    // Get all challenges for this language
+    const { data: allChallenges } = await supabase
+      .from('coding_challenges')
+      .select('id')
+      .eq('programming_language_id', languageId)
+      .eq('is_active', true)
+      .is('project_id', null);
+
+    // Get user's passed attempts
+    const { data: attempts } = await supabase
+      .from('challenge_attempts')
+      .select('challenge_id, status')
+      .eq('user_id', userId)
+      .eq('project_id', projectId)
+      .eq('status', 'passed');
+
+    const completedChallengeIds = [...new Set(attempts?.map(a => a.challenge_id) || [])];
+    const allChallengeIds = allChallenges?.map(c => c.id) || [];
+    const allCompleted = allChallengeIds.length > 0 && 
+                        allChallengeIds.every(id => completedChallengeIds.includes(id));
+
+    if (allCompleted) {
+      // Check if award already exists
+      const { data: existingAward } = await supabase
+        .from('user_awards')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('project_id', projectId)
+        .eq('award_type', 'weekly_challenge_master')
+        .single();
+
+      if (!existingAward) {
+        // Create award
+        const { data: newAward } = await supabase
+          .from('user_awards')
+          .insert({
+            user_id: userId,
+            project_id: projectId,
+            award_type: 'weekly_challenge_master',
+            award_title: '🌟 Challenge Champion',
+            award_description: 'Completed all weekly challenges for a project',
+            award_icon: 'star',
+            award_color: '#9333EA',
+            metadata: {
+              total_challenges: allChallengeIds.length,
+              completed_challenges: completedChallengeIds.length,
+              project_title: project?.title
+            }
+          })
+          .select()
+          .single();
+
+        console.log('✅ Weekly challenge award granted!');
+        return { awarded: true, award: newAward };
+      }
+    }
+
+    return { awarded: false, progress: { completed: completedChallengeIds.length, total: allChallengeIds.length } };
+  } catch (error) {
+    console.error('Error checking weekly challenges:', error);
+    return { awarded: false, error: error.message };
+  }
+};
 
 // Helper function to verify solo project ownership
 const verifySoloProjectAccess = async (projectId, userId) => {
@@ -1198,5 +1359,8 @@ module.exports = {
   
   // Project Info
   getProjectInfo,
-  updateProjectInfo
+  updateProjectInfo,
+  checkAndAwardProgress,
+  checkProjectCompletionInternal,
+  checkWeeklyChallengeInternal
 };

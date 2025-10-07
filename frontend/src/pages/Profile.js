@@ -1,11 +1,12 @@
-// frontend/src/pages/Profile.js - COMPLETE WITH ANIMATED BACKGROUND
+// frontend/src/pages/Profile.js - COMPLETE WITH AWARDS INTEGRATION
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { authService } from '../services/authService';
 import { projectService } from '../services/projectService';
-import { User, Settings, Shield, Calendar, Target, Users, Eye, EyeOff, SquarePen } from 'lucide-react';
+import AwardsDisplay from '../components/AwardsDisplay';
+import { User, Settings, Shield, Calendar, Target, Users, Eye, EyeOff, SquarePen, Award } from 'lucide-react';
 
-// Background symbols component with animations - MATCHING DASHBOARD
+// Background symbols component with animations
 const BackgroundSymbols = () => (
   <>
     <style dangerouslySetInnerHTML={{ __html: `
@@ -27,98 +28,31 @@ const BackgroundSymbols = () => (
         60% { transform: translate(-10px, -15px) rotate(38deg); }
         80% { transform: translate(15px, 25px) rotate(30deg); }
       }
-      @keyframes floatAround4 {
-        0%, 100% { transform: translate(0, 0) rotate(28.16deg); }
-        50% { transform: translate(-40px, 30px) rotate(35deg); }
-      }
-      @keyframes floatAround5 {
-        0%, 100% { transform: translate(0, 0) rotate(24.5deg); }
-        25% { transform: translate(20px, -25px) rotate(30deg); }
-        50% { transform: translate(-30px, 20px) rotate(18deg); }
-        75% { transform: translate(25px, 15px) rotate(28deg); }
-      }
-      @keyframes floatAround6 {
-        0%, 100% { transform: translate(0, 0) rotate(25.29deg); }
-        33% { transform: translate(-15px, -20px) rotate(30deg); }
-        66% { transform: translate(30px, 25px) rotate(20deg); }
-      }
-      @keyframes driftSlow {
-        0%, 100% { transform: translate(0, 0) rotate(-19.68deg); }
-        25% { transform: translate(-35px, 20px) rotate(-25deg); }
-        50% { transform: translate(20px, -30px) rotate(-15deg); }
-        75% { transform: translate(-10px, 35px) rotate(-22deg); }
-      }
-      @keyframes gentleDrift {
-        0%, 100% { transform: translate(0, 0) rotate(-6.83deg); }
-        50% { transform: translate(25px, -40px) rotate(-2deg); }
-      }
-      @keyframes spiralFloat {
-        0%, 100% { transform: translate(0, 0) rotate(0deg); }
-        25% { transform: translate(20px, -20px) rotate(5deg); }
-        50% { transform: translate(0px, -40px) rotate(10deg); }
-        75% { transform: translate(-20px, -20px) rotate(5deg); }
-      }
-      @keyframes waveMotion {
-        0%, 100% { transform: translate(0, 0) rotate(15deg); }
-        25% { transform: translate(30px, 10px) rotate(20deg); }
-        50% { transform: translate(15px, -25px) rotate(10deg); }
-        75% { transform: translate(-15px, 10px) rotate(18deg); }
-      }
-      @keyframes circularDrift {
-        0%, 100% { transform: translate(0, 0) rotate(-45deg); }
-        25% { transform: translate(25px, 0px) rotate(-40deg); }
-        50% { transform: translate(25px, 25px) rotate(-50deg); }
-        75% { transform: translate(0px, 25px) rotate(-42deg); }
-      }
       .floating-symbol {
-        animation-timing-function: ease-in-out;
+        animation-duration: 20s;
         animation-iteration-count: infinite;
+        animation-timing-function: ease-in-out;
       }
-      .floating-symbol:nth-child(1) { animation: floatAround1 15s infinite; }
-      .floating-symbol:nth-child(2) { animation: floatAround2 18s infinite; animation-delay: -2s; }
-      .floating-symbol:nth-child(3) { animation: floatAround3 12s infinite; animation-delay: -5s; }
-      .floating-symbol:nth-child(4) { animation: floatAround4 20s infinite; animation-delay: -8s; }
-      .floating-symbol:nth-child(5) { animation: floatAround5 16s infinite; animation-delay: -3s; }
-      .floating-symbol:nth-child(6) { animation: floatAround6 14s infinite; animation-delay: -7s; }
-      .floating-symbol:nth-child(7) { animation: driftSlow 22s infinite; animation-delay: -10s; }
-      .floating-symbol:nth-child(8) { animation: gentleDrift 19s infinite; animation-delay: -1s; }
-      .floating-symbol:nth-child(9) { animation: spiralFloat 17s infinite; animation-delay: -6s; }
-      .floating-symbol:nth-child(10) { animation: waveMotion 13s infinite; animation-delay: -4s; }
-      .floating-symbol:nth-child(11) { animation: circularDrift 21s infinite; animation-delay: -9s; }
-      .floating-symbol:nth-child(12) { animation: floatAround1 16s infinite; animation-delay: -2s; }
-      .floating-symbol:nth-child(13) { animation: floatAround2 18s infinite; animation-delay: -11s; }
-      .floating-symbol:nth-child(14) { animation: floatAround3 14s infinite; animation-delay: -5s; }
-      .floating-symbol:nth-child(15) { animation: floatAround4 19s infinite; animation-delay: -7s; }
-      .floating-symbol:nth-child(16) { animation: floatAround5 23s infinite; animation-delay: -3s; }
-      .floating-symbol:nth-child(17) { animation: driftSlow 15s infinite; animation-delay: -8s; }
-      .floating-symbol:nth-child(18) { animation: gentleDrift 17s infinite; animation-delay: -1s; }
-      .floating-symbol:nth-child(19) { animation: spiralFloat 20s infinite; animation-delay: -12s; }
-      .floating-symbol:nth-child(20) { animation: waveMotion 18s infinite; animation-delay: -6s; }
-      .floating-symbol:nth-child(21) { animation: circularDrift 16s infinite; animation-delay: -4s; }
+      .floating-symbol:nth-child(1) { animation-name: floatAround1; }
+      .floating-symbol:nth-child(2) { animation-name: floatAround2; animation-duration: 25s; }
+      .floating-symbol:nth-child(3) { animation-name: floatAround3; animation-duration: 18s; }
+      .floating-symbol:nth-child(4) { animation-name: floatAround1; animation-duration: 22s; animation-delay: -5s; }
+      .floating-symbol:nth-child(5) { animation-name: floatAround2; animation-duration: 28s; animation-delay: -8s; }
+      .floating-symbol:nth-child(6) { animation-name: floatAround3; animation-duration: 24s; animation-delay: -3s; }
+      .floating-symbol:nth-child(7) { animation-name: floatAround1; animation-duration: 26s; animation-delay: -10s; }
+      .floating-symbol:nth-child(8) { animation-name: floatAround2; animation-duration: 30s; animation-delay: -12s; }
     `}} />
     <div style={{
       position: 'fixed',
       top: 0,
       left: 0,
-      width: '100vw',
-      height: '100vh',
-      zIndex: 1,
-      pointerEvents: 'none'
+      width: '100%',
+      height: '100%',
+      overflow: 'hidden',
+      pointerEvents: 'none',
+      zIndex: 0
     }}>
       {[
-        { left: '52.81%', top: '48.12%', color: '#2E3344' },
-        { left: '28.19%', top: '71.22%', color: '#292A2E' },
-        { left: '95.09%', top: '48.12%', color: '#ABB5CE' },
-        { left: '86.46%', top: '15.33%', color: '#2E3344' },
-        { left: '7.11%', top: '80.91%', color: '#ABB5CE' },
-        { left: '48.06%', top: '8.5%', color: '#ABB5CE' },
-        { left: '72.84%', top: '4.42%', color: '#2E3344' },
-        { left: '9.6%', top: '0%', color: '#1F232E' },
-        { left: '31.54%', top: '54.31%', color: '#6C758E' },
-        { left: '25.28%', top: '15.89%', color: '#1F232E' },
-        { left: '48.55%', top: '82.45%', color: '#292A2E' },
-        { left: '24.41%', top: '92.02%', color: '#2E3344' },
-        { left: '0%', top: '12.8%', color: '#ABB5CE' },
         { left: '81.02%', top: '94.27%', color: '#6C758E' },
         { left: '96.02%', top: '0%', color: '#2E3344' },
         { left: '0.07%', top: '41.2%', color: '#6C758E' },
@@ -177,6 +111,10 @@ function Profile() {
     learningModules: 0
   });
   const [loadingStats, setLoadingStats] = useState(true);
+  
+  // Awards state
+  const [awardStats, setAwardStats] = useState(null);
+  const [loadingAwards, setLoadingAwards] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -218,6 +156,32 @@ function Profile() {
 
     fetchProjectStats();
   }, [user?.id]);
+
+  // Fetch award statistics
+  useEffect(() => {
+    const fetchAwardStats = async () => {
+      try {
+        setLoadingAwards(true);
+        const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/awards/statistics`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        const data = await response.json();
+        if (data.success) {
+          setAwardStats(data.data);
+        }
+      } catch (error) {
+        console.error('Error fetching award stats:', error);
+      } finally {
+        setLoadingAwards(false);
+      }
+    };
+
+    if (user) {
+      fetchAwardStats();
+    }
+  }, [user]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -263,7 +227,6 @@ function Profile() {
       const response = await authService.updateProfile(cleanedData, token);
       
       if (response.success && response.data && response.data.user) {
-        // Use updateUser with completeReplace flag
         await updateUser(response.data.user, true);
         
         setEditingSections(prev => ({
@@ -302,6 +265,7 @@ function Profile() {
       setShowChangePassword(false);
       setShowPasswords({ current: false, new: false, confirm: false });
       showNotification('Password changed successfully!', 'success');
+      
     } catch (error) {
       console.error('Error changing password:', error);
       showNotification(error.response?.data?.message || 'Failed to change password', 'error');
@@ -313,449 +277,30 @@ function Profile() {
   const getProfileCompletionPercentage = () => {
     if (!user) return 0;
     
-    const fields = [
-      user.full_name,
-      user.bio,
-      user.github_username,
-      user.years_experience > 0,
-      user.programming_languages?.length > 0,
-      user.topics?.length > 0
-    ];
+    let completed = 0;
+    const total = 7;
     
-    const completedFields = fields.filter(Boolean).length;
-    return Math.round((completedFields / fields.length) * 100);
+    if (user.full_name) completed++;
+    if (user.bio) completed++;
+    if (user.github_username) completed++;
+    if (user.linkedin_url) completed++;
+    if (user.years_experience > 0) completed++;
+    if (user.programming_languages && user.programming_languages.length > 0) completed++;
+    if (user.topics && user.topics.length > 0) completed++;
+    
+    return Math.round((completed / total) * 100);
   };
 
-  const styles = {
-    container: {
-      minHeight: 'calc(100vh - 40px)',
-      backgroundColor: '#0F1116',
-      color: 'white',
-      position: 'relative',
-      overflow: 'hidden',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      padding: '20px',
-      paddingLeft: '270px',
-      marginLeft: '-150px'
-    },
-    notification: {
-      padding: '12px 20px',
-      borderRadius: '12px',
-      marginBottom: '20px',
-      position: 'fixed',
-      top: '20px',
-      right: '20px',
-      zIndex: 1000,
-      backdropFilter: 'blur(20px)',
-      border: '1px solid rgba(255, 255, 255, 0.1)',
-      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)'
-    },
-    notificationSuccess: {
-      background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(22, 163, 74, 0.1))',
-      color: '#4ade80',
-      borderColor: 'rgba(34, 197, 94, 0.3)'
-    },
-    notificationError: {
-      background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(220, 38, 38, 0.1))',
-      color: '#f87171',
-      borderColor: 'rgba(239, 68, 68, 0.3)'
-    },
-    header: {
-      position: 'relative',
-      zIndex: 10,
-      marginBottom: '30px',
-      padding: '0 0 20px 0',
-      borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
-    },
-    headerTop: {
-      display: 'flex',
-      justifyContent: 'flex-start',
-      alignItems: 'center',
-      marginBottom: '20px'
-    },
-    title: {
-      fontSize: '28px',
-      fontWeight: 'bold',
-      color: 'white',
-      margin: 0,
-      display: 'flex',
-      alignItems: 'center',
-      gap: '12px'
-    },
-    profileHeader: {
-      background: 'rgba(26, 28, 32, 0.8)',
-      backdropFilter: 'blur(20px)',
-      border: '1px solid rgba(255, 255, 255, 0.1)',
-      borderRadius: '16px',
-      padding: '30px',
-      display: 'flex',
-      alignItems: 'flex-start',
-      gap: '20px',
-      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)'
-    },
-    avatarLarge: {
-      width: '80px',
-      height: '80px',
-      borderRadius: '50%',
-      background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
-      color: 'white',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      fontSize: '32px',
-      fontWeight: 'bold',
-      flexShrink: 0,
-      boxShadow: '0 8px 24px rgba(59, 130, 246, 0.4)'
-    },
-    userDetails: {
-      flex: 1
-    },
-    userName: {
-      fontSize: '24px',
-      fontWeight: 'bold',
-      color: 'white',
-      margin: '0 0 8px 0'
-    },
-    userMeta: {
-      color: '#9ca3af',
-      fontSize: '14px',
-      margin: '0 0 16px 0'
-    },
-    progressContainer: {
-      marginTop: '12px'
-    },
-    progressLabel: {
-      fontSize: '14px',
-      color: '#d1d5db',
-      marginBottom: '6px'
-    },
-    progressBar: {
-      width: '200px',
-      height: '8px',
-      backgroundColor: 'rgba(255, 255, 255, 0.1)',
-      borderRadius: '4px',
-      overflow: 'hidden'
-    },
-    progressFill: {
-      height: '100%',
-      background: 'linear-gradient(to right, #3b82f6, #2563eb)',
-      transition: 'width 0.3s ease'
-    },
-    content: {
-      position: 'relative',
-      zIndex: 10,
-      display: 'grid',
-      gridTemplateColumns: '2fr 1fr',
-      gap: '30px',
-      alignItems: 'start'
-    },
-    mainContent: {
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '20px'
-    },
-    section: {
-      background: 'rgba(26, 28, 32, 0.8)',
-      backdropFilter: 'blur(20px)',
-      border: '1px solid rgba(255, 255, 255, 0.1)',
-      borderRadius: '16px',
-      padding: '24px',
-      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)'
-    },
-    sectionTitle: {
-      fontSize: '18px',
-      fontWeight: 'bold',
-      color: 'white',
-      margin: '0 0 20px 0',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '10px'
-    },
-    formGroup: {
-      marginBottom: '20px'
-    },
-    label: {
-      display: 'block',
-      marginBottom: '6px',
-      fontSize: '14px',
-      fontWeight: '500',
-      color: '#d1d5db'
-    },
-    input: {
-      width: '100%',
-      padding: '12px 16px',
-      border: '1px solid rgba(255, 255, 255, 0.2)',
-      borderRadius: '8px',
-      fontSize: '14px',
-      boxSizing: 'border-box',
-      transition: 'all 0.3s ease',
-      backgroundColor: 'rgba(255, 255, 255, 0.05)',
-      color: 'white',
-      backdropFilter: 'blur(8px)'
-    },
-    textarea: {
-      width: '100%',
-      padding: '12px 16px',
-      border: '1px solid rgba(255, 255, 255, 0.2)',
-      borderRadius: '8px',
-      fontSize: '14px',
-      minHeight: '80px',
-      resize: 'vertical',
-      boxSizing: 'border-box',
-      transition: 'all 0.3s ease',
-      backgroundColor: 'rgba(255, 255, 255, 0.05)',
-      color: 'white',
-      backdropFilter: 'blur(8px)'
-    },
-    primaryButton: {
-      background: 'linear-gradient(to right, #3b82f6, #2563eb)',
-      color: 'white',
-      border: 'none',
-      padding: '12px 24px',
-      borderRadius: '8px',
-      cursor: 'pointer',
-      fontSize: '14px',
-      fontWeight: '600',
-      marginRight: '10px',
-      transition: 'all 0.3s ease',
-      boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
-    },
-    secondaryButton: {
-      backgroundColor: '#6b7280',
-      color: 'white',
-      border: 'none',
-      padding: '12px 24px',
-      borderRadius: '8px',
-      cursor: 'pointer',
-      fontSize: '14px',
-      fontWeight: '600',
-      transition: 'all 0.3s ease'
-    },
-    changePasswordButton: {
-      backgroundColor: '#f59e0b',
-      color: 'white',
-      border: 'none',
-      padding: '8px 16px',
-      borderRadius: '6px',
-      cursor: 'pointer',
-      fontSize: '13px',
-      fontWeight: '500',
-      transition: 'all 0.3s ease'
-    },
-    sidebar: {
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '20px'
-    },
-    statCard: {
-      background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(37, 99, 235, 0.08))',
-      border: '1px solid rgba(59, 130, 246, 0.25)',
-      backdropFilter: 'blur(20px)',
-      padding: '16px',
-      borderRadius: '12px',
-      textAlign: 'center'
-    },
-    statNumber: {
-      fontSize: '24px',
-      fontWeight: 'bold',
-      color: '#3b82f6',
-      margin: '0 0 4px 0'
-    },
-    statLabel: {
-      fontSize: '12px',
-      color: '#9ca3af',
-      margin: 0,
-      textTransform: 'uppercase',
-      letterSpacing: '0.5px'
-    },
-    overviewSection: {
-      background: 'rgba(26, 28, 32, 0.8)',
-      backdropFilter: 'blur(20px)',
-      border: '1px solid rgba(255, 255, 255, 0.1)',
-      borderRadius: '16px',
-      padding: '24px',
-      marginBottom: '20px',
-      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)'
-    },
-    overviewTitle: {
-      fontSize: '20px',
-      fontWeight: 'bold',
-      color: 'white',
-      margin: '0 0 20px 0',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '8px'
-    },
-    userInfoContainer: {
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-      gap: '20px',
-      marginBottom: '20px'
-    },
-    userInfoSection: {
-      background: 'linear-gradient(135deg, rgba(51, 65, 85, 0.12), rgba(30, 41, 59, 0.08))',
-      border: '1px solid rgba(51, 65, 85, 0.25)',
-      borderRadius: '12px',
-      padding: '16px',
-      backdropFilter: 'blur(20px)'
-    },
-    userInfoTitle: {
-      margin: '0 0 12px 0',
-      fontSize: '16px',
-      fontWeight: 'bold',
-      color: 'white'
-    },
-    userInfoGrid: {
-      display: 'grid',
-      gridTemplateColumns: '1fr 1fr',
-      gap: '8px',
-      marginBottom: '12px'
-    },
-    userInfoItem: {
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '2px'
-    },
-    userInfoLabel: {
-      fontSize: '12px',
-      color: '#9ca3af',
-      fontWeight: '500'
-    },
-    userInfoValue: {
-      fontSize: '14px',
-      color: '#d1d5db',
-      fontWeight: '400'
-    },
-    bioSection: {
-      marginTop: '12px',
-      paddingTop: '12px',
-      borderTop: '1px solid rgba(255, 255, 255, 0.1)'
-    },
-    bioText: {
-      margin: '4px 0 0 0',
-      fontSize: '14px',
-      color: '#d1d5db',
-      lineHeight: '1.4'
-    },
-    skillsContainer: {
-      display: 'flex',
-      flexWrap: 'wrap',
-      gap: '6px'
-    },
-    languageTag: {
-      display: 'inline-flex',
-      alignItems: 'center',
-      background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(37, 99, 235, 0.1))',
-      color: '#93c5fd',
-      padding: '4px 8px',
-      borderRadius: '16px',
-      fontSize: '12px',
-      fontWeight: '500',
-      gap: '4px',
-      border: '1px solid rgba(59, 130, 246, 0.3)'
-    },
-    topicTag: {
-      display: 'inline-flex',
-      alignItems: 'center',
-      background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(22, 163, 74, 0.1))',
-      color: '#4ade80',
-      padding: '4px 8px',
-      borderRadius: '16px',
-      fontSize: '12px',
-      fontWeight: '500',
-      gap: '4px',
-      border: '1px solid rgba(34, 197, 94, 0.3)'
-    },
-    skillLevel: {
-      fontSize: '10px',
-      opacity: 0.8
-    },
-    emptySkills: {
-      color: '#9ca3af',
-      fontSize: '14px',
-      fontStyle: 'italic'
-    },
-    statsContainer: {
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-      gap: '20px',
-      marginBottom: '30px'
-    },
-    dashboardStatCard: {
-      background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(37, 99, 235, 0.08))',
-      border: '1px solid rgba(59, 130, 246, 0.25)',
-      borderRadius: '12px',
-      padding: '20px',
-      textAlign: 'center',
-      backdropFilter: 'blur(20px)',
-      transition: 'all 0.3s ease'
-    },
-    statValue: {
-      fontSize: '24px',
-      fontWeight: 'bold',
-      color: '#3b82f6',
-      marginBottom: '5px'
-    },
-    statLabelDashboard: {
-      color: '#9ca3af',
-      fontSize: '14px'
-    },
-    activitySection: {
-      background: 'rgba(26, 28, 32, 0.8)',
-      border: '1px solid rgba(255, 255, 255, 0.1)',
-      borderRadius: '16px',
-      padding: '20px',
-      marginBottom: '20px',
-      backdropFilter: 'blur(20px)'
-    },
-    emptyState: {
-      textAlign: 'center',
-      color: '#9ca3af',
-      fontSize: '14px',
-      padding: '40px 20px'
-    },
-    passwordSection: {
-      padding: '20px',
-      background: 'linear-gradient(135deg, rgba(51, 65, 85, 0.12), rgba(30, 41, 59, 0.08))',
-      borderRadius: '12px',
-      border: '1px solid rgba(51, 65, 85, 0.25)',
-      backdropFilter: 'blur(20px)'
-    },
-    passwordContainer: {
-      position: 'relative',
-      display: 'flex',
-      alignItems: 'center'
-    },
-    passwordInput: {
-      width: '100%',
-      padding: '12px 50px 12px 16px',
-      border: '1px solid rgba(255, 255, 255, 0.2)',
-      borderRadius: '8px',
-      fontSize: '14px',
-      boxSizing: 'border-box',
-      transition: 'all 0.3s ease',
-      backgroundColor: 'rgba(255, 255, 255, 0.05)',
-      color: 'white',
-      backdropFilter: 'blur(8px)'
-    },
-    eyeToggle: {
-      position: 'absolute',
-      right: '12px',
-      top: '50%',
-      transform: 'translateY(-50%)',
-      background: 'none',
-      border: 'none',
-      color: '#9ca3af',
-      cursor: 'pointer',
-      padding: '4px',
-      borderRadius: '4px',
-      transition: 'color 0.3s ease',
-      fontSize: '18px',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center'
-    }
-  };
+  if (!user) {
+    return (
+      <div style={styles.container}>
+        <BackgroundSymbols />
+        <div style={{ textAlign: 'center', color: 'white', padding: '40px' }}>
+          Loading profile...
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={styles.container}>
@@ -764,8 +309,7 @@ function Profile() {
       {notification.message && (
         <div style={{
           ...styles.notification,
-          ...(notification.type === 'success' ? 
-            styles.notificationSuccess : styles.notificationError)
+          ...(notification.type === 'success' ? styles.notificationSuccess : styles.notificationError)
         }}>
           {notification.message}
         </div>
@@ -911,6 +455,21 @@ function Profile() {
             </div>
             <div style={styles.statLabelDashboard}>Learning Modules</div>
           </div>
+          <div style={styles.dashboardStatCard}>
+            <div style={styles.statValue}>
+              {loadingAwards ? '...' : awardStats?.total_awards || 0}
+            </div>
+            <div style={styles.statLabelDashboard}>Total Awards</div>
+          </div>
+        </div>
+
+        {/* Awards Section */}
+        <div style={styles.awardsSection}>
+          <h3 style={styles.sectionTitle}>
+            <Award size={18} style={{ color: '#FFD700' }} />
+            Your Achievements
+          </h3>
+          <AwardsDisplay compact={false} />
         </div>
 
         <div style={styles.activitySection}>
@@ -971,9 +530,7 @@ function Profile() {
                   placeholder="Enter your full name"
                 />
               ) : (
-                <p style={{ margin: 0, color: '#d1d5db', fontSize: '14px' }}>
-                  {user?.full_name || 'Not specified'}
-                </p>
+                <p style={styles.value}>{formData.full_name || 'Not provided'}</p>
               )}
             </div>
 
@@ -984,13 +541,11 @@ function Profile() {
                   name="bio"
                   value={formData.bio}
                   onChange={handleInputChange}
-                  style={styles.textarea}
+                  style={{...styles.input, minHeight: '100px'}}
                   placeholder="Tell us about yourself..."
                 />
               ) : (
-                <p style={{ margin: 0, color: '#d1d5db', fontSize: '14px', lineHeight: '1.5' }}>
-                  {user?.bio || 'No bio provided'}
-                </p>
+                <p style={styles.value}>{formData.bio || 'No bio provided'}</p>
               )}
             </div>
 
@@ -1007,40 +562,22 @@ function Profile() {
                   max="50"
                 />
               ) : (
-                <p style={{ margin: 0, color: '#d1d5db', fontSize: '14px' }}>
-                  {user?.years_experience || 0} years
-                </p>
+                <p style={styles.value}>{formData.years_experience || 0} years</p>
               )}
             </div>
 
             {editingSections.personal && (
-              <div>
+              <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
                 <button
-                  style={styles.primaryButton}
                   onClick={() => handleSaveProfile('personal')}
                   disabled={loading}
-                  onMouseEnter={(e) => {
-                    e.target.style.transform = 'translateY(-2px)';
-                    e.target.style.boxShadow = '0 6px 16px rgba(59, 130, 246, 0.4)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.transform = 'translateY(0)';
-                    e.target.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.3)';
-                  }}
+                  style={styles.saveButton}
                 >
                   {loading ? 'Saving...' : 'Save Changes'}
                 </button>
                 <button
-                  style={styles.secondaryButton}
                   onClick={() => toggleSectionEdit('personal')}
-                  onMouseEnter={(e) => {
-                    e.target.style.backgroundColor = '#4b5563';
-                    e.target.style.transform = 'translateY(-1px)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.backgroundColor = '#6b7280';
-                    e.target.style.transform = 'translateY(0)';
-                  }}
+                  style={styles.cancelButton}
                 >
                   Cancel
                 </button>
@@ -1080,7 +617,7 @@ function Profile() {
                 <SquarePen size={16} />
               </button>
             </div>
-            
+
             <div style={styles.formGroup}>
               <label style={styles.label}>GitHub Username</label>
               {editingSections.social ? (
@@ -1090,21 +627,10 @@ function Profile() {
                   value={formData.github_username}
                   onChange={handleInputChange}
                   style={styles.input}
-                  placeholder="Enter your GitHub username"
+                  placeholder="your-github-username"
                 />
               ) : (
-                <p style={{ margin: 0, color: '#d1d5db', fontSize: '14px' }}>
-                  {user?.github_username ? (
-                    <a 
-                      href={`https://github.com/${user.github_username}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ color: '#3b82f6', textDecoration: 'none' }}
-                    >
-                      @{user.github_username}
-                    </a>
-                  ) : 'Not specified'}
-                </p>
+                <p style={styles.value}>{formData.github_username || 'Not provided'}</p>
               )}
             </div>
 
@@ -1117,52 +643,25 @@ function Profile() {
                   value={formData.linkedin_url}
                   onChange={handleInputChange}
                   style={styles.input}
-                  placeholder="https://linkedin.com/in/yourprofile"
+                  placeholder="https://linkedin.com/in/your-profile"
                 />
               ) : (
-                <p style={{ margin: 0, color: '#d1d5db', fontSize: '14px' }}>
-                  {user?.linkedin_url ? (
-                    <a 
-                      href={user.linkedin_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ color: '#3b82f6', textDecoration: 'none' }}
-                    >
-                      View LinkedIn Profile
-                    </a>
-                  ) : 'Not specified'}
-                </p>
+                <p style={styles.value}>{formData.linkedin_url || 'Not provided'}</p>
               )}
             </div>
 
             {editingSections.social && (
-              <div>
+              <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
                 <button
-                  style={styles.primaryButton}
                   onClick={() => handleSaveProfile('social')}
                   disabled={loading}
-                  onMouseEnter={(e) => {
-                    e.target.style.transform = 'translateY(-2px)';
-                    e.target.style.boxShadow = '0 6px 16px rgba(59, 130, 246, 0.4)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.transform = 'translateY(0)';
-                    e.target.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.3)';
-                  }}
+                  style={styles.saveButton}
                 >
                   {loading ? 'Saving...' : 'Save Changes'}
                 </button>
                 <button
-                  style={styles.secondaryButton}
                   onClick={() => toggleSectionEdit('social')}
-                  onMouseEnter={(e) => {
-                    e.target.style.backgroundColor = '#4b5563';
-                    e.target.style.transform = 'translateY(-1px)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.backgroundColor = '#6b7280';
-                    e.target.style.transform = 'translateY(0)';
-                  }}
+                  style={styles.cancelButton}
                 >
                   Cancel
                 </button>
@@ -1173,153 +672,98 @@ function Profile() {
           <div style={styles.section}>
             <h3 style={styles.sectionTitle}>
               <Shield size={18} style={{ color: '#f59e0b' }} />
-              Security
+              Security Settings
             </h3>
-            
-            <div style={{ marginBottom: '16px' }}>
-              <label style={styles.label}>Password</label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <span style={{ color: '#9ca3af', fontSize: '14px' }}>••••••••</span>
-                <button
-                  style={styles.changePasswordButton}
-                  onClick={() => setShowChangePassword(!showChangePassword)}
-                  onMouseEnter={(e) => {
-                    e.target.style.backgroundColor = '#d97706';
-                    e.target.style.transform = 'translateY(-1px)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.backgroundColor = '#f59e0b';
-                    e.target.style.transform = 'translateY(0)';
-                  }}
-                >
-                  Change Password
-                </button>
-              </div>
-            </div>
 
-            {showChangePassword && (
-              <div style={styles.passwordSection}>
+            {!showChangePassword ? (
+              <button
+                onClick={() => setShowChangePassword(true)}
+                style={styles.changePasswordButton}
+              >
+                Change Password
+              </button>
+            ) : (
+              <>
                 <div style={styles.formGroup}>
                   <label style={styles.label}>Current Password</label>
-                  <div style={styles.passwordContainer}>
+                  <div style={{ position: 'relative' }}>
                     <input
-                      type={showPasswords.current ? "text" : "password"}
+                      type={showPasswords.current ? 'text' : 'password'}
                       name="currentPassword"
                       value={passwordData.currentPassword}
                       onChange={handlePasswordChange}
-                      style={styles.passwordInput}
-                      placeholder="Enter your current password"
+                      style={styles.input}
+                      placeholder="Enter current password"
                     />
                     <button
-                      type="button"
-                      style={styles.eyeToggle}
                       onClick={() => setShowPasswords(prev => ({ ...prev, current: !prev.current }))}
-                      onMouseEnter={(e) => {
-                        e.target.style.color = '#d1d5db';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.target.style.color = '#9ca3af';
-                      }}
+                      style={styles.eyeButton}
                     >
-                      {showPasswords.current ? <Eye size={20} /> : <EyeOff size={20} />}
-                    </button>
-                  </div>
-                </div>
-                
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>New Password</label>
-                  <div style={styles.passwordContainer}>
-                    <input
-                      type={showPasswords.new ? "text" : "password"}
-                      name="newPassword"
-                      value={passwordData.newPassword}
-                      onChange={handlePasswordChange}
-                      style={styles.passwordInput}
-                      placeholder="Enter your new password"
-                    />
-                    <button
-                      type="button"
-                      style={styles.eyeToggle}
-                      onClick={() => setShowPasswords(prev => ({ 
-                        ...prev, 
-                        new: !prev.new,
-                        confirm: !prev.confirm 
-                      }))}
-                      onMouseEnter={(e) => { e.target.style.color = '#d1d5db'; }}
-                      onMouseLeave={(e) => { e.target.style.color = '#9ca3af'; }}
-                    >
-                      {showPasswords.new ? <Eye size={20} /> : <EyeOff size={20} />}
-                    </button>
-                  </div>
-                </div>
-                
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Confirm New Password</label>
-                  <div style={styles.passwordContainer}>
-                    <input
-                      type={showPasswords.confirm ? "text" : "password"}
-                      name="confirmPassword"
-                      value={passwordData.confirmPassword}
-                      onChange={handlePasswordChange}
-                      style={styles.passwordInput}
-                      placeholder="Confirm your new password"
-                    />
-                    <button
-                      type="button"
-                      style={styles.eyeToggle}
-                      onClick={() => setShowPasswords(prev => ({ 
-                        ...prev, 
-                        new: !prev.new,
-                        confirm: !prev.new 
-                      }))}
-                      onMouseEnter={(e) => {
-                        e.target.style.color = '#d1d5db';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.target.style.color = '#9ca3af';
-                      }}
-                    >
-                      {showPasswords.confirm ? <Eye size={20} /> : <EyeOff size={20} />}
+                      {showPasswords.current ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
                 </div>
 
-                <div>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>New Password</label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type={showPasswords.new ? 'text' : 'password'}
+                      name="newPassword"
+                      value={passwordData.newPassword}
+                      onChange={handlePasswordChange}
+                      style={styles.input}
+                      placeholder="Enter new password"
+                    />
+                    <button
+                      onClick={() => setShowPasswords(prev => ({ ...prev, new: !prev.new }))}
+                      style={styles.eyeButton}
+                    >
+                      {showPasswords.new ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                </div>
+
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Confirm New Password</label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type={showPasswords.confirm ? 'text' : 'password'}
+                      name="confirmPassword"
+                      value={passwordData.confirmPassword}
+                      onChange={handlePasswordChange}
+                      style={styles.input}
+                      placeholder="Confirm new password"
+                    />
+                    <button
+                      onClick={() => setShowPasswords(prev => ({ ...prev, confirm: !prev.confirm }))}
+                      style={styles.eyeButton}
+                    >
+                      {showPasswords.confirm ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
                   <button
-                    style={styles.primaryButton}
                     onClick={handleChangePassword}
                     disabled={loading}
-                    onMouseEnter={(e) => {
-                      e.target.style.transform = 'translateY(-2px)';
-                      e.target.style.boxShadow = '0 6px 16px rgba(59, 130, 246, 0.4)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.target.style.transform = 'translateY(0)';
-                      e.target.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.3)';
-                    }}
+                    style={styles.saveButton}
                   >
                     {loading ? 'Changing...' : 'Change Password'}
                   </button>
                   <button
-                    style={styles.secondaryButton}
                     onClick={() => {
                       setShowChangePassword(false);
                       setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
                       setShowPasswords({ current: false, new: false, confirm: false });
                     }}
-                    onMouseEnter={(e) => {
-                      e.target.style.backgroundColor = '#4b5563';
-                      e.target.style.transform = 'translateY(-1px)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.target.style.backgroundColor = '#6b7280';
-                      e.target.style.transform = 'translateY(0)';
-                    }}
+                    style={styles.cancelButton}
                   >
                     Cancel
                   </button>
                 </div>
-              </div>
+              </>
             )}
           </div>
         </div>
@@ -1327,61 +771,12 @@ function Profile() {
         <div style={styles.sidebar}>
           <div style={styles.section}>
             <h3 style={styles.sectionTitle}>
-              <Settings size={18} style={{ color: '#8b5cf6' }} />
-              Quick Stats
+              <Calendar size={18} style={{ color: '#8b5cf6' }} />
+              Account Details
             </h3>
-            
-            <div style={styles.statCard}>
-              <h4 style={styles.statNumber}>{getProfileCompletionPercentage()}%</h4>
-              <p style={styles.statLabel}>Profile Complete</p>
-            </div>
-            
-            <div style={{ marginTop: '12px', ...styles.statCard }}>
-              <h4 style={styles.statNumber}>
-                {user?.years_experience || 0}
-              </h4>
-              <p style={styles.statLabel}>Years Experience</p>
-            </div>
-
-            <div style={{ marginTop: '12px', ...styles.statCard }}>
-              <h4 style={styles.statNumber}>
-                {new Date().getFullYear() - new Date(user?.created_at).getFullYear()}
-              </h4>
-              <p style={styles.statLabel}>Years on Platform</p>
-            </div>
-          </div>
-
-          <div style={styles.section}>
-            <h3 style={styles.sectionTitle}>
-              <Calendar size={18} style={{ color: '#06b6d4' }} />
-              Account Information
-            </h3>
-            
-            <div style={{ marginBottom: '12px' }}>
-              <label style={styles.label}>Member Since</label>
-              <p style={{ margin: 0, color: '#d1d5db', fontSize: '14px' }}>
-                {new Date(user?.created_at).toLocaleDateString('en-US', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
-                })}
-              </p>
-            </div>
-
-            <div style={{ marginBottom: '12px' }}>
-              <label style={styles.label}>Last Updated</label>
-              <p style={{ margin: 0, color: '#d1d5db', fontSize: '14px' }}>
-                {new Date(user?.updated_at).toLocaleDateString('en-US', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
-                })}
-              </p>
-            </div>
-
-            <div>
-              <label style={styles.label}>Account ID</label>
-              <p style={{ margin: 0, color: '#9ca3af', fontSize: '12px', fontFamily: 'monospace' }}>
+            <div style={styles.formGroup}>
+              <label style={styles.label}>User ID</label>
+              <p style={{ ...styles.value, fontFamily: 'monospace' }}>
                 {user?.id}
               </p>
             </div>
@@ -1435,5 +830,386 @@ function Profile() {
     </div>
   );
 }
+
+const styles = {
+  container: {
+    minHeight: '100vh',
+    backgroundColor: '#0F1116',
+    padding: '20px',
+    position: 'relative',
+    overflow: 'hidden'
+  },
+  notification: {
+    position: 'fixed',
+    top: '20px',
+    right: '20px',
+    padding: '16px 20px',
+    borderRadius: '8px',
+    color: 'white',
+    fontWeight: '500',
+    zIndex: 9999,
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+    animation: 'slideIn 0.3s ease-out'
+  },
+  notificationSuccess: {
+    backgroundColor: '#10b981',
+    border: '1px solid #059669'
+  },
+  notificationError: {
+    backgroundColor: '#ef4444',
+    border: '1px solid #dc2626'
+  },
+  header: {
+    position: 'relative',
+    zIndex: 10,
+    marginBottom: '20px'
+  },
+  headerTop: {
+    marginBottom: '20px'
+  },
+  title: {
+    fontSize: '28px',
+    fontWeight: 'bold',
+    color: 'white',
+    margin: 0,
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px'
+  },
+  profileHeader: {
+    background: 'rgba(26, 28, 32, 0.8)',
+    backdropFilter: 'blur(20px)',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    borderRadius: '16px',
+    padding: '30px',
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '20px',
+    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)'
+  },
+  avatarLarge: {
+    width: '80px',
+    height: '80px',
+    borderRadius: '50%',
+    background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+    color: 'white',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '32px',
+    fontWeight: 'bold',
+    flexShrink: 0,
+    boxShadow: '0 8px 24px rgba(59, 130, 246, 0.4)'
+  },
+  userDetails: {
+    flex: 1
+  },
+  userName: {
+    fontSize: '24px',
+    fontWeight: 'bold',
+    color: 'white',
+    margin: '0 0 8px 0'
+  },
+  userMeta: {
+    color: '#9ca3af',
+    fontSize: '14px',
+    margin: '0 0 16px 0'
+  },
+  progressContainer: {
+    marginTop: '12px'
+  },
+  progressLabel: {
+    fontSize: '14px',
+    color: '#d1d5db',
+    marginBottom: '6px'
+  },
+  progressBar: {
+    width: '200px',
+    height: '8px',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: '4px',
+    overflow: 'hidden'
+  },
+  progressFill: {
+    height: '100%',
+    background: 'linear-gradient(to right, #3b82f6, #2563eb)',
+    transition: 'width 0.3s ease'
+  },
+  content: {
+    position: 'relative',
+    zIndex: 10,
+    display: 'grid',
+    gridTemplateColumns: '2fr 1fr',
+    gap: '30px',
+    alignItems: 'start'
+  },
+  mainContent: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '20px'
+  },
+  section: {
+    background: 'rgba(26, 28, 32, 0.8)',
+    backdropFilter: 'blur(20px)',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    borderRadius: '16px',
+    padding: '24px',
+    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)'
+  },
+  sectionTitle: {
+    fontSize: '18px',
+    fontWeight: 'bold',
+    color: 'white',
+    margin: '0 0 16px 0',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px'
+  },
+  formGroup: {
+    marginBottom: '20px'
+  },
+  label: {
+    display: 'block',
+    color: '#d1d5db',
+    fontSize: '14px',
+    fontWeight: '500',
+    marginBottom: '8px'
+  },
+  input: {
+    width: '100%',
+    padding: '12px',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    borderRadius: '8px',
+    color: 'white',
+    fontSize: '14px',
+    transition: 'all 0.3s ease',
+    fontFamily: 'inherit'
+  },
+  value: {
+    color: '#9ca3af',
+    fontSize: '14px',
+    margin: 0
+  },
+  saveButton: {
+    backgroundColor: '#3b82f6',
+    color: 'white',
+    border: 'none',
+    padding: '10px 20px',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontSize: '14px',
+    fontWeight: '500',
+    transition: 'all 0.3s ease'
+  },
+  cancelButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    color: '#d1d5db',
+    border: '1px solid rgba(255, 255, 255, 0.2)',
+    padding: '10px 20px',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontSize: '14px',
+    fontWeight: '500',
+    transition: 'all 0.3s ease'
+  },
+  eyeButton: {
+    position: 'absolute',
+    right: '12px',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    background: 'transparent',
+    border: 'none',
+    color: '#9ca3af',
+    cursor: 'pointer',
+    padding: '4px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  changePasswordButton: {
+    backgroundColor: '#f59e0b',
+    color: 'white',
+    border: 'none',
+    padding: '8px 16px',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    fontSize: '13px',
+    fontWeight: '500',
+    transition: 'all 0.3s ease'
+  },
+  sidebar: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '20px'
+  },
+  statCard: {
+    background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(37, 99, 235, 0.08))',
+    border: '1px solid rgba(59, 130, 246, 0.25)',
+    backdropFilter: 'blur(20px)',
+    padding: '16px',
+    borderRadius: '12px',
+    textAlign: 'center'
+  },
+  statNumber: {
+    fontSize: '24px',
+    fontWeight: 'bold',
+    color: '#3b82f6',
+    margin: '0 0 4px 0'
+  },
+  statLabel: {
+    fontSize: '12px',
+    color: '#9ca3af',
+    margin: 0,
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px'
+  },
+  overviewSection: {
+    background: 'rgba(26, 28, 32, 0.8)',
+    backdropFilter: 'blur(20px)',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    borderRadius: '16px',
+    padding: '24px',
+    marginBottom: '20px',
+    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)'
+  },
+  overviewTitle: {
+    fontSize: '20px',
+    fontWeight: 'bold',
+    color: 'white',
+    margin: '0 0 20px 0',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px'
+  },
+  userInfoContainer: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+    gap: '20px',
+    marginBottom: '20px'
+  },
+  userInfoSection: {
+    background: 'linear-gradient(135deg, rgba(51, 65, 85, 0.12), rgba(30, 41, 59, 0.08))',
+    border: '1px solid rgba(51, 65, 85, 0.25)',
+    borderRadius: '12px',
+    padding: '16px',
+    backdropFilter: 'blur(20px)'
+  },
+  userInfoTitle: {
+    margin: '0 0 12px 0',
+    fontSize: '16px',
+    fontWeight: 'bold',
+    color: 'white',
+    display: 'flex',
+    alignItems: 'center'
+  },
+  userInfoGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '12px'
+  },
+  userInfoItem: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px'
+  },
+  userInfoLabel: {
+    fontSize: '12px',
+    color: '#9ca3af',
+    fontWeight: '500'
+  },
+  userInfoValue: {
+    fontSize: '14px',
+    color: '#d1d5db'
+  },
+  bioSection: {
+    marginTop: '12px',
+    paddingTop: '12px',
+    borderTop: '1px solid rgba(255, 255, 255, 0.1)'
+  },
+  bioText: {
+    fontSize: '14px',
+    color: '#d1d5db',
+    margin: '8px 0 0 0',
+    lineHeight: '1.5'
+  },
+  skillsContainer: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '8px'
+  },
+  languageTag: {
+    background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(37, 99, 235, 0.15))',
+    border: '1px solid rgba(59, 130, 246, 0.3)',
+    color: '#60a5fa',
+    padding: '6px 12px',
+    borderRadius: '6px',
+    fontSize: '13px',
+    fontWeight: '500'
+  },
+  topicTag: {
+    background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.15))',
+    border: '1px solid rgba(16, 185, 129, 0.3)',
+    color: '#34d399',
+    padding: '6px 12px',
+    borderRadius: '6px',
+    fontSize: '13px',
+    fontWeight: '500'
+  },
+  skillLevel: {
+    opacity: 0.7,
+    fontSize: '12px',
+    marginLeft: '4px'
+  },
+  emptySkills: {
+    fontSize: '14px',
+    color: '#6b7280',
+    fontStyle: 'italic',
+    margin: 0
+  },
+  statsContainer: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+    gap: '16px',
+    marginBottom: '20px'
+  },
+  dashboardStatCard: {
+    background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(37, 99, 235, 0.08))',
+    border: '1px solid rgba(59, 130, 246, 0.25)',
+    borderRadius: '12px',
+    padding: '16px',
+    textAlign: 'center',
+    backdropFilter: 'blur(20px)'
+  },
+  statValue: {
+    fontSize: '28px',
+    fontWeight: 'bold',
+    color: '#3b82f6',
+    margin: '0 0 4px 0'
+  },
+  statLabelDashboard: {
+    fontSize: '12px',
+    color: '#9ca3af',
+    margin: 0
+  },
+  awardsSection: {
+    marginTop: '32px',
+    marginBottom: '32px',
+    padding: '24px',
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    borderRadius: '16px',
+    border: '1px solid rgba(255, 255, 255, 0.1)'
+  },
+  activitySection: {
+    marginTop: '20px'
+  },
+  emptyState: {
+    textAlign: 'center',
+    color: '#6b7280',
+    padding: '40px 20px',
+    fontSize: '14px',
+    fontStyle: 'italic'
+  }
+};
 
 export default Profile;

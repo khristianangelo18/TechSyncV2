@@ -1,7 +1,89 @@
-// backend/controllers/challengeController.js
+// backend/controllers/challengeController.js - COMPLETE FILE WITH AWARDS INTEGRATION
 const supabase = require('../config/supabase');
+const { runTests } = require('../utils/codeEvaluator');
 
-// ========================= EXISTING ENDPOINTS (your original) =========================
+// Helper function to check weekly challenge awards after submission
+const checkWeeklyChallengeAwardAfterSubmission = async (userId, projectId) => {
+  try {
+    if (!projectId) return { awarded: false };
+
+    console.log('🎯 Checking weekly challenge award after submission');
+
+    // Get project programming language
+    const { data: project } = await supabase
+      .from('projects')
+      .select('id, title, project_languages(programming_language_id)')
+      .eq('id', projectId)
+      .single();
+
+    const languageId = project?.project_languages?.[0]?.programming_language_id;
+    if (!languageId) return { awarded: false };
+
+    // Get all challenges for this language
+    const { data: allChallenges } = await supabase
+      .from('coding_challenges')
+      .select('id')
+      .eq('programming_language_id', languageId)
+      .eq('is_active', true)
+      .is('project_id', null);
+
+    // Get user's passed attempts for this project
+    const { data: attempts } = await supabase
+      .from('challenge_attempts')
+      .select('challenge_id, status')
+      .eq('user_id', userId)
+      .eq('project_id', projectId)
+      .eq('status', 'passed');
+
+    const completedChallengeIds = [...new Set(attempts?.map(a => a.challenge_id) || [])];
+    const allChallengeIds = allChallenges?.map(c => c.id) || [];
+    const allCompleted = allChallengeIds.length > 0 && 
+                        allChallengeIds.every(id => completedChallengeIds.includes(id));
+
+    if (allCompleted) {
+      // Check if award already exists
+      const { data: existingAward } = await supabase
+        .from('user_awards')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('project_id', projectId)
+        .eq('award_type', 'weekly_challenge_master')
+        .single();
+
+      if (!existingAward) {
+        // Create award
+        const { data: newAward } = await supabase
+          .from('user_awards')
+          .insert({
+            user_id: userId,
+            project_id: projectId,
+            award_type: 'weekly_challenge_master',
+            award_title: '🌟 Challenge Champion',
+            award_description: 'Completed all weekly challenges for a project',
+            award_icon: 'star',
+            award_color: '#9333EA',
+            metadata: {
+              total_challenges: allChallengeIds.length,
+              completed_challenges: completedChallengeIds.length,
+              project_title: project?.title
+            }
+          })
+          .select()
+          .single();
+
+        console.log('✅ Challenge Champion award granted!', newAward);
+        return { awarded: true, award: newAward };
+      }
+    }
+
+    return { awarded: false };
+  } catch (error) {
+    console.error('Error checking weekly challenge award:', error);
+    return { awarded: false };
+  }
+};
+
+// ========================= CHALLENGE CRUD OPERATIONS =========================
 
 // Create new coding challenge
 const createChallenge = async (req, res) => {
@@ -85,25 +167,33 @@ const getChallenges = async (req, res) => {
       .select(`
         *,
         programming_languages (id, name, description),
-        users:created_by (id, username, full_name),
-        projects (id, title)
-      `)
+        users:created_by (id, username, full_name)
+      `, { count: 'exact' })
       .eq('is_active', true)
       .range(offset, offset + limit - 1)
       .order('created_at', { ascending: false });
 
-    if (difficulty_level) query = query.eq('difficulty_level', difficulty_level);
-    if (programming_language_id) query = query.eq('programming_language_id', programming_language_id);
-    if (created_by) query = query.eq('created_by', created_by);
-
-    if (project_id) {
-      if (project_id === 'null') query = query.is('project_id', null);
-      else query = query.eq('project_id', project_id);
+    if (difficulty_level) {
+      query = query.eq('difficulty_level', difficulty_level);
     }
 
-    if (search) query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%`);
+    if (programming_language_id) {
+      query = query.eq('programming_language_id', parseInt(programming_language_id, 10));
+    }
 
-    const { data: challenges, error } = await query;
+    if (created_by) {
+      query = query.eq('created_by', created_by);
+    }
+
+    if (project_id) {
+      query = query.eq('project_id', project_id);
+    }
+
+    if (search) {
+      query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%`);
+    }
+
+    const { data: challenges, error, count } = await query;
 
     if (error) {
       return res.status(500).json({ success: false, message: 'Failed to fetch challenges', error: error.message });
@@ -113,7 +203,12 @@ const getChallenges = async (req, res) => {
       success: true,
       data: {
         challenges,
-        pagination: { page: parseInt(page, 10), limit: parseInt(limit, 10), total: challenges.length }
+        pagination: {
+          page: parseInt(page, 10),
+          limit: parseInt(limit, 10),
+          total: count,
+          totalPages: Math.ceil(count / limit)
+        }
       }
     });
   } catch (error) {
@@ -275,22 +370,24 @@ const getChallengesByLanguage = async (req, res) => {
   }
 };
 
+// ========================= USER ATTEMPT OPERATIONS =========================
+
 // Get user's challenge attempts
 const getUserAttempts = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { page = 1, limit = 10 } = req.query;
+    const { page = 1, limit = 20 } = req.query;
     const offset = (page - 1) * limit;
 
-    const { data: attempts, error } = await supabase
+    const { data: attempts, error, count } = await supabase
       .from('challenge_attempts')
       .select(`
         *,
-        coding_challenges (id, title, difficulty_level),
+        coding_challenges (id, title, difficulty_level, programming_language_id),
         projects (id, title)
-      `)
+      `, { count: 'exact' })
       .eq('user_id', userId)
-      .order('started_at', { ascending: false })
+      .order('submitted_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
     if (error) {
@@ -301,7 +398,12 @@ const getUserAttempts = async (req, res) => {
       success: true,
       data: {
         attempts,
-        pagination: { page: parseInt(page, 10), limit: parseInt(limit, 10), total: attempts.length }
+        pagination: {
+          page: parseInt(page, 10),
+          limit: parseInt(limit, 10),
+          total: count,
+          totalPages: Math.ceil(count / limit)
+        }
       }
     });
   } catch (error) {
@@ -310,42 +412,38 @@ const getUserAttempts = async (req, res) => {
   }
 };
 
-// Get user's challenge statistics
+// Get user statistics
 const getUserStats = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    const { data: attemptStats, error: statsError } = await supabase
+    const { data: attempts, error } = await supabase
       .from('challenge_attempts')
-      .select('status, score')
+      .select('status, score, difficulty_level:coding_challenges(difficulty_level)')
       .eq('user_id', userId);
 
-    if (statsError) {
-      return res.status(500).json({ success: false, message: 'Failed to fetch statistics', error: statsError.message });
+    if (error) {
+      return res.status(500).json({ success: false, message: 'Failed to fetch statistics', error: error.message });
     }
 
-    const totalAttempts = attemptStats.length;
-    const passedAttempts = attemptStats.filter(a => a.status === 'passed').length;
-    const averageScore = totalAttempts > 0
-      ? attemptStats.reduce((sum, a) => sum + (a.score || 0), 0) / totalAttempts
-      : 0;
+    const stats = {
+      total_attempts: attempts.length,
+      passed: attempts.filter(a => a.status === 'passed').length,
+      failed: attempts.filter(a => a.status === 'failed').length,
+      pending: attempts.filter(a => a.status === 'pending').length,
+      average_score: attempts.length > 0
+        ? Math.round(attempts.reduce((sum, a) => sum + (a.score || 0), 0) / attempts.length)
+        : 0
+    };
 
-    res.json({
-      success: true,
-      data: {
-        totalAttempts,
-        passedAttempts,
-        passRate: totalAttempts > 0 ? (passedAttempts / totalAttempts) * 100 : 0,
-        averageScore: Math.round(averageScore * 100) / 100
-      }
-    });
+    res.json({ success: true, data: stats });
   } catch (error) {
     console.error('Get user stats error:', error);
     res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
   }
 };
 
-// Get attempt details
+// Get specific attempt details
 const getAttemptDetails = async (req, res) => {
   try {
     const { attemptId } = req.params;
@@ -355,7 +453,7 @@ const getAttemptDetails = async (req, res) => {
       .from('challenge_attempts')
       .select(`
         *,
-        coding_challenges (id, title, description, test_cases),
+        coding_challenges (*,  programming_languages (id, name)),
         projects (id, title)
       `)
       .eq('id', attemptId)
@@ -373,176 +471,226 @@ const getAttemptDetails = async (req, res) => {
   }
 };
 
-// ========================= ADAPTIVE SELECTION (NEW) =========================
+// ========================= SIMPLE CHALLENGE SUBMISSION (FOR SOLO WEEKLY CHALLENGES) =========================
 
-const mapDifficultyToElo = (level) => {
-  const lv = String(level || '').toLowerCase();
-  if (lv.includes('expert')) return 1600;
-  if (lv.includes('hard') || lv.includes('advanced')) return 1450;
-  if (lv.includes('medium') || lv.includes('intermediate')) return 1250;
-  return 1100;
-};
+// Submit simple challenge (for solo projects weekly challenges)
+const submitSimpleChallenge = async (req, res) => {
+  try {
+    const { challenge_id, submitted_code, notes, language, project_id, attempt_type } = req.body;
+    const userId = req.user.id;
 
-async function getPrimaryLanguageId(userId) {
-  const { data: rows } = await supabase
-    .from('user_programming_languages')
-    .select('language_id, proficiency_level, years_experience, programming_languages(name)')
-    .eq('user_id', userId);
+    console.log('📝 Simple challenge submission:', {
+      challenge_id,
+      userId,
+      project_id,
+      attempt_type,
+      code_length: submitted_code?.length
+    });
 
-  if (!rows?.length) return null;
-
-  const scoreRow = (r) => {
-    const level = String(r.proficiency_level || '').toLowerCase();
-    const levelScore = level === 'expert' ? 4 : level === 'advanced' ? 3 : level === 'intermediate' ? 2 : 1;
-    const years = Number(r.years_experience) || 0;
-    return levelScore * 10 + Math.min(6, years);
-  };
-
-  rows.sort((a, b) => scoreRow(b) - scoreRow(a));
-  return rows[0].language_id || null;
-}
-
-async function getUserElo(userId, languageId) {
-  const { data: row } = await supabase
-    .from('user_skill_ratings')
-    .select('rating, attempts')
-    .eq('user_id', userId)
-    .eq('programming_language_id', languageId)
-    .single();
-
-  if (row) return row;
-
-  await supabase.from('user_skill_ratings').upsert({
-    user_id: userId,
-    programming_language_id: languageId,
-    rating: 1200,
-    attempts: 0
-  });
-
-  return { rating: 1200, attempts: 0 };
-}
-
-async function getChallengeRatings(challengeIds, challengesById) {
-  if (!challengeIds.length) return new Map();
-
-  const { data: rows } = await supabase
-    .from('challenge_ratings')
-    .select('challenge_id, rating, attempts, pass_count')
-    .in('challenge_id', challengeIds);
-
-  const map = new Map();
-  for (const id of challengeIds) {
-    const row = rows?.find(r => r.challenge_id === id);
-    if (row) {
-      map.set(id, row);
-    } else {
-      const ch = challengesById.get(id);
-      map.set(id, {
-        challenge_id: id,
-        rating: mapDifficultyToElo(ch?.difficulty_level),
-        attempts: 0,
-        pass_count: 0
+    // Validate submission
+    if (!submitted_code || submitted_code.trim().length < 10) {
+      return res.status(400).json({
+        success: false,
+        message: 'Code submission is too short. Please provide a more complete solution.'
       });
     }
-  }
-  return map;
-}
 
+    // Get challenge details
+    const { data: challenge, error: challengeError } = await supabase
+      .from('coding_challenges')
+      .select(`
+        id, title, description, difficulty_level, time_limit_minutes,
+        test_cases, expected_solution, programming_language_id,
+        programming_languages (id, name)
+      `)
+      .eq('id', challenge_id)
+      .single();
+
+    if (challengeError || !challenge) {
+      return res.status(404).json({
+        success: false,
+        message: 'Challenge not found'
+      });
+    }
+
+    // Run tests if test cases exist
+    let score = 50;
+    let status = 'pending';
+    let feedback = 'Your submission has been received and is being evaluated.';
+    let testResults = null;
+
+    if (challenge.test_cases && Array.isArray(challenge.test_cases)) {
+      try {
+        const evalResult = await runTests(
+          submitted_code,
+          challenge.test_cases,
+          language || challenge.programming_languages?.name?.toLowerCase() || 'javascript'
+        );
+
+        score = evalResult.score || 0;
+        status = score >= 60 ? 'passed' : 'failed';
+        testResults = evalResult.results;
+        feedback = evalResult.feedback || `Score: ${score}%. ${status === 'passed' ? 'Great job!' : 'Keep practicing!'}`;
+      } catch (evalError) {
+        console.error('Code evaluation error:', evalError);
+        score = 0;
+        status = 'failed';
+        feedback = 'Error evaluating your code. Please check your syntax and try again.';
+      }
+    }
+
+    // Create challenge attempt record
+    const { data: attempt, error: attemptError } = await supabase
+      .from('challenge_attempts')
+      .insert({
+        challenge_id,
+        user_id: userId,
+        project_id: project_id || null,
+        submitted_code,
+        status,
+        score,
+        feedback,
+        test_results: testResults,
+        started_at: new Date().toISOString(),
+        submitted_at: new Date().toISOString(),
+        reviewed_at: new Date().toISOString(),
+        solve_time_minutes: 0
+      })
+      .select()
+      .single();
+
+    if (attemptError) {
+      console.error('Error creating challenge attempt:', attemptError);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to create challenge attempt',
+        error: attemptError.message
+      });
+    }
+
+    // Check for weekly challenge award if this is a solo project challenge and passed
+    if (status === 'passed' && project_id) {
+      const awardResult = await checkWeeklyChallengeAwardAfterSubmission(userId, project_id);
+      if (awardResult.awarded) {
+        console.log('🎉 User earned Challenge Champion award!');
+        return res.json({
+          success: true,
+          data: {
+            attempt,
+            award: awardResult.award,
+            awardMessage: 'Congratulations! You earned the Challenge Champion award! 🌟'
+          }
+        });
+      }
+    }
+
+    // Update skill ratings (if implemented)
+    try {
+      if (challenge.programming_language_id) {
+        await updateSkillRatings(userId, challenge.programming_language_id, challenge_id, status === 'passed');
+      }
+    } catch (ratingError) {
+      console.error('Error updating skill ratings:', ratingError);
+      // Don't fail the request if rating update fails
+    }
+
+    res.json({
+      success: true,
+      data: { attempt }
+    });
+
+  } catch (error) {
+    console.error('💥 Submit simple challenge error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+// ========================= ADAPTIVE CHALLENGE SELECTION =========================
+
+// Get next challenge (adaptive difficulty)
 const getNextChallenge = async (req, res) => {
   try {
     const userId = req.user.id;
-    let { programming_language_id, project_id } = req.query;
-    programming_language_id = programming_language_id ? parseInt(programming_language_id, 10) : null;
+    const { programming_language_id, project_id } = req.query;
 
-    if (!programming_language_id) {
-      programming_language_id = await getPrimaryLanguageId(userId);
-    }
+    // Get user's skill rating
+    const { data: userSkill } = await supabase
+      .from('user_skill_ratings')
+      .select('rating, attempts')
+      .eq('user_id', userId)
+      .eq('programming_language_id', programming_language_id)
+      .single();
 
+    const userRating = userSkill?.rating || 1200;
+
+    // Get challenges near user's skill level
     let query = supabase
       .from('coding_challenges')
       .select(`
-        id, title, description, difficulty_level, programming_language_id, project_id,
-        programming_languages ( id, name )
+        *,
+        programming_languages (id, name),
+        challenge_ratings (rating)
       `)
-      .eq('is_active', true);
+      .eq('is_active', true)
+      .eq('programming_language_id', programming_language_id);
 
-    if (programming_language_id) query = query.eq('programming_language_id', programming_language_id);
-    if (project_id) query = query.or(`project_id.is.null,project_id.eq.${project_id}`);
-    else query = query.is('project_id', null);
-
-    const { data: candidates, error } = await query;
-    if (error) {
-      return res.status(500).json({ success: false, message: 'Failed to fetch candidates', error: error.message });
-    }
-    if (!candidates?.length) {
-      return res.json({ success: true, data: null, reason: 'No challenges available for this filter' });
+    if (project_id) {
+      query = query.or(`project_id.is.null,project_id.eq.${project_id}`);
+    } else {
+      query = query.is('project_id', null);
     }
 
-    const since = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
-    const { data: recentAttempts } = await supabase
-      .from('challenge_attempts')
-      .select('challenge_id, status, started_at')
-      .eq('user_id', userId)
-      .gte('started_at', since);
+    const { data: challenges, error } = await query;
 
-    const recentlyAttempted = new Set((recentAttempts || []).map(a => a.challenge_id));
-    const filtered = candidates.filter(c => !recentlyAttempted.has(c.id));
-    const finalCandidates = filtered.length ? filtered : candidates;
+    if (error || !challenges || challenges.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'No challenges available'
+      });
+    }
 
-    const byId = new Map(finalCandidates.map(c => [c.id, c]));
-    const challengeIds = finalCandidates.map(c => c.id);
-    const crMap = await getChallengeRatings(challengeIds, byId);
-    const { rating: userRating, attempts: userAttempts } = await getUserElo(
-      userId,
-      programming_language_id || finalCandidates[0].programming_language_id
-    );
+    // Find best match based on rating
+    const bestChallenge = challenges.sort((a, b) => {
+      const ratingA = a.challenge_ratings?.[0]?.rating || mapDifficultyToElo(a.difficulty_level);
+      const ratingB = b.challenge_ratings?.[0]?.rating || mapDifficultyToElo(b.difficulty_level);
+      return Math.abs(ratingA - userRating) - Math.abs(ratingB - userRating);
+    })[0];
 
-    const totalUserLangAttempts = userAttempts || (recentAttempts?.length || 0);
-    const scored = finalCandidates.map(ch => {
-      const cr = crMap.get(ch.id);
-      const fit = 1000 - Math.abs((cr?.rating || 1200) - userRating);
-      const globalTries = (cr?.attempts || 0);
-      const explore = Math.log((totalUserLangAttempts + 2)) / Math.sqrt(globalTries + 1);
-      const score = fit + (explore * 50);
-      return {
-        challenge: ch,
-        score,
-        details: {
-          fitDelta: Math.abs((cr?.rating || 1200) - userRating),
-          estChallengeElo: cr?.rating || mapDifficultyToElo(ch.difficulty_level),
-          estUserElo: userRating,
-          exploreBoost: Number((explore * 50).toFixed(1))
-        }
-      };
+    res.json({
+      success: true,
+      data: { challenge: bestChallenge, userRating }
     });
 
-    scored.sort((a, b) => (b.score - a.score) || (Math.random() - 0.5));
-    const best = scored[0];
-
-    const languageName = best.challenge.programming_languages?.name || 'this language';
-    const diffLabel = best.challenge.difficulty_level || 'unknown';
-    const reason = [
-      `Targeting your level in ${languageName} (Δ=${Math.round(best.details.fitDelta)} ELO)`,
-      `Difficulty: ${diffLabel}`,
-      best.details.exploreBoost > 0 ? 'Exploring a less-seen challenge to broaden coverage' : 'High fit based on your history'
-    ].join(' • ');
-
-    return res.json({ success: true, data: { challenge: best.challenge, reason, diagnostics: best.details } });
-  } catch (err) {
-    console.error('getNextChallenge error:', err);
-    return res.status(500).json({ success: false, message: 'Internal server error', error: err.message });
+  } catch (error) {
+    console.error('Get next challenge error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
   }
 };
 
-const updateSkillRatings = async ({ userId, challengeId, programming_language_id, pass }) => {
+// ========================= SKILL RATING SYSTEM =========================
+
+// Map difficulty to initial ELO rating
+const mapDifficultyToElo = (difficulty) => {
+  const map = { easy: 1000, medium: 1200, hard: 1400, expert: 1600 };
+  return map[difficulty?.toLowerCase()] || 1200;
+};
+
+// Update skill ratings using ELO system
+const updateSkillRatings = async (userId, programming_language_id, challengeId, pass) => {
   const Kbase = 32;
 
   const { data: u } = await supabase
     .from('user_skill_ratings').select('rating, attempts')
     .eq('user_id', userId).eq('programming_language_id', programming_language_id).single();
 
-  const userRating = u?.rating ?? 1200;
-  const userAttempts = u?.attempts ?? 0;
+  const userRating = u?.rating || 1200;
+  const userAttempts = u?.attempts || 0;
 
   const { data: c } = await supabase
     .from('challenge_ratings').select('rating, attempts, pass_count')
@@ -593,7 +741,8 @@ module.exports = {
   getUserAttempts,
   getUserStats,
   getAttemptDetails,
-  // new
+  submitSimpleChallenge,
   getNextChallenge,
-  updateSkillRatings
+  updateSkillRatings,
+  checkWeeklyChallengeAwardAfterSubmission
 };

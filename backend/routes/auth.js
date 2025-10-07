@@ -1,3 +1,4 @@
+// backend/routes/auth.js - COMPLETE FILE
 const express = require('express');
 const router = express.Router();
 const { body, validationResult } = require('express-validator');
@@ -129,11 +130,47 @@ const changePasswordValidation = [
     .withMessage('New password must contain at least one lowercase letter, one uppercase letter, and one number')
 ];
 
-// Routes
+// PASSWORD RESET VALIDATION RULES - ADD THESE
+const requestPasswordResetValidation = [
+  body('email')
+    .notEmpty()
+    .withMessage('Email is required')
+    .isEmail()
+    .withMessage('Please provide a valid email')
+    .normalizeEmail()
+];
+
+const resetPasswordValidation = [
+  body('token')
+    .notEmpty()
+    .withMessage('Reset token is required'),
+  body('newPassword')
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters')
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
+    .withMessage('Password must contain uppercase, lowercase, and number')
+];
+
+// EXISTING ROUTES
 router.post('/register', registerValidation, handleValidationErrors, authController.register);
 router.post('/login', loginValidation, handleValidationErrors, authController.login);
 router.get('/profile', authMiddleware, authController.getProfile);
 router.put('/profile', authMiddleware, updateProfileValidation, handleValidationErrors, authController.updateProfile);
 router.put('/change-password', authMiddleware, changePasswordValidation, handleValidationErrors, authController.changePassword);
+
+// PASSWORD RESET ROUTES - ADD THESE TWO ROUTES
+router.post(
+  '/forgot-password',
+  requestPasswordResetValidation,
+  handleValidationErrors,
+  authController.requestPasswordReset
+);
+
+router.post(
+  '/reset-password',
+  resetPasswordValidation,
+  handleValidationErrors,
+  authController.resetPassword
+);
 
 module.exports = router;

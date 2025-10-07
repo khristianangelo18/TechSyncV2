@@ -36,7 +36,7 @@ class EmailService {
         const mailOptions = {
             from: `"TechSync Platform" <${process.env.GMAIL_USER}>`,
             to: email,
-            subject: '🔐 Password Reset Request - TechSync',
+            subject: 'Password Reset Request - TechSync',
             html: `
                 <!DOCTYPE html>
                 <html>
@@ -132,7 +132,7 @@ class EmailService {
                 <body>
                     <div class="container">
                         <div class="header">
-                            <h1>🔐 Password Reset Request</h1>
+                            <h1>Password Reset Request</h1>
                             <p style="color: rgba(255,255,255,0.9); margin: 0;">TechSync Platform</p>
                         </div>
                         

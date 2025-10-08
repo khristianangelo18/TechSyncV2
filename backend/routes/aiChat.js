@@ -1,10 +1,8 @@
-// backend/routes/aiChat.js - UPDATED WITH CORRECT API
+// backend/routes/aiChat.js - ENHANCED WITH TASKS (Based on your existing structure)
 const express = require('express');
-const { GoogleGenAI } = require('@google/genai'); // Updated import
+const { GoogleGenAI } = require('@google/genai');
 const auth = require('../middleware/auth');
-
-// Import your existing database configuration
-const db = require('../config/database');
+const supabase = require('../config/supabase'); // FIXED: Use supabase instead of database
 
 const router = express.Router();
 
@@ -24,7 +22,6 @@ const initializeGeminiAI = async () => {
       apiKey: process.env.GEMINI_API_KEY
     });
     
-    // Test the connection with a simple request
     try {
       const testResponse = await genAI.models.generateContent({
         model: "gemini-2.5-flash",
@@ -32,12 +29,11 @@ const initializeGeminiAI = async () => {
       });
       
       console.log('✅ Gemini AI initialized successfully');
-      availableModels = ['gemini-2.5-flash', 'gemini-1.5-pro', 'gemini-1.5-flash']; // Common models
+      availableModels = ['gemini-2.5-flash', 'gemini-1.5-pro', 'gemini-1.5-flash'];
       
     } catch (testError) {
       console.error('❌ Error testing Gemini AI:', testError.message);
       
-      // Try alternative models
       const alternativeModels = ['gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-pro'];
       for (const model of alternativeModels) {
         try {
@@ -60,16 +56,12 @@ const initializeGeminiAI = async () => {
   }
 };
 
-// Initialize on startup
 initializeGeminiAI();
 
-// Helper function to get the best available model
 const getBestAvailableModel = () => {
   if (!genAI || availableModels.length === 0) {
     return null;
   }
-
-  // Return the first available model
   return availableModels[0];
 };
 
@@ -77,18 +69,16 @@ const getBestAvailableModel = () => {
 const normalizeProgrammingLanguage = (langName) => {
   if (!langName || typeof langName !== 'string') return null;
   
-  // AGGRESSIVE cleaning - remove all markdown and formatting
   let cleaned = langName
     .toLowerCase()
     .trim()
-    .replace(/^\*\*\s*/, '')        // Remove ** from start  
-    .replace(/\s*\*\*$/, '')        // Remove ** from end
-    .replace(/\*\*/g, '')           // Remove any remaining **
-    .replace(/[()[```{}]/g, '')      // Remove brackets
-    .replace(/\s+/g, ' ')           // Normalize whitespace
+    .replace(/^\*\*\s*/, '')
+    .replace(/\s*\*\*$/, '')
+    .replace(/\*\*/g, '')
+    .replace(/[()[```{}]/g, '')
+    .replace(/\s+/g, ' ')
     .trim();
 
-  // Language mapping - map frameworks to core languages
   const LANGUAGE_MAPPING = {
     'javascript': 'JavaScript',
     'js': 'JavaScript', 
@@ -102,49 +92,38 @@ const normalizeProgrammingLanguage = (langName) => {
     'next': 'JavaScript',
     'nextjs': 'JavaScript',
     'next.js': 'JavaScript',
-    
     'python': 'Python',
     'django': 'Python',
     'flask': 'Python',
     'fastapi': 'Python',
-    
     'java': 'Java',
     'spring': 'Java',
-    
     'c++': 'C++',
     'cpp': 'C++',
     'c': 'C',
-    
     'c#': 'C#',
     'csharp': 'C#',
     'dotnet': 'C#',
     '.net': 'C#',
-    
     'php': 'PHP',
     'laravel': 'PHP',
-    
     'ruby': 'Ruby',
     'rails': 'Ruby',
-    
     'go': 'Go',
     'golang': 'Go',
-    
     'rust': 'Rust',
     'swift': 'Swift',
     'kotlin': 'Kotlin',
     'typescript': 'TypeScript',
     'ts': 'TypeScript',
-    
     'html': 'HTML',
     'css': 'CSS',
     'scss': 'CSS',
     'sass': 'CSS',
-    
     'sql': 'SQL',
     'mysql': 'SQL',
     'postgresql': 'SQL',
     'postgres': 'SQL',
-    
     'dart': 'Dart',
     'flutter': 'Dart'
   };
@@ -152,7 +131,7 @@ const normalizeProgrammingLanguage = (langName) => {
   return LANGUAGE_MAPPING[cleaned] || cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
 };
 
-// Test endpoint to check API key and models
+// Test endpoint
 router.get('/test-api', async (req, res) => {
   try {
     if (!process.env.GEMINI_API_KEY) {
@@ -163,7 +142,6 @@ router.get('/test-api', async (req, res) => {
       return res.json({ error: 'Gemini AI not initialized' });
     }
 
-    // Test with a simple request
     const testResponse = await genAI.models.generateContent({
       model: getBestAvailableModel() || "gemini-2.5-flash",
       contents: "Hello"
@@ -185,7 +163,7 @@ router.get('/test-api', async (req, res) => {
   }
 });
 
-// AI Chat endpoint
+// ENHANCED: AI Chat endpoint with task breakdown support
 router.post('/', auth, async (req, res) => {
   try {
     if (!genAI) {
@@ -208,6 +186,7 @@ router.post('/', auth, async (req, res) => {
     const { message, conversationHistory = [] } = req.body;
     const userId = req.user.id;
 
+    // ENHANCED: Include weekly task breakdown in the prompt
     const systemPrompt = `You are a helpful coding project assistant. When suggesting project ideas, format them clearly with:
 - **Project Name** as a bold header
 - Brief description  
@@ -215,6 +194,16 @@ router.post('/', auth, async (req, res) => {
 - Technologies: JavaScript (ONLY list ONE core programming language - JavaScript, Python, Java, C++, etc. NO frameworks)
 - Time Estimate: (e.g. "2-3 weeks")
 - Difficulty: (Easy, Medium, Hard, or Expert)
+- Weekly Task Breakdown: (include clear weekly goals)
+
+Weekly Task Breakdown Format:
+Week 1: Task Title
+- Subtask description
+- Expected outcome
+
+Week 2: Task Title
+- Subtask description
+- Expected outcome
 
 CRITICAL: For Technologies, only list ONE core programming language without any frameworks:
 - Use "JavaScript" (NOT React, Node.js, Express)
@@ -252,66 +241,67 @@ User message: ${message}`;
   }
 });
 
-// FIXED: Project creation - NEVER create new programming languages
+// ENHANCED: Project creation with tasks - using Supabase (no raw SQL)
 router.post('/create-project', auth, async (req, res) => {
-  const client = await db.connect();
-  
   try {
     const userId = req.user.id;
     const { projectData } = req.body;
 
     console.log('🔄 Creating project from AI response:', projectData.title);
     console.log('📊 Raw programming languages from frontend:', projectData.programming_languages);
+    console.log('📋 Tasks to create:', projectData.tasks?.length || 0);
 
-    await client.query('BEGIN');
+    // Step 1: Create main project
+    const { data: project, error: projectError } = await supabase
+      .from('projects')
+      .insert({
+        owner_id: userId,
+        title: projectData.title.trim(),
+        description: projectData.description.trim(),
+        detailed_description: projectData.detailed_description || null,
+        required_experience_level: projectData.required_experience_level || null,
+        maximum_members: projectData.maximum_members || 1,
+        estimated_duration_weeks: projectData.estimated_duration_weeks || null,
+        difficulty_level: projectData.difficulty_level || null,
+        github_repo_url: projectData.github_repo_url || null,
+        deadline: projectData.deadline || null,
+        status: 'recruiting'
+      })
+      .select()
+      .single();
 
-    // Create main project
-    const projectQuery = `
-      INSERT INTO projects (
-        owner_id, title, description, detailed_description, 
-        required_experience_level, maximum_members, estimated_duration_weeks,
-        difficulty_level, github_repo_url, deadline, status, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())
-      RETURNING *
-    `;
-    
-    const projectValues = [
-      userId,
-      projectData.title.trim(),
-      projectData.description.trim(),
-      projectData.detailed_description || null,
-      projectData.required_experience_level || null,
-      projectData.maximum_members || 1,
-      projectData.estimated_duration_weeks || null,
-      projectData.difficulty_level || null,
-      projectData.github_repo_url || null,
-      projectData.deadline || null,
-      'recruiting'
-    ];
+    if (projectError) {
+      console.error('💥 Error creating project:', projectError);
+      throw projectError;
+    }
 
-    const projectResult = await client.query(projectQuery, projectValues);
-    const project = projectResult.rows[0];
     const projectId = project.id;
+    console.log('✅ Project created:', projectId);
 
-    // Get ALL existing programming languages from database
-    const existingLangsResult = await client.query(
-      'SELECT id, name FROM programming_languages WHERE is_active = true ORDER BY id'
-    );
-    const existingLanguages = existingLangsResult.rows;
-    
-    console.log('📊 Database has', existingLanguages.length, 'active languages');
-    console.log('📋 Sample languages:', existingLanguages.slice(0, 10).map(l => `${l.id}:${l.name}`).join(', '));
+    // Step 2: Get ALL existing programming languages
+    const { data: existingLanguages, error: langError } = await supabase
+      .from('programming_languages')
+      .select('id, name')
+      .eq('is_active', true)
+      .order('id');
 
-    // Create lookup maps
+    if (langError) {
+      console.error('Error fetching languages:', langError);
+    }
+
+    console.log('📊 Database has', existingLanguages?.length || 0, 'active languages');
+
     const langByName = new Map();
     const langByLowerName = new Map();
     
-    existingLanguages.forEach(lang => {
-      langByName.set(lang.name, lang);
-      langByLowerName.set(lang.name.toLowerCase(), lang);
-    });
+    if (existingLanguages) {
+      existingLanguages.forEach(lang => {
+        langByName.set(lang.name, lang);
+        langByLowerName.set(lang.name.toLowerCase(), lang);
+      });
+    }
 
-    // Process programming languages - STRICT MODE
+    // Step 3: Process programming languages (your existing strict logic)
     const languagesAdded = [];
     const processedNames = new Set();
 
@@ -321,196 +311,234 @@ router.post('/create-project', auth, async (req, res) => {
       for (const rawLangName of projectData.programming_languages) {
         if (!rawLangName || typeof rawLangName !== 'string') continue;
 
-        // Clean the language name
         const cleanedName = rawLangName
           .trim()
-          .replace(/^\*\*\s*/, '')        // Remove ** prefix
-          .replace(/\s*\*\*$/, '')        // Remove ** suffix  
-          .replace(/\*\*/g, '')           // Remove all **
-          .replace(/[()[```{}]/g, '')      // Remove brackets
+          .replace(/^\*\*\s*/, '')
+          .replace(/\s*\*\*$/, '')
+          .replace(/\*\*/g, '')
+          .replace(/[()[```{}]/g, '')
           .trim();
 
-        console.log(`Cleaning language: "${rawLangName}" -> "${cleanedName}"`);
-
-        // Normalize using mapping
         const normalizedName = normalizeProgrammingLanguage(cleanedName);
-        console.log(`Normalized: "${cleanedName}" -> "${normalizedName}"`);
 
-        // Skip duplicates
         if (processedNames.has(normalizedName?.toLowerCase())) {
-          console.log(`Skipping duplicate: ${normalizedName}`);
           continue;
         }
 
-        // STRICT: Only use existing languages from database
         let dbLang = langByName.get(normalizedName);
         if (!dbLang) {
           dbLang = langByLowerName.get(normalizedName?.toLowerCase());
         }
 
         if (dbLang) {
-          console.log(`✓ FOUND in database: "${normalizedName}" -> ID:${dbLang.id} Name:"${dbLang.name}"`);
+          console.log(`✓ FOUND in database: "${normalizedName}" -> ID:${dbLang.id}`);
           
           processedNames.add(normalizedName.toLowerCase());
           const isPrimary = languagesAdded.length === 0;
           
           try {
-            await client.query(
-              'INSERT INTO project_languages (project_id, language_id, is_primary, required_level) VALUES ($1, $2, $3, $4)',
-              [projectId, dbLang.id, isPrimary, 'intermediate']
-            );
+            const { error: linkError } = await supabase
+              .from('project_languages')
+              .insert({
+                project_id: projectId,
+                language_id: dbLang.id,
+                is_primary: isPrimary,
+                required_level: 'intermediate'
+              });
 
-            languagesAdded.push({
-              id: dbLang.id,
-              name: dbLang.name,
-              is_primary: isPrimary
-            });
-            
-            console.log(`✓ Added to project: "${dbLang.name}" (primary: ${isPrimary})`);
+            if (linkError) {
+              console.error(`Error linking language "${dbLang.name}":`, linkError);
+            } else {
+              languagesAdded.push({
+                id: dbLang.id,
+                name: dbLang.name,
+                is_primary: isPrimary
+              });
+            }
           } catch (linkError) {
             console.error(`Error linking language "${dbLang.name}":`, linkError);
           }
         } else {
-          // CRITICAL: NEVER CREATE NEW LANGUAGES
           console.log(`X NOT FOUND in database: "${normalizedName}"`);
           console.log('X SKIPPING - WILL NOT CREATE NEW LANGUAGE');
-          
-          // Log available languages for debugging
-          console.log('Available languages:', existingLanguages.slice(0, 10).map(l => l.name).join(', ') + '...');
         }
       }
     }
 
-    // Ensure at least one language (default to JavaScript)
+    // Step 4: Ensure at least one language (default to JavaScript)
     if (languagesAdded.length === 0) {
       console.log('⚠️ No languages added, adding default JavaScript...');
       
       const jsLang = langByName.get('JavaScript') || langByLowerName.get('javascript');
       if (jsLang) {
-        await client.query(
-          'INSERT INTO project_languages (project_id, language_id, is_primary, required_level) VALUES ($1, $2, $3, $4)',
-          [projectId, jsLang.id, true, 'intermediate']
-        );
-        languagesAdded.push({
-          id: jsLang.id,
-          name: jsLang.name,
-          is_primary: true
-        });
-        console.log('✅ Added default JavaScript');
+        const { error: jsError } = await supabase
+          .from('project_languages')
+          .insert({
+            project_id: projectId,
+            language_id: jsLang.id,
+            is_primary: true,
+            required_level: 'intermediate'
+          });
+
+        if (!jsError) {
+          languagesAdded.push({
+            id: jsLang.id,
+            name: jsLang.name,
+            is_primary: true
+          });
+          console.log('✅ Added default JavaScript');
+        }
       }
     }
 
     console.log('🎉 Final languages added:', languagesAdded.map(l => `${l.name}${l.is_primary ? '(primary)' : ''}`));
 
-    // Handle topics (can create new ones)
+    // Step 5: Handle topics (can create new ones)
     if (projectData.topics && Array.isArray(projectData.topics)) {
       for (let i = 0; i < projectData.topics.length; i++) {
         const topicName = projectData.topics[i];
         if (!topicName || typeof topicName !== 'string') continue;
 
         // Find or create topic
-        let topicResult = await client.query(
-          'SELECT id FROM topics WHERE LOWER(name) = LOWER($1)',
-          [topicName.trim()]
-        );
+        let { data: topic, error: topicFindError } = await supabase
+          .from('topics')
+          .select('id')
+          .ilike('name', topicName.trim())
+          .single();
 
-        let topicId;
-        if (topicResult.rows.length === 0) {
-          const newTopicResult = await client.query(
-                        'INSERT INTO topics (name, is_predefined, created_by, created_at, updated_at) VALUES ($1, $2, $3, NOW(), NOW()) RETURNING id',
-            [topicName.trim(), false, userId]
-          );
-          topicId = newTopicResult.rows[0].id;
-        } else {
-          topicId = topicResult.rows[0].id;
+        if (topicFindError || !topic) {
+          const { data: newTopic, error: topicCreateError } = await supabase
+            .from('topics')
+            .insert({
+              name: topicName.trim(),
+              is_predefined: false,
+              created_by: userId
+            })
+            .select()
+            .single();
+
+          if (!topicCreateError) {
+            topic = newTopic;
+          }
         }
 
-        await client.query(
-          'INSERT INTO project_topics (project_id, topic_id, is_primary) VALUES ($1, $2, $3)',
-          [projectId, topicId, i === 0]
-        );
+        if (topic) {
+          await supabase
+            .from('project_topics')
+            .insert({
+              project_id: projectId,
+              topic_id: topic.id,
+              is_primary: i === 0
+            });
+        }
       }
     }
 
-    // Create project member
-    await client.query(
-      'INSERT INTO project_members (project_id, user_id, role, status, joined_at) VALUES ($1, $2, $3, $4, NOW())',
-      [projectId, userId, 'owner', 'active']
-    );
+    // Step 6: NEW - Create tasks/goals from AI suggestion
+    if (projectData.tasks && Array.isArray(projectData.tasks) && projectData.tasks.length > 0) {
+      console.log(`📋 Creating ${projectData.tasks.length} tasks for project...`);
+      
+      const tasksToInsert = projectData.tasks.map(task => ({
+        project_id: projectId,
+        user_id: userId,
+        title: task.title,
+        description: task.description || '',
+        status: 'todo',
+        priority: task.priority || 'medium',
+        category: task.category || 'learning',
+        estimated_hours: task.estimated_hours || null,
+        target_date: task.target_date || null
+      }));
 
-    // Create notification
-    await client.query(
-      'INSERT INTO notifications (user_id, project_id, notification_type, title, message, created_at) VALUES ($1, $2, $3, $4, $5, NOW())',
-      [userId, projectId, 'project_created', 'Project Created Successfully', `Your project "${projectData.title}" has been created!`]
-    );
+      const { error: tasksError } = await supabase
+        .from('solo_project_goals')
+        .insert(tasksToInsert);
 
-    await client.query('COMMIT');
+      if (tasksError) {
+        console.error('💥 Error creating tasks:', tasksError);
+      } else {
+        console.log('✅ Tasks created successfully');
+      }
+    }
 
-    // Fetch complete project with languages for response
-    const completeProjectQuery = `
-      SELECT 
-        p.*, 
-        u.username as owner_username,
-        u.email as owner_email,
-        COALESCE(
-          json_agg(
-            DISTINCT jsonb_build_object(
-              'id', pls.id,
-              'name', pls.name,
-              'is_primary', plang.is_primary,
-              'required_level', plang.required_level
-            )
-          ) FILTER (WHERE pls.name IS NOT NULL), 
-          '[]'::json
-        ) as programming_languages,
-        COALESCE(
-          json_agg(
-            DISTINCT jsonb_build_object(
-              'id', ts.id,
-              'name', ts.name,
-              'is_primary', ptop.is_primary
-            )
-          ) FILTER (WHERE ts.name IS NOT NULL),
-          '[]'::json
-        ) as topics
-      FROM projects p
-      LEFT JOIN users u ON p.owner_id = u.id
-      LEFT JOIN project_languages plang ON p.id = plang.project_id
-      LEFT JOIN programming_languages pls ON plang.language_id = pls.id
-      LEFT JOIN project_topics ptop ON p.id = ptop.project_id
-      LEFT JOIN topics ts ON ptop.topic_id = ts.id
-      WHERE p.id = $1
-      GROUP BY p.id, u.username, u.email
-    `;
-    
-    const completeResult = await client.query(completeProjectQuery, [projectId]);
-    const completeProject = completeResult.rows[0];
+    // Step 7: Create project member
+    const { error: memberError } = await supabase
+      .from('project_members')
+      .insert({
+        project_id: projectId,
+        user_id: userId,
+        role: 'owner',
+        status: 'active'
+      });
 
-    console.log('🎉 Project created successfully!');
-    console.log('📊 Final programming languages in response:', completeProject.programming_languages);
+    if (memberError) {
+      console.error('Error creating project member:', memberError);
+    }
+
+    // Step 8: Create notification
+    const { error: notifError } = await supabase
+      .from('notifications')
+      .insert({
+        user_id: userId,
+        project_id: projectId,
+        notification_type: 'project_created',
+        title: 'Project Created Successfully',
+        message: `Your project "${projectData.title}" has been created!`
+      });
+
+    if (notifError) {
+      console.error('Error creating notification:', notifError);
+    }
+
+    // Step 9: Fetch complete project with relations
+    const { data: completeProject, error: fetchError } = await supabase
+      .from('projects')
+      .select(`
+        *,
+        users!projects_owner_id_fkey (
+          username,
+          email
+        ),
+        project_languages (
+          id,
+          is_primary,
+          required_level,
+          programming_languages (id, name)
+        ),
+        project_topics (
+          id,
+          is_primary,
+          topics (id, name)
+        )
+      `)
+      .eq('id', projectId)
+      .single();
+
+    if (fetchError) {
+      console.error('Error fetching complete project:', fetchError);
+    }
+
+    console.log('🎉 Project created successfully with tasks!');
 
     res.json({
       success: true,
       message: 'Project created successfully',
       data: {
-        project: completeProject
+        project: completeProject || project
       }
     });
 
   } catch (error) {
-    await client.query('ROLLBACK');
     console.error('💥 Error creating project:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to create project',
       error: error.message
     });
-  } finally {
-    client.release();
   }
 });
 
-// Generate project ideas endpoint  
+// Generate project ideas endpoint (your existing code)
 router.post('/generate-project', auth, async (req, res) => {
   try {
     if (!genAI) {
@@ -560,7 +588,6 @@ Interest: ${interests.join(', ') || 'learning programming'}`;
 
     const aiResponse = response.text;
 
-    // Parse the AI response
     let projects = [];
     try {
       const lines = aiResponse.split('\n').filter(line => line.trim());

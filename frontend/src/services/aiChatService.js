@@ -1,4 +1,4 @@
-// Enhanced frontend/src/services/aiChatService.js with Project Creation
+// frontend/src/services/aiChatService.js - Enhanced with tasks support
 import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
@@ -38,27 +38,38 @@ export const aiChatService = {
     return response.data;
   },
 
-  // Create project from AI response using regular project API with proper formatting
+  // ENHANCED: Create project from AI response with tasks
   createProjectFromResponse: async (projectData, token) => {
     setAuthToken(token);
     
-    // Format the data to match your existing project creation API expectations
+    console.log('🔄 aiChatService: Creating project with data:', projectData);
+    
+    // Format the data to match backend API expectations
     const formattedProjectData = {
       title: projectData.title,
       description: projectData.description,
       detailed_description: projectData.detailed_description,
-      required_experience_level: projectData.required_experience_level,
+      required_experience_level: projectData.required_experience_level || 'beginner',
       maximum_members: projectData.maximum_members || 1,
-      estimated_duration_weeks: projectData.estimated_duration_weeks || undefined, // Send undefined instead of null
-      difficulty_level: projectData.difficulty_level,
-      github_repo_url: projectData.github_repo_url,
-      deadline: projectData.deadline,
-      programming_languages: projectData.programming_languages || [],
-      topics: projectData.topics || [],
-      project_type: projectData.project_type || 'solo' // Add project_type
+      estimated_duration_weeks: projectData.estimated_duration_weeks || null,
+      difficulty_level: projectData.difficulty_level || 'medium',
+      github_repo_url: projectData.github_repo_url || null,
+      deadline: projectData.deadline || null,
+      programming_languages: projectData.programming_languages || ['JavaScript'],
+      topics: projectData.topics || ['Web Development'],
+      project_type: 'solo',
+      // NEW: Include tasks array
+      tasks: projectData.tasks || []
     };
     
-    const response = await api.post('/projects', formattedProjectData);
+    console.log('📋 aiChatService: Formatted project data with tasks:', formattedProjectData);
+    console.log(`📊 aiChatService: Total tasks to create: ${formattedProjectData.tasks.length}`);
+    
+    // Send to backend AI chat project creation endpoint
+    const response = await api.post('/ai-chat/create-project', { 
+      projectData: formattedProjectData 
+    });
+    
     return response.data;
   },
 

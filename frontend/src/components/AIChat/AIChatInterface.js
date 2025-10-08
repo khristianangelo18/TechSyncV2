@@ -1,8 +1,8 @@
-// Fixed AIChatInterface.js - Improved data validation and project creation
+// Fixed AIChatInterface.js - Enhanced with task parsing (preserving all your production features)
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { aiChatService } from '../../services/aiChatService';
-import { Send, Sparkles, Code, Coffee, Lightbulb, Rocket, MessageCircle, Bot } from 'lucide-react';
+import { Send, Sparkles, Code, Coffee, Lightbulb, Rocket, MessageCircle, Bot, CheckCircle } from 'lucide-react';
 
 const AIChatInterface = () => {
   const { user, token } = useAuth();
@@ -28,7 +28,7 @@ const AIChatInterface = () => {
       role: 'assistant',
       content: `Hi ${user?.username || 'there'}! I'm Sync, your AI coding assistant. I can help you to:
 
-• Generate project ideas based on your skills
+• Generate project ideas with structured weekly tasks
 • Plan and structure your coding projects  
 • Provide technical guidance and best practices
 • Answer questions about programming concepts
@@ -52,10 +52,11 @@ What would you like to work on today?`,
         const response = await aiChatService.createProjectFromResponse(cleanedProjectData, token);
         
         if (response.success) {
+          const taskCount = projectData.tasks?.length || 0;
           const successMessage = {
             id: Date.now(),
             role: 'assistant',
-            content: `Great! I've successfully created the project "${cleanedProjectData.title}" for you! You can now find it in your "My Projects" section. The project is ready for you to start working on and invite collaborators. Let that sync in!`,
+            content: `Great! I've successfully created the project "${cleanedProjectData.title}" ${taskCount > 0 ? `with ${taskCount} tasks` : ''} for you! You can now find it in your "My Projects" section. ${taskCount > 0 ? 'The tasks are ready to guide you through the project development.' : 'The project is ready for you to start working on and invite collaborators.'} Let that sync in!`,
             timestamp: new Date().toISOString()
           };
           setMessages(prev => [...prev, successMessage]);
@@ -85,9 +86,66 @@ What would you like to work on today?`,
     return () => window.removeEventListener('createAIProject', handleCreateAIProject);
   }, [token]);
 
-  // Enhanced validation function
+  // NEW: Parse tasks from AI response
+  const parseTasksFromContent = (content) => {
+    const tasks = [];
+    const lines = content.split('\n');
+    
+    let currentWeek = null;
+    let currentTaskTitle = '';
+    let currentDescription = '';
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      
+      // Match "Week X:" pattern or "Week X -" pattern
+      const weekMatch = line.match(/^Week\s+(\d+)[\s:-]+(.+)/i);
+      if (weekMatch) {
+        // Save previous task if exists
+        if (currentTaskTitle) {
+          tasks.push({
+            title: currentTaskTitle,
+            description: currentDescription.trim(),
+            priority: 'medium',
+            category: 'learning',
+            estimated_hours: parseInt(currentWeek) * 5 || 5,
+            target_date: null
+          });
+        }
+        
+        currentWeek = weekMatch[1];
+        currentTaskTitle = `Week ${currentWeek}: ${weekMatch[2]}`;
+        currentDescription = '';
+        continue;
+      }
+      
+      // Collect subtasks/description (lines starting with -, •, or similar)
+      if (currentTaskTitle && (line.startsWith('-') || line.startsWith('•') || line.startsWith('*'))) {
+        const cleaned = line.replace(/^[-•*]\s*/, '').trim();
+        if (cleaned) {
+          currentDescription += cleaned + '\n';
+        }
+      }
+    }
+    
+    // Save last task
+    if (currentTaskTitle) {
+      tasks.push({
+        title: currentTaskTitle,
+        description: currentDescription.trim(),
+        priority: 'medium',
+        category: 'learning',
+        estimated_hours: parseInt(currentWeek) * 5 || 5,
+        target_date: null
+      });
+    }
+    
+    console.log('📋 Parsed tasks from AI response:', tasks);
+    return tasks;
+  };
+
+  // Enhanced validation function (your existing code)
   const validateAndCleanProjectData = (projectData) => {
-    // Ensure required fields exist and are properly formatted
     const cleaned = {
       title: String(projectData.title || 'Untitled Project').trim().substring(0, 100),
       description: String(projectData.description || projectData.detailed_description || 'AI-generated project').trim().substring(0, 500),
@@ -99,15 +157,19 @@ What would you like to work on today?`,
       topics: validateTopics(projectData.topics),
       estimated_duration: projectData.estimated_duration || 'medium',
       status: 'active',
-      is_public: false
+      is_public: false,
+      // NEW: Include tasks
+      tasks: projectData.tasks || []
     };
 
-    // Remove any undefined or null values
     Object.keys(cleaned).forEach(key => {
       if (cleaned[key] === undefined || cleaned[key] === null) {
         delete cleaned[key];
       }
     });
+
+    console.log('🔍 Cleaned project data:', cleaned);
+    console.log('📋 Tasks included:', cleaned.tasks?.length || 0);
 
     return cleaned;
   };
@@ -116,7 +178,6 @@ What would you like to work on today?`,
     const validLevels = ['easy', 'medium', 'hard', 'expert'];
     const normalized = String(level || 'medium').toLowerCase().trim();
     
-    // Map common variations
     const levelMap = {
       'beginner': 'easy',
       'intermediate': 'medium',
@@ -132,7 +193,6 @@ What would you like to work on today?`,
     const validLevels = ['beginner', 'intermediate', 'advanced', 'expert'];
     const normalized = String(level || 'intermediate').toLowerCase().trim();
     
-    // Map difficulty to experience
     const difficultyToExperience = {
       'easy': 'beginner',
       'medium': 'intermediate', 
@@ -146,7 +206,7 @@ What would you like to work on today?`,
 
   const validateProgrammingLanguages = (languages) => {
     if (!Array.isArray(languages)) {
-      return ['JavaScript']; // Default fallback
+      return ['JavaScript'];
     }
     
     const validLanguages = [
@@ -158,9 +218,8 @@ What would you like to work on today?`,
     const cleaned = languages
       .map(lang => cleanTechnologyName(String(lang).trim()))
       .filter(lang => lang && lang.length > 0)
-      .slice(0, 5); // Limit to 5 languages
+      .slice(0, 5);
     
-    // Map common frameworks to their base languages
     const frameworkMap = {
       'React': 'JavaScript',
       'Vue': 'JavaScript',
@@ -188,7 +247,7 @@ What would you like to work on today?`,
 
   const validateTopics = (topics) => {
     if (!Array.isArray(topics)) {
-      return ['Web Development']; // Default fallback
+      return ['Web Development'];
     }
     
     const validTopics = [
@@ -202,7 +261,7 @@ What would you like to work on today?`,
     const cleaned = topics
       .map(topic => String(topic).trim())
       .filter(topic => topic && topic.length > 0)
-      .slice(0, 3); // Limit to 3 topics
+      .slice(0, 3);
     
     return cleaned.length > 0 ? cleaned : ['Web Development'];
   };
@@ -242,6 +301,7 @@ What would you like to work on today?`,
     return techMap[lowerCleaned] || cleaned;
   };
 
+  // ENHANCED: Extract project data with tasks
   const extractProjectDataFromText = (content) => {
     const projects = [];
     
@@ -277,11 +337,10 @@ What would you like to work on today?`,
         let technologies = [];
         let difficulty = 'medium';
         
-        // Extract information from the lines
         for (let i = 1; i < lines.length; i++) {
           const line = lines[i].trim();
           
-          if (line && !description && !/^[•·-]/.test(line) && !/^(Key Features|Technologies|Time Estimate|Difficulty):/i.test(line)) {
+          if (line && !description && !/^[•·-]/.test(line) && !/^(Key Features|Technologies|Time Estimate|Difficulty|Weekly Task Breakdown):/i.test(line)) {
             description = line;
           }
           
@@ -299,6 +358,9 @@ What would you like to work on today?`,
           }
         }
         
+        // NEW: Parse tasks from section
+        const tasks = parseTasksFromContent(section);
+        
         const project = {
           title: name,
           description: description || 'AI-generated project idea',
@@ -308,7 +370,8 @@ What would you like to work on today?`,
           maximum_members: 1,
           programming_languages: technologies.length > 0 ? technologies : ['JavaScript'],
           topics: ['Web Development'],
-          estimated_duration: 'medium'
+          estimated_duration: 'medium',
+          tasks: tasks // NEW: Include tasks
         };
         
         projects.push(project);
@@ -323,7 +386,6 @@ What would you like to work on today?`,
       const sentences = content.split(/[.!?]+/).filter(s => s.trim());
       const description = sentences.slice(0, 2).join('.').trim() + (sentences.length ? '.' : '');
       
-      // Try to extract technologies from content
       const techMatches = content.match(/(?:using|with|in|built with)\s+([^.!?]+)/gi);
       let technologies = ['JavaScript'];
       if (techMatches) {
@@ -336,6 +398,9 @@ What would you like to work on today?`,
         }
       }
       
+      // NEW: Parse tasks from content
+      const tasks = parseTasksFromContent(content);
+      
       const project = {
         title,
         description: description || content.split('\n')[0] || 'AI-generated project idea',
@@ -345,7 +410,8 @@ What would you like to work on today?`,
         maximum_members: 1,
         programming_languages: technologies,
         topics: ['Web Development'],
-        estimated_duration: 'medium'
+        estimated_duration: 'medium',
+        tasks: tasks // NEW: Include tasks
       };
       
       projects.push(project);
@@ -387,11 +453,13 @@ What would you like to work on today?`,
           role: 'assistant',
           content: response.data.message,
           timestamp: response.data.timestamp,
+          // ENHANCED: Check for task breakdown too
           isProjectSuggestion: (response.data.message.includes('**') && 
                                (response.data.message.includes('Technologies:') ||
                                 response.data.message.includes('Difficulty:') ||
                                 response.data.message.includes('Key Features:') ||
-                                response.data.message.includes('Time Estimate:'))) ||
+                                response.data.message.includes('Time Estimate:') ||
+                                response.data.message.includes('Weekly Task Breakdown:'))) ||
                                response.data.message.toLowerCase().includes('project idea')
         };
         setMessages(prev => [...prev, aiMessage]);
@@ -419,12 +487,11 @@ What would you like to work on today?`,
     { text: "How to structure a full-stack project", icon: <Rocket size={16} /> }
   ];
 
-  // Function to show project preview at dashboard level
   const handleShowPreview = (projectData) => {
-    // Validate and clean data before showing preview
     const cleanedProjectData = validateAndCleanProjectData(projectData);
     
-    // Emit event to Dashboard to show modal
+    console.log('📊 Showing preview with tasks:', cleanedProjectData.tasks?.length || 0);
+    
     window.dispatchEvent(new CustomEvent('aiProjectPreview', { 
       detail: { project: cleanedProjectData } 
     }));
@@ -439,7 +506,7 @@ What would you like to work on today?`,
         style={{
           maxWidth: '85%',
           fontSize: '14px',
-          lineHeight: '1.297',
+          lineHeight: '1.6',
           position: 'relative',
           ...(message.role === 'user' ? {
             alignSelf: 'flex-end',
@@ -498,7 +565,7 @@ What would you like to work on today?`,
                 width: '20px', height: '20px', border: '2px solid rgba(255, 255, 255, 0.3)',
                 borderTop: '2px solid white', borderRadius: '50%', animation: 'spin 1s linear infinite'
               }}></div>
-              Creating project...
+              Creating project with tasks...
             </div>
           </div>
         )}
@@ -527,7 +594,8 @@ What would you like to work on today?`,
                   required_experience_level: 'intermediate',
                   maximum_members: 1,
                   programming_languages: ['JavaScript'],
-                  topics: ['Web Development']
+                  topics: ['Web Development'],
+                  tasks: []
                 };
                 onShowPreview(fallbackProject);
               }
@@ -541,7 +609,7 @@ What would you like to work on today?`,
         <div>
           {message.content.split('\n').map((line, index) => {
             if (line.startsWith('**') && line.endsWith('**')) {
-              return <div key={index} style={{ fontWeight: 'bold', marginBottom: '12px', fontSize: '16px' }}>
+              return <div key={index} style={{ fontWeight: 'bold', marginBottom: '12px', fontSize: '16px', color: '#60a5fa' }}>
                 {line.replace(/\*\*/g, '')}
               </div>;
             }
@@ -549,6 +617,18 @@ What would you like to work on today?`,
               return <div key={index} style={{ marginLeft: '20px', marginBottom: '6px', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
                 <span style={{ color: '#3b82f6', fontWeight: 'bold' }}>•</span>
                 <span>{line.substring(2)}</span>
+              </div>;
+            }
+            // NEW: Highlight weekly tasks
+            if (line.match(/^Week\s+\d+/i)) {
+              return <div key={index} style={{ fontWeight: '600', marginTop: '12px', marginBottom: '8px', color: '#fbbf24', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <CheckCircle size={16} />
+                {line}
+              </div>;
+            }
+            if (line.startsWith('- ')) {
+              return <div key={index} style={{ marginLeft: '32px', marginBottom: '4px', color: '#cbd5e1', fontSize: '13px' }}>
+                {line}
               </div>;
             }
             if (line === '---') {
@@ -590,7 +670,7 @@ What would you like to work on today?`,
       overflow: 'hidden'
     }}>
       
-      {/* Header - Fixed at top */}
+      {/* Header */}
       <div style={{
         padding: '20px 24px',
         borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
@@ -634,11 +714,11 @@ What would you like to work on today?`,
         </div>
       </div>
 
-      {/* Messages - Scrollable area */}
+      {/* Messages */}
       <div style={{
         position: 'absolute',
-        top: '80px', // After header
-        bottom: '88px', // Above input
+        top: '80px',
+        bottom: '88px',
         left: 0,
         right: 0,
         overflowY: 'auto',
@@ -646,7 +726,7 @@ What would you like to work on today?`,
         display: 'flex',
         flexDirection: 'column',
         gap: '20px'
-      }}>
+      }} className="messages-scrollbar">
         {messages.length === 1 && (
           <div style={{ marginBottom: '20px' }}>
             <div style={{
@@ -744,7 +824,7 @@ What would you like to work on today?`,
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input - Fixed at bottom */}
+      {/* Input */}
       <div style={{
         position: 'absolute',
         bottom: 0,

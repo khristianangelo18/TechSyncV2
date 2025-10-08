@@ -420,7 +420,12 @@ What would you like to work on today?`,
       technologies: project.programming_languages,
       taskCount: project.tasks.length
     });
-
+    console.log('🔍 EXTRACT COMPLETE:');
+    console.log('  - Project title:', project.title);
+    console.log('  - Tasks count:', project.tasks?.length || 0);
+    if (project.tasks && project.tasks.length > 0) {
+      console.log('  - Task titles:', project.tasks.map(t => t.title));
+    }
     projects.push(project);
     return projects;
   };
@@ -493,11 +498,17 @@ What would you like to work on today?`,
   ];
 
   const handleShowPreview = (projectData) => {
+    console.log('🎯 HANDLE SHOW PREVIEW CALLED');
+    console.log('  - Input tasks:', projectData.tasks?.length || 0);
+    if (projectData.tasks && projectData.tasks.length > 0) {
+      console.log('  - Task titles:', projectData.tasks.map(t => t.title));
+    }
     console.log('🎯 Showing preview...');
     console.log('📦 Project data:', projectData);
     console.log('📋 Tasks:', projectData.tasks?.length || 0);
     
     const cleanedProjectData = validateAndCleanProjectData(projectData);
+    console.log('  - After validation tasks:', cleanedProjectData.tasks?.length || 0);
     
     window.dispatchEvent(new CustomEvent('aiProjectPreview', { 
       detail: { project: cleanedProjectData } 
@@ -594,7 +605,8 @@ What would you like to work on today?`,
               
               const projects = extractProjectDataFromText(message.content);
               console.log('📊 Extracted projects:', projects.length);
-              
+              console.log('🖱️ AFTER EXTRACT:');
+              console.log('  - Projects count:', projects.length);
               if (projects.length > 0) {
                 console.log('✅ Using extracted project');
                 console.log('📋 Tasks in project:', projects[0].tasks?.length || 0);

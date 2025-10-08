@@ -811,14 +811,24 @@ function Dashboard() {
 
   // NEW: Listen for AI chat project preview events
   useEffect(() => {
-    const handleAIProjectPreview = (event) => {
-      setAiPreviewProject(event.detail.project);
-      setShowAIProjectPreview(true);
-    };
+  const handleAIProjectPreview = (event) => {
+    console.log('📨 DASHBOARD RECEIVED EVENT');
+    console.log('  - Tasks received:', event.detail.project.tasks?.length || 0);
+    if (event.detail.project.tasks && event.detail.project.tasks.length > 0) {
+      console.log('  - Task titles:', event.detail.project.tasks.map(t => t.title));
+    }
+    console.log('🎯 Dashboard received AI project preview');
+    console.log('📦 Project data:', event.detail.project);
+    console.log('📋 Tasks in preview:', event.detail.project.tasks?.length || 0);
+    
+    // ⭐ CRITICAL: Store the FULL project data including tasks
+    setAiPreviewProject(event.detail.project);
+    setShowAIProjectPreview(true);
+  };
 
-    window.addEventListener('aiProjectPreview', handleAIProjectPreview);
-    return () => window.removeEventListener('aiProjectPreview', handleAIProjectPreview);
-  }, []);
+  window.addEventListener('aiProjectPreview', handleAIProjectPreview);
+  return () => window.removeEventListener('aiProjectPreview', handleAIProjectPreview);
+}, []);
 
   // ADD EFFECT TO MANAGE BODY SCROLL AND BLUR FOR CHALLENGE MODAL
   useEffect(() => {
@@ -2538,9 +2548,17 @@ function Dashboard() {
                     transition: 'all 0.3s ease'
                   }}
                   onClick={() => {
-                    // Trigger the AI chat's project creation
+                    console.log('🚀 DASHBOARD CREATE BUTTON CLICKED');
+                    console.log('  - aiPreviewProject tasks:', aiPreviewProject.tasks?.length || 0);
+                    if (aiPreviewProject.tasks && aiPreviewProject.tasks.length > 0) {
+                      console.log('  - Task titles:', aiPreviewProject.tasks.map(t => t.title));
+                    }
+                    console.log('🚀 Creating project from Dashboard modal');
+                    console.log('📋 Project has tasks:', aiPreviewProject.tasks?.length || 0);
+                    
+                    // ⭐ CRITICAL: Pass the FULL aiPreviewProject with tasks
                     window.dispatchEvent(new CustomEvent('createAIProject', { 
-                      detail: { project: aiPreviewProject } 
+                      detail: { project: aiPreviewProject }  // This should include tasks!
                     }));
                     setShowAIProjectPreview(false);
                     setAiPreviewProject(null);

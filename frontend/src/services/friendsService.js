@@ -24,6 +24,17 @@ export const friendsService = {
     }
   },
 
+  // Get friend's profile with achievements and awards
+  getFriendProfile: async (userId) => {
+    try {
+      const response = await api.get(`/friends/${userId}/profile`);
+      return response.data;
+    } catch (error) {
+      console.error('Get friend profile error:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+
   // Accept friend request
   acceptFriendRequest: async (friendshipId) => {
     try {

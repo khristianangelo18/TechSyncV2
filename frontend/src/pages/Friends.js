@@ -1,7 +1,7 @@
 // frontend/src/pages/Friends.js - ALIGNED WITH DASHBOARD THEME AND ANIMATED BACKGROUND
 import React, { useState, useEffect } from 'react';
 import { friendsService } from '../services/friendsService';
-import { Users, UserPlus, UserCheck, UserX, User, Clock, Mail } from 'lucide-react';
+import { Users, UserPlus, UserCheck, UserX, User, Clock, Mail, Award, Trophy } from 'lucide-react';
 
 // Background symbols component with animations - MATCHING DASHBOARD
 const BackgroundSymbols = () => (
@@ -371,6 +371,8 @@ function Friends() {
   const [showProfileModal, setShowProfileModal] = useState(false);
 
   const colorVariants = ['slate', 'zinc', 'neutral', 'stone', 'gray', 'blue'];
+  const [friendProfile, setFriendProfile] = useState(null);
+  const [loadingProfile, setLoadingProfile] = useState(false);
 
   useEffect(() => {
     fetchFriends();
@@ -444,10 +446,141 @@ function Friends() {
     }
   };
 
-  const handleViewProfile = (friend) => {
+  const handleViewProfile = async (friend) => {
     setSelectedFriend(friend);
     setShowProfileModal(true);
+    setLoadingProfile(true);
+    setFriendProfile(null);
+    
+    try {
+      const response = await friendsService.getFriendProfile(friend.id);
+      if (response.success) {
+        setFriendProfile(response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching friend profile:', error);
+    } finally {
+      setLoadingProfile(false);
+    }
   };
+
+// Add these new styles to the styles object:
+const additionalStyles = {
+  achievementsSection: {
+    marginTop: '24px',
+    paddingTop: '24px',
+    borderTop: '1px solid rgba(255, 255, 255, 0.1)'
+  },
+  sectionHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    fontSize: '18px',
+    fontWeight: '600',
+    color: 'white',
+    marginBottom: '16px'
+  },
+  achievementCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    borderRadius: '12px',
+    padding: '16px',
+    marginBottom: '12px',
+    transition: 'all 0.3s ease'
+  },
+  achievementHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    marginBottom: '8px'
+  },
+  achievementIcon: {
+    fontSize: '32px',
+    width: '48px',
+    height: '48px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+    borderRadius: '8px',
+    border: '1px solid rgba(255, 215, 0, 0.3)'
+  },
+  achievementInfo: {
+    flex: 1
+  },
+  achievementTitle: {
+    fontSize: '16px',
+    fontWeight: '600',
+    color: 'white',
+    marginBottom: '4px'
+  },
+  achievementDescription: {
+    fontSize: '14px',
+    color: '#9ca3af',
+    marginBottom: '8px'
+  },
+  achievementMetadata: {
+    fontSize: '12px',
+    color: '#6b7280',
+    fontStyle: 'italic'
+  },
+  awardCard: {
+    background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(16, 185, 129, 0.1))',
+    border: '1px solid rgba(59, 130, 246, 0.3)',
+    borderRadius: '12px',
+    padding: '16px',
+    marginBottom: '12px',
+    transition: 'all 0.3s ease'
+  },
+  awardHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    marginBottom: '8px'
+  },
+  awardIconContainer: {
+    fontSize: '24px',
+    width: '48px',
+    height: '48px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(59, 130, 246, 0.15)',
+    borderRadius: '8px',
+    border: '1px solid rgba(59, 130, 246, 0.4)'
+  },
+  awardInfo: {
+    flex: 1
+  },
+  awardTitle: {
+    fontSize: '16px',
+    fontWeight: '600',
+    color: 'white',
+    marginBottom: '4px'
+  },
+  awardDescription: {
+    fontSize: '14px',
+    color: '#9ca3af',
+    marginBottom: '8px'
+  },
+  awardDate: {
+    fontSize: '12px',
+    color: '#6b7280',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px'
+  },
+  emptyState: {
+    textAlign: 'center',
+    padding: '24px',
+    color: '#6b7280'
+  },
+  loadingState: {
+    textAlign: 'center',
+    padding: '24px',
+    color: '#9ca3af'
+  }
+};
 
   const closeProfileModal = () => {
     setShowProfileModal(false);
@@ -1320,105 +1453,171 @@ function Friends() {
                   {selectedFriend.avatar_url ? (
                     <img 
                       src={selectedFriend.avatar_url} 
-                      alt={selectedFriend.full_name} 
-                      style={{width: '100%', height: '100%', borderRadius: '50%'}} 
+                      alt={selectedFriend.full_name}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover'
+                      }}
                     />
                   ) : (
-                    (selectedFriend.full_name || selectedFriend.username || 'U').charAt(0).toUpperCase()
+                    <span style={{ fontSize: '48px', color: '#9ca3af' }}>
+                      {selectedFriend.full_name?.charAt(0).toUpperCase()}
+                    </span>
                   )}
                 </div>
                 <div style={styles.profileInfo}>
-                  <h3 style={styles.profileName}>
-                    {selectedFriend.full_name || selectedFriend.username}
-                  </h3>
+                  <h3 style={styles.profileName}>{selectedFriend.full_name}</h3>
                   <p style={styles.profileUsername}>@{selectedFriend.username}</p>
+                  {selectedFriend.github_username && (
+                    <p style={styles.profileGithub}>
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style={{ marginRight: '6px' }}>
+                        <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                      </svg>
+                      {selectedFriend.github_username}
+                    </p>
+                  )}
+                  {selectedFriend.years_experience && (
+                    <p style={styles.profileExperience}>
+                      {selectedFriend.years_experience} {selectedFriend.years_experience === 1 ? 'year' : 'years'} of experience
+                    </p>
+                  )}
                 </div>
               </div>
 
-              <div style={styles.profileDetails}>
-                <div style={styles.detailSection}>
-                  <h4 style={styles.sectionTitle}>About</h4>
-                  <div style={styles.detailRow}>
-                    <span style={styles.detailLabel}>Bio:</span>
-                    <span style={styles.detailValue}>
-                      {selectedFriend.bio || 'No bio provided'}
-                    </span>
-                  </div>
+              {/* Achievements Section */}
+              <div style={additionalStyles.achievementsSection}>
+                <div style={additionalStyles.sectionHeader}>
+                  <Trophy size={20} style={{ color: '#FFD700' }} />
+                  <span>Your Achievements</span>
                 </div>
-
-                <div style={styles.detailSection}>
-                  <h4 style={styles.sectionTitle}>Experience</h4>
-                  <div style={styles.detailRow}>
-                    <span style={styles.detailLabel}>Years of Experience:</span>
-                    <span style={styles.detailValue}>
-                      {selectedFriend.years_experience ? `${selectedFriend.years_experience} years` : 'Not specified'}
-                    </span>
+                
+                {loadingProfile ? (
+                  <div style={additionalStyles.loadingState}>
+                    Loading achievements...
                   </div>
+                ) : friendProfile?.achievements && friendProfile.achievements.length > 0 ? (
+                  <div>
+                    {friendProfile.achievements.map((achievement, index) => (
+                      <div 
+                        key={index} 
+                        style={additionalStyles.achievementCard}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)';
+                          e.currentTarget.style.transform = 'translateX(4px)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
+                          e.currentTarget.style.transform = 'translateX(0)';
+                        }}
+                      >
+                        <div style={additionalStyles.achievementHeader}>
+                          <div style={additionalStyles.achievementIcon}>
+                            {achievement.icon}
+                          </div>
+                          <div style={additionalStyles.achievementInfo}>
+                            <div style={additionalStyles.achievementTitle}>
+                              {achievement.title}
+                            </div>
+                            <div style={additionalStyles.achievementDescription}>
+                              {achievement.description}
+                            </div>
+                            {achievement.metadata && (
+                              <div style={additionalStyles.achievementMetadata}>
+                                {achievement.metadata.project && `Project: ${achievement.metadata.project}`}
+                                {achievement.metadata.completion && ` • Completion: ${achievement.metadata.completion}`}
+                                {achievement.metadata.completed && `Completed: ${achievement.metadata.completed} projects`}
+                                {achievement.metadata.active_projects && `Active in ${achievement.metadata.active_projects} projects`}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        {achievement.earned_at && (
+                          <div style={additionalStyles.awardDate}>
+                            📅 Earned on {new Date(achievement.earned_at).toLocaleDateString()}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={additionalStyles.emptyState}>
+                    No achievements yet
+                  </div>
+                )}
+              </div>
+
+              {/* Awards Section */}
+              <div style={additionalStyles.achievementsSection}>
+                <div style={additionalStyles.sectionHeader}>
+                  <Award size={20} style={{ color: '#3b82f6' }} />
+                  <span>Your Awards</span>
+                  {friendProfile?.stats?.total_awards > 0 && (
+                    <span style={{
+                      backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                      color: '#60a5fa',
+                      padding: '4px 12px',
+                      borderRadius: '12px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      marginLeft: 'auto'
+                    }}>
+                      {friendProfile.stats.total_awards}
+                    </span>
+                  )}
                 </div>
-
-                <div style={styles.detailSection}>
-                  <h4 style={styles.sectionTitle}>Links</h4>
-                  <div style={styles.detailRow}>
-                    <span style={styles.detailLabel}>GitHub:</span>
-                    <span style={styles.detailValue}>
-                      {selectedFriend.github_username ? (
-                        <a 
-                          href={`https://github.com/${selectedFriend.github_username}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={styles.profileLink}
-                          onMouseEnter={(e) => {
-                            e.target.style.color = '#93c5fd';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.target.style.color = '#60a5fa';
-                          }}
-                        >
-                          {selectedFriend.github_username}
-                        </a>
-                      ) : (
-                        'Not provided'
-                      )}
-                    </span>
+                
+                {loadingProfile ? (
+                  <div style={additionalStyles.loadingState}>
+                    Loading awards...
                   </div>
-                  <div style={styles.detailRow}>
-                    <span style={styles.detailLabel}>LinkedIn:</span>
-                    <span style={styles.detailValue}>
-                      {selectedFriend.linkedin_url ? (
-                        <a 
-                          href={selectedFriend.linkedin_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={styles.profileLink}
-                          onMouseEnter={(e) => {
-                            e.target.style.color = '#93c5fd';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.target.style.color = '#60a5fa';
-                          }}
-                        >
-                          View Profile
-                        </a>
-                      ) : (
-                        'Not provided'
-                      )}
-                    </span>
+                ) : friendProfile?.awards && friendProfile.awards.length > 0 ? (
+                  <div>
+                    {friendProfile.awards.map((award) => (
+                      <div 
+                        key={award.id} 
+                        style={additionalStyles.awardCard}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = 'linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(16, 185, 129, 0.15))';
+                          e.currentTarget.style.transform = 'translateX(4px)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = 'linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(16, 185, 129, 0.1))';
+                          e.currentTarget.style.transform = 'translateX(0)';
+                        }}
+                      >
+                        <div style={additionalStyles.awardHeader}>
+                          <div style={{
+                            ...additionalStyles.awardIconContainer,
+                            backgroundColor: `${award.award_color}20`,
+                            borderColor: `${award.award_color}60`
+                          }}>
+                            {award.award_icon}
+                          </div>
+                          <div style={additionalStyles.awardInfo}>
+                            <div style={additionalStyles.awardTitle}>
+                              {award.award_title}
+                            </div>
+                            <div style={additionalStyles.awardDescription}>
+                              {award.award_description}
+                            </div>
+                            {award.metadata && award.metadata.project_title && (
+                              <div style={additionalStyles.achievementMetadata}>
+                                Project: {award.metadata.project_title}
+                                {award.metadata.completion_percentage && ` • ${award.metadata.completion_percentage}% complete`}
+                              </div>
+                            )}
+                            <div style={additionalStyles.awardDate}>
+                              📅 Earned on {new Date(award.earned_at).toLocaleDateString()}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                </div>
-
-                {selectedFriend.friendsSince && (
-                  <div style={styles.detailSection}>
-                    <h4 style={styles.sectionTitle}>Friendship</h4>
-                    <div style={styles.detailRow}>
-                      <span style={styles.detailLabel}>Friends since:</span>
-                      <span style={styles.detailValue}>
-                        {new Date(selectedFriend.friendsSince).toLocaleDateString('en-US', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric'
-                        })}
-                      </span>
-                    </div>
+                ) : (
+                  <div style={additionalStyles.emptyState}>
+                    No awards yet
                   </div>
                 )}
               </div>

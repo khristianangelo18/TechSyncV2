@@ -7,7 +7,8 @@ const {
   getFriends,
   acceptFriendRequest,
   rejectFriendRequest,
-  removeFriend
+  removeFriend,
+  getFriendProfile  // NEW: Added to get friend's profile with achievements
 } = require('../controllers/friendsController');
 
 // Apply authentication middleware to all routes
@@ -15,6 +16,9 @@ router.use(authMiddleware);
 
 // GET /api/friends - Get user's friends and friend requests
 router.get('/', getFriends);
+
+// GET /api/friends/:userId/profile - Get friend's profile with achievements and awards
+router.get('/:userId/profile', getFriendProfile);
 
 // POST /api/friends/request - Send friend request
 router.post('/request', sendFriendRequest);

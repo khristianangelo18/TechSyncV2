@@ -179,6 +179,141 @@ const getFriends = async (req, res) => {
   }
 };
 
+const getFriendProfile = async (req, res) => {
+  try {
+    const currentUserId = req.user.id;
+    const { userId } = req.params;
+
+    console.log('🔍 Fetching profile for user:', userId);
+
+    // Verify friendship exists between users
+    const { data: friendship, error: friendshipError } = await supabase
+      .from('user_friendships')
+      .select('id, status')
+      .or(`and(requester_id.eq.${currentUserId},addressee_id.eq.${userId}),and(requester_id.eq.${userId},addressee_id.eq.${currentUserId})`)
+      .eq('status', 'accepted')
+      .single();
+
+    if (friendshipError || !friendship) {
+      return res.status(403).json({
+        success: false,
+        message: 'You must be friends to view this profile'
+      });
+    }
+
+    // Fetch user's awards
+    const { data: awards, error: awardsError } = await supabase
+      .from('user_awards')
+      .select(`
+        *,
+        projects(id, title)
+      `)
+      .eq('user_id', userId)
+      .order('earned_at', { ascending: false });
+
+    if (awardsError) {
+      console.error('Error fetching awards:', awardsError);
+    }
+
+    // Fetch user's completed projects (for achievements)
+    const { data: projects, error: projectsError } = await supabase
+      .from('project_members')
+      .select(`
+        project:project_id (
+          id,
+          title,
+          status,
+          progress_percentage,
+          created_at,
+          updated_at
+        )
+      `)
+      .eq('user_id', userId)
+      .in('project.status', ['completed', 'active']);
+
+    if (projectsError) {
+      console.error('Error fetching projects:', projectsError);
+    }
+
+    // Calculate achievements
+    const achievements = [];
+    const completedProjects = projects?.filter(p => p.project?.status === 'completed') || [];
+    const activeProjects = projects?.filter(p => p.project?.status === 'active') || [];
+
+    // Add project completion achievements
+    if (completedProjects.length >= 1) {
+      const firstProject = completedProjects.sort((a, b) => 
+        new Date(a.project.updated_at) - new Date(b.project.updated_at)
+      )[0];
+      
+      achievements.push({
+        icon: '🏆',
+        title: 'Project Master',
+        description: `Completed a solo project with 100% progress`,
+        metadata: {
+          project: firstProject.project.title,
+          completion: '100%'
+        },
+        earned_at: firstProject.project.updated_at
+      });
+    }
+
+    if (completedProjects.length >= 5) {
+      achievements.push({
+        icon: '⭐',
+        title: 'Veteran Developer',
+        description: 'Completed 5 projects',
+        metadata: {
+          completed: completedProjects.length
+        }
+      });
+    }
+
+    if (completedProjects.length >= 10) {
+      achievements.push({
+        icon: '💎',
+        title: 'Master Builder',
+        description: 'Completed 10 projects',
+        metadata: {
+          completed: completedProjects.length
+        }
+      });
+    }
+
+    // Add collaboration achievements
+    if (activeProjects.length >= 3) {
+      achievements.push({
+        icon: '🤝',
+        title: 'Team Player',
+        description: 'Active in 3 or more projects',
+        metadata: {
+          active_projects: activeProjects.length
+        }
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        awards: awards || [],
+        achievements,
+        stats: {
+          total_awards: awards?.length || 0,
+          completed_projects: completedProjects.length,
+          active_projects: activeProjects.length
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('💥 Get friend profile error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
 // Accept friend request
 const acceptFriendRequest = async (req, res) => {
   try {
@@ -339,5 +474,6 @@ module.exports = {
   getFriends,
   acceptFriendRequest,
   rejectFriendRequest,
-  removeFriend
+  removeFriend,
+  getFriendProfile
 };

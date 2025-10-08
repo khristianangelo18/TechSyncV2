@@ -42,7 +42,14 @@ export const aiChatService = {
   createProjectFromResponse: async (projectData, token) => {
     setAuthToken(token);
     
-    console.log('🔄 aiChatService: Creating project with data:', projectData);
+    console.log('═══════════════════════════════════════════════');
+    console.log('🔄 AI CHAT SERVICE - CREATE PROJECT');
+    console.log('═══════════════════════════════════════════════');
+    console.log('📥 projectData.tasks:', projectData.tasks?.length || 0);
+    if (projectData.tasks && projectData.tasks.length > 0) {
+      console.log('📋 Input task titles:', projectData.tasks.map(t => t.title));
+    }
+    console.log('═══════════════════════════════════════════════');
     
     // Format the data to match backend API expectations
     const formattedProjectData = {
@@ -62,8 +69,15 @@ export const aiChatService = {
       tasks: projectData.tasks || []
     };
     
-    console.log('📋 aiChatService: Formatted project data with tasks:', formattedProjectData);
-    console.log(`📊 aiChatService: Total tasks to create: ${formattedProjectData.tasks.length}`);
+    console.log('═══════════════════════════════════════════════');
+    console.log('📤 FORMATTED PROJECT DATA');
+    console.log('═══════════════════════════════════════════════');
+    console.log('📦 formattedProjectData.tasks:', formattedProjectData.tasks?.length || 0);
+    if (formattedProjectData.tasks && formattedProjectData.tasks.length > 0) {
+      console.log('📋 Formatted task titles:', formattedProjectData.tasks.map(t => t.title));
+    }
+    console.log('📨 Sending POST to /api/ai-chat/create-project');
+    console.log('═══════════════════════════════════════════════');
     
     // Send to backend AI chat project creation endpoint
     const response = await api.post('/ai-chat/create-project', { 

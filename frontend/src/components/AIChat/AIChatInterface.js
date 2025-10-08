@@ -1,4 +1,6 @@
-// Fixed AIChatInterface.js - Complete version with task parsing
+// frontend/src/components/AIChat/AIChatInterface.js - COMPLETE FIX
+// Replace your ENTIRE AIChatInterface.js with this version
+
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { aiChatService } from '../../services/aiChatService';
@@ -41,14 +43,40 @@ What would you like to work on today?`,
   // Listen for project creation events from Dashboard
   useEffect(() => {
     const handleCreateAIProject = async (event) => {
+      console.log('═══════════════════════════════════════════════');
+      console.log('📨 AI CHAT RECEIVED CREATE PROJECT EVENT');
+      console.log('═══════════════════════════════════════════════');
       const projectData = event.detail.project;
+      
+      console.log('📥 event.detail:', event.detail);
+      console.log('📥 event.detail.project:', projectData);
+      console.log('📥 event.detail.project.tasks:', projectData.tasks?.length || 0);
+      
+      if (projectData.tasks && projectData.tasks.length > 0) {
+        console.log('📋 Received task titles:', projectData.tasks.map(t => t.title));
+      } else {
+        console.error('⚠️ NO TASKS IN EVENT.DETAIL.PROJECT!');
+        console.error('⚠️ Project data keys:', Object.keys(projectData));
+      }
+      console.log('═══════════════════════════════════════════════');
+      
       setCreatingProject(projectData.title);
       
       try {
         const cleanedProjectData = validateAndCleanProjectData(projectData);
         
-        console.log('🚀 Creating project with cleaned data:', cleanedProjectData);
-        console.log('📋 Tasks being sent:', cleanedProjectData.tasks?.length || 0);
+        console.log('═══════════════════════════════════════════════');
+        console.log('🚀 CALLING aiChatService.createProjectFromResponse');
+        console.log('═══════════════════════════════════════════════');
+        console.log('📤 Sending cleanedProjectData:', cleanedProjectData);
+        console.log('📤 Sending cleanedProjectData.tasks:', cleanedProjectData.tasks?.length || 0);
+        
+        if (cleanedProjectData.tasks && cleanedProjectData.tasks.length > 0) {
+          console.log('📋 Sending task titles:', cleanedProjectData.tasks.map(t => t.title));
+        } else {
+          console.error('⚠️ CLEANED DATA HAS NO TASKS!');
+        }
+        console.log('═══════════════════════════════════════════════');
         
         const response = await aiChatService.createProjectFromResponse(cleanedProjectData, token);
         
@@ -57,7 +85,7 @@ What would you like to work on today?`,
           const successMessage = {
             id: Date.now(),
             role: 'assistant',
-            content: `Great! I've successfully created the project "${cleanedProjectData.title}" ${taskCount > 0 ? `with ${taskCount} tasks` : ''} for you! You can now find it in your "My Projects" section. ${taskCount > 0 ? 'The tasks are ready to guide you through the project development.' : 'The project is ready for you to start working on and invite collaborators.'} Let that sync in!`,
+            content: `Great! I've successfully created the project "${cleanedProjectData.title}" ${taskCount > 0 ? `with ${taskCount} tasks` : ''} for you! You can now find it in your "My Projects" section. ${taskCount > 0 ? 'The tasks are ready to guide you through the project development.' : ''} Let that sync in!`,
             timestamp: new Date().toISOString()
           };
           setMessages(prev => [...prev, successMessage]);
@@ -74,7 +102,7 @@ What would you like to work on today?`,
         const errorMessage = {
           id: Date.now(),
           role: 'assistant',
-          content: `Sorry, I couldn't create the project "${projectData.title}". ${error.response?.data?.message || error.message || 'Please try creating it manually or ask me to suggest the project details again.'}`,
+          content: `Sorry, I couldn't create the project "${projectData.title}". ${error.response?.data?.message || error.message || 'Please try again.'}`,
           timestamp: new Date().toISOString()
         };
         setMessages(prev => [...prev, errorMessage]);
@@ -89,10 +117,15 @@ What would you like to work on today?`,
 
   // ENHANCED: Parse tasks from AI response
   const parseTasksFromContent = (content) => {
+    console.log('═══════════════════════════════════════════════');
+    console.log('🔍 PARSE TASKS START');
+    console.log('═══════════════════════════════════════════════');
+    console.log('📄 Content length:', content.length);
+    console.log('📄 First 500 chars:', content.substring(0, 500));
+    
     const tasks = [];
     const lines = content.split('\n');
     
-    console.log('🔍 Parsing tasks from content...');
     console.log('📄 Total lines to parse:', lines.length);
     
     let currentWeek = null;
@@ -102,7 +135,7 @@ What would you like to work on today?`,
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
       
-      // Match "Week X:" pattern (flexible with : - or space)
+      // Match "Week X:" pattern
       const weekMatch = line.match(/^Week\s+(\d+)[\s:;-]+(.+)/i);
       if (weekMatch) {
         // Save previous task if exists
@@ -112,21 +145,21 @@ What would you like to work on today?`,
             description: currentDescription.trim(),
             priority: 'medium',
             category: 'learning',
-            estimated_hours: Math.min(parseInt(currentWeek) * 8, 40), // 8 hours per week, max 40
+            estimated_hours: Math.min(parseInt(currentWeek) * 8, 40),
             target_date: null
           };
           tasks.push(task);
-          console.log(`✅ Parsed: ${task.title}`);
+          console.log(`✅ Parsed: ${task.title} (${task.estimated_hours}h)`);
         }
         
         currentWeek = weekMatch[1];
         currentTaskTitle = `Week ${currentWeek}: ${weekMatch[2]}`;
         currentDescription = '';
-        console.log(`🔍 Found Week ${currentWeek}`);
+        console.log(`🔍 Found Week ${currentWeek}: ${weekMatch[2]}`);
         continue;
       }
       
-      // Collect subtasks/description (lines starting with -, •, *, or just indented text)
+      // Collect subtasks/description
       if (currentTaskTitle) {
         if (line.startsWith('-') || line.startsWith('•') || line.startsWith('*')) {
           const cleaned = line.replace(/^[-•*]\s*/, '').trim();
@@ -148,21 +181,40 @@ What would you like to work on today?`,
         target_date: null
       };
       tasks.push(task);
-      console.log(`✅ Parsed: ${task.title}`);
+      console.log(`✅ Parsed: ${task.title} (${task.estimated_hours}h)`);
     }
     
-    console.log(`📋 Total tasks parsed: ${tasks.length}`);
-    tasks.forEach((task, i) => {
-      console.log(`  ${i + 1}. ${task.title} (${task.estimated_hours}h)`);
-    });
+    console.log('═══════════════════════════════════════════════');
+    console.log('✅ PARSE TASKS COMPLETE');
+    console.log('📊 Total tasks parsed:', tasks.length);
+    
+    if (tasks.length > 0) {
+      console.log('📋 Task summary:');
+      tasks.forEach((task, i) => {
+        console.log(`  ${i + 1}. ${task.title} (${task.estimated_hours}h)`);
+      });
+    } else {
+      console.error('⚠️ NO TASKS WERE PARSED!');
+      console.error('⚠️ Check if AI response has "Week 1:", "Week 2:", etc.');
+    }
+    console.log('═══════════════════════════════════════════════');
     
     return tasks;
   };
 
   // Enhanced validation function
   const validateAndCleanProjectData = (projectData) => {
-    console.log('🧹 Validating and cleaning project data...');
-    console.log('📥 Input tasks:', projectData.tasks?.length || 0);
+    console.log('═══════════════════════════════════════════════');
+    console.log('🧹 VALIDATE AND CLEAN - START');
+    console.log('═══════════════════════════════════════════════');
+    console.log('📥 INPUT projectData:', projectData);
+    console.log('📥 INPUT projectData.tasks:', projectData.tasks?.length || 0);
+    
+    if (projectData.tasks && projectData.tasks.length > 0) {
+      console.log('📋 Input task titles:', projectData.tasks.map(t => t.title));
+    } else {
+      console.error('⚠️ INPUT HAS NO TASKS!');
+    }
     
     const cleaned = {
       title: String(projectData.title || 'Untitled Project').trim().substring(0, 100),
@@ -176,22 +228,22 @@ What would you like to work on today?`,
       estimated_duration: projectData.estimated_duration || 'medium',
       status: 'active',
       is_public: false,
-      tasks: projectData.tasks || []
+      tasks: Array.isArray(projectData.tasks) ? projectData.tasks : [] // ← CRITICAL FIX
     };
 
-    console.log('📤 Output tasks:', cleaned.tasks?.length || 0);
+    console.log('═══════════════════════════════════════════════');
+    console.log('🧹 VALIDATE AND CLEAN - END');
+    console.log('═══════════════════════════════════════════════');
+    console.log('📤 OUTPUT cleaned:', cleaned);
+    console.log('📤 OUTPUT cleaned.tasks:', cleaned.tasks?.length || 0);
+    
     if (cleaned.tasks && cleaned.tasks.length > 0) {
-      console.log('📋 Task titles:');
-      cleaned.tasks.forEach((task, i) => {
-        console.log(`  ${i + 1}. ${task.title}`);
-      });
+      console.log('📋 Output task titles:', cleaned.tasks.map(t => t.title));
+    } else {
+      console.error('⚠️ OUTPUT HAS NO TASKS!');
+      console.error('⚠️ This means tasks were lost during validation');
     }
-
-    Object.keys(cleaned).forEach(key => {
-      if (cleaned[key] === undefined || cleaned[key] === null) {
-        delete cleaned[key];
-      }
-    });
+    console.log('═══════════════════════════════════════════════');
 
     return cleaned;
   };
@@ -318,7 +370,6 @@ What would you like to work on today?`,
       return mapped;
     }
     
-    // Filter out things that aren't technologies
     const invalidWords = ['scoring', 'score', 'restart', 'option', 'timer', 'feature', 'system', 'tracking', 'leaderboard', 'feedback'];
     const isInvalid = invalidWords.some(word => lowerCleaned.includes(word));
     
@@ -332,7 +383,9 @@ What would you like to work on today?`,
 
   // ENHANCED: Extract project data with proper task parsing
   const extractProjectDataFromText = (content) => {
-    console.log('🔍 EXTRACTING PROJECT DATA...');
+    console.log('═══════════════════════════════════════════════');
+    console.log('🔍 EXTRACT PROJECT DATA - START');
+    console.log('═══════════════════════════════════════════════');
     console.log('📄 Content length:', content.length);
     console.log('📄 First 200 chars:', content.substring(0, 200));
     
@@ -351,12 +404,12 @@ What would you like to work on today?`,
       return s || 'Untitled Project';
     };
 
-    // Extract title from **Title** format
+    // Extract title
     const titleMatch = content.match(/\*\*([^*]+)\*\*/);
     const title = titleMatch ? sanitizeTitle(titleMatch[1]) : 'AI Suggested Project';
     console.log('📌 Title:', title);
 
-    // Extract description (first paragraph after title)
+    // Extract description
     const lines = content.split('\n').filter(l => l.trim());
     let description = '';
     let foundTitle = false;
@@ -399,7 +452,9 @@ What would you like to work on today?`,
     console.log('⚡ Difficulty:', difficulty);
 
     // CRITICAL: Parse tasks from the FULL content
+    console.log('📋 About to parse tasks...');
     const tasks = parseTasksFromContent(content);
+    console.log('📋 Tasks returned from parser:', tasks.length);
 
     const project = {
       title,
@@ -411,21 +466,22 @@ What would you like to work on today?`,
       programming_languages: technologies,
       topics: ['Web Development'],
       estimated_duration: 'medium',
-      tasks: tasks
+      tasks: tasks // ← CRITICAL: Make sure tasks are attached
     };
 
-    console.log('✅ Project extracted:', {
-      title: project.title,
-      description: project.description.substring(0, 50) + '...',
-      technologies: project.programming_languages,
-      taskCount: project.tasks.length
-    });
-    console.log('🔍 EXTRACT COMPLETE:');
-    console.log('  - Project title:', project.title);
-    console.log('  - Tasks count:', project.tasks?.length || 0);
+    console.log('═══════════════════════════════════════════════');
+    console.log('✅ PROJECT OBJECT CREATED');
+    console.log('═══════════════════════════════════════════════');
+    console.log('📦 Project title:', project.title);
+    console.log('📦 Project.tasks:', project.tasks?.length || 0);
+    
     if (project.tasks && project.tasks.length > 0) {
-      console.log('  - Task titles:', project.tasks.map(t => t.title));
+      console.log('📋 Project task titles:', project.tasks.map(t => t.title));
+    } else {
+      console.error('⚠️ PROJECT HAS NO TASKS AFTER EXTRACTION!');
     }
+    console.log('═══════════════════════════════════════════════');
+    
     projects.push(project);
     return projects;
   };
@@ -498,17 +554,32 @@ What would you like to work on today?`,
   ];
 
   const handleShowPreview = (projectData) => {
-    console.log('🎯 HANDLE SHOW PREVIEW CALLED');
-    console.log('  - Input tasks:', projectData.tasks?.length || 0);
+    console.log('═══════════════════════════════════════════════');
+    console.log('🎯 HANDLE SHOW PREVIEW - START');
+    console.log('═══════════════════════════════════════════════');
+    console.log('📥 Input projectData:', projectData);
+    console.log('📥 Input projectData.tasks:', projectData.tasks?.length || 0);
+    
     if (projectData.tasks && projectData.tasks.length > 0) {
-      console.log('  - Task titles:', projectData.tasks.map(t => t.title));
+      console.log('📋 Input task titles:', projectData.tasks.map(t => t.title));
+    } else {
+      console.error('⚠️ INPUT TO PREVIEW HAS NO TASKS!');
     }
-    console.log('🎯 Showing preview...');
-    console.log('📦 Project data:', projectData);
-    console.log('📋 Tasks:', projectData.tasks?.length || 0);
     
     const cleanedProjectData = validateAndCleanProjectData(projectData);
-    console.log('  - After validation tasks:', cleanedProjectData.tasks?.length || 0);
+    
+    console.log('═══════════════════════════════════════════════');
+    console.log('🎯 HANDLE SHOW PREVIEW - DISPATCHING EVENT');
+    console.log('═══════════════════════════════════════════════');
+    console.log('📤 Dispatching cleaned data:', cleanedProjectData);
+    console.log('📤 Dispatching with tasks:', cleanedProjectData.tasks?.length || 0);
+    
+    if (cleanedProjectData.tasks && cleanedProjectData.tasks.length > 0) {
+      console.log('📋 Dispatching task titles:', cleanedProjectData.tasks.map(t => t.title));
+    } else {
+      console.error('⚠️ DISPATCHING WITH NO TASKS!');
+    }
+    console.log('═══════════════════════════════════════════════');
     
     window.dispatchEvent(new CustomEvent('aiProjectPreview', { 
       detail: { project: cleanedProjectData } 
@@ -600,32 +671,30 @@ What would you like to work on today?`,
             }}
             onClick={(e) => {
               e.stopPropagation();
-              console.log('🖱️ Preview button clicked');
+              console.log('═══════════════════════════════════════════════');
+              console.log('🖱️ PREVIEW BUTTON CLICKED');
+              console.log('═══════════════════════════════════════════════');
               console.log('📄 Message content length:', message.content.length);
               
               const projects = extractProjectDataFromText(message.content);
-              console.log('📊 Extracted projects:', projects.length);
-              console.log('🖱️ AFTER EXTRACT:');
-              console.log('  - Projects count:', projects.length);
+              
+              console.log('📊 Extracted projects count:', projects.length);
+              
               if (projects.length > 0) {
-                console.log('✅ Using extracted project');
-                console.log('📋 Tasks in project:', projects[0].tasks?.length || 0);
+                console.log('📋 First project:', projects[0]);
+                console.log('📋 First project tasks:', projects[0].tasks?.length || 0);
+                
+                if (projects[0].tasks && projects[0].tasks.length > 0) {
+                  console.log('📋 First project task titles:', projects[0].tasks.map(t => t.title));
+                } else {
+                  console.error('⚠️ EXTRACTED PROJECT HAS NO TASKS!');
+                }
+                console.log('═══════════════════════════════════════════════');
+                
                 onShowPreview(projects[0]);
               } else {
-                console.log('⚠️ Using fallback');
-                const fallbackProject = {
-                  title: "AI Suggested Project",
-                  description: message.content.split('\n')[0] || "AI generated project idea",
-                  detailed_description: message.content,
-                  difficulty_level: 'medium',
-                  required_experience_level: 'intermediate',
-                  maximum_members: 1,
-                  programming_languages: ['JavaScript'],
-                  topics: ['Web Development'],
-                  tasks: parseTasksFromContent(message.content)
-                };
-                console.log('📋 Fallback tasks:', fallbackProject.tasks?.length || 0);
-                onShowPreview(fallbackProject);
+                console.error('⚠️ NO PROJECTS EXTRACTED!');
+                console.log('═══════════════════════════════════════════════');
               }
             }}
           >

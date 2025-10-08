@@ -247,9 +247,19 @@ router.post('/create-project', auth, async (req, res) => {
     const userId = req.user.id;
     const { projectData } = req.body;
 
-    console.log('🔄 Creating project from AI response:', projectData.title);
-    console.log('📊 Raw programming languages from frontend:', projectData.programming_languages);
-    console.log('📋 Tasks to create:', projectData.tasks?.length || 0);
+    console.log('═══════════════════════════════════════════════');
+    console.log('🔄 BACKEND RECEIVED CREATE PROJECT REQUEST');
+    console.log('═══════════════════════════════════════════════');
+    console.log('📥 req.body.projectData:', typeof req.body.projectData);
+    console.log('📥 projectData.tasks:', projectData.tasks?.length || 0);
+    if (projectData.tasks && Array.isArray(projectData.tasks)) {
+      console.log('📋 Received task titles:', projectData.tasks.map(t => t.title));
+    } else {
+      console.log('⚠️ projectData.tasks is NOT an array or is empty');
+      console.log('⚠️ projectData.tasks type:', typeof projectData.tasks);
+      console.log('⚠️ projectData.tasks value:', projectData.tasks);
+    }
+    console.log('═══════════════════════════════════════════════');
 
     // Step 1: Create main project
     const { data: project, error: projectError } = await supabase

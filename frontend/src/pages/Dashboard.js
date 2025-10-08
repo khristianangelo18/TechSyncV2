@@ -812,17 +812,38 @@ function Dashboard() {
   // NEW: Listen for AI chat project preview events
   useEffect(() => {
   const handleAIProjectPreview = (event) => {
-    console.log('📨 DASHBOARD RECEIVED EVENT');
-    console.log('  - Tasks received:', event.detail.project.tasks?.length || 0);
-    if (event.detail.project.tasks && event.detail.project.tasks.length > 0) {
-      console.log('  - Task titles:', event.detail.project.tasks.map(t => t.title));
-    }
-    console.log('🎯 Dashboard received AI project preview');
-    console.log('📦 Project data:', event.detail.project);
-    console.log('📋 Tasks in preview:', event.detail.project.tasks?.length || 0);
+    console.log('═══════════════════════════════════════════════');
+    console.log('📨 DASHBOARD RECEIVED AI PREVIEW EVENT');
+    console.log('═══════════════════════════════════════════════');
     
-    // ⭐ CRITICAL: Store the FULL project data including tasks
-    setAiPreviewProject(event.detail.project);
+    const receivedProject = event.detail.project;
+    
+    console.log('📥 event.detail:', event.detail);
+    console.log('📥 event.detail.project:', receivedProject);
+    console.log('📥 event.detail.project.tasks:', receivedProject.tasks?.length || 0);
+    
+    if (receivedProject.tasks && receivedProject.tasks.length > 0) {
+      console.log('📋 Received task titles:', receivedProject.tasks.map(t => t.title));
+    } else {
+      console.error('⚠️ DASHBOARD RECEIVED PROJECT WITH NO TASKS!');
+      console.error('⚠️ Received project keys:', Object.keys(receivedProject));
+    }
+    
+    // CRITICAL: Deep clone to prevent reference issues
+    const projectCopy = {
+      ...receivedProject,
+      tasks: receivedProject.tasks ? [...receivedProject.tasks] : [],
+      programming_languages: receivedProject.programming_languages ? [...receivedProject.programming_languages] : [],
+      topics: receivedProject.topics ? [...receivedProject.topics] : []
+    };
+    
+    console.log('📦 Created project copy with tasks:', projectCopy.tasks?.length || 0);
+    console.log('═══════════════════════════════════════════════');
+    console.log('📦 SET STATE aiPreviewProject');
+    console.log('═══════════════════════════════════════════════');
+    
+    // Store the copy in state
+    setAiPreviewProject(projectCopy);
     setShowAIProjectPreview(true);
   };
 
@@ -2548,18 +2569,36 @@ function Dashboard() {
                     transition: 'all 0.3s ease'
                   }}
                   onClick={() => {
+                    console.log('═══════════════════════════════════════════════');
                     console.log('🚀 DASHBOARD CREATE BUTTON CLICKED');
-                    console.log('  - aiPreviewProject tasks:', aiPreviewProject.tasks?.length || 0);
-                    if (aiPreviewProject.tasks && aiPreviewProject.tasks.length > 0) {
-                      console.log('  - Task titles:', aiPreviewProject.tasks.map(t => t.title));
-                    }
-                    console.log('🚀 Creating project from Dashboard modal');
-                    console.log('📋 Project has tasks:', aiPreviewProject.tasks?.length || 0);
+                    console.log('═══════════════════════════════════════════════');
+                    console.log('📦 aiPreviewProject:', aiPreviewProject);
+                    console.log('📦 aiPreviewProject.tasks:', aiPreviewProject.tasks?.length || 0);
                     
-                    // ⭐ CRITICAL: Pass the FULL aiPreviewProject with tasks
+                    if (!aiPreviewProject.tasks || aiPreviewProject.tasks.length === 0) {
+                      console.error('⚠️ WARNING: No tasks in aiPreviewProject!');
+                      console.error('⚠️ aiPreviewProject keys:', Object.keys(aiPreviewProject));
+                    } else {
+                      console.log('✅ Tasks present:', aiPreviewProject.tasks.length);
+                      console.log('📋 Task titles:', aiPreviewProject.tasks.map(t => t.title));
+                    }
+                    
+                    // CRITICAL: Deep clone to prevent mutation during dispatch
+                    const projectToCreate = {
+                      ...aiPreviewProject,
+                      tasks: aiPreviewProject.tasks ? [...aiPreviewProject.tasks] : [],
+                      programming_languages: aiPreviewProject.programming_languages ? [...aiPreviewProject.programming_languages] : [],
+                      topics: aiPreviewProject.topics ? [...aiPreviewProject.topics] : []
+                    };
+                    
+                    console.log('📤 Dispatching project:', projectToCreate);
+                    console.log('📤 Dispatching with tasks:', projectToCreate.tasks?.length || 0);
+                    console.log('═══════════════════════════════════════════════');
+                    
                     window.dispatchEvent(new CustomEvent('createAIProject', { 
-                      detail: { project: aiPreviewProject }  // This should include tasks!
+                      detail: { project: projectToCreate }
                     }));
+                    
                     setShowAIProjectPreview(false);
                     setAiPreviewProject(null);
                   }}

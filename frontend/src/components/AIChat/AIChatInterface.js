@@ -1,4 +1,4 @@
-// Fixed AIChatInterface.js - Enhanced with task parsing (preserving all your production features)
+// Fixed AIChatInterface.js - Complete version with task parsing
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { aiChatService } from '../../services/aiChatService';
@@ -22,7 +22,6 @@ const AIChatInterface = () => {
   }, [messages]);
 
   useEffect(() => {
-    // Add welcome message
     setMessages([{
       id: Date.now(),
       role: 'assistant',
@@ -46,13 +45,15 @@ What would you like to work on today?`,
       setCreatingProject(projectData.title);
       
       try {
-        // Validate and clean project data before sending
         const cleanedProjectData = validateAndCleanProjectData(projectData);
+        
+        console.log('🚀 Creating project with cleaned data:', cleanedProjectData);
+        console.log('📋 Tasks being sent:', cleanedProjectData.tasks?.length || 0);
         
         const response = await aiChatService.createProjectFromResponse(cleanedProjectData, token);
         
         if (response.success) {
-          const taskCount = projectData.tasks?.length || 0;
+          const taskCount = cleanedProjectData.tasks?.length || 0;
           const successMessage = {
             id: Date.now(),
             role: 'assistant',
@@ -86,10 +87,13 @@ What would you like to work on today?`,
     return () => window.removeEventListener('createAIProject', handleCreateAIProject);
   }, [token]);
 
-  // NEW: Parse tasks from AI response
+  // ENHANCED: Parse tasks from AI response
   const parseTasksFromContent = (content) => {
     const tasks = [];
     const lines = content.split('\n');
+    
+    console.log('🔍 Parsing tasks from content...');
+    console.log('📄 Total lines to parse:', lines.length);
     
     let currentWeek = null;
     let currentTaskTitle = '';
@@ -98,54 +102,68 @@ What would you like to work on today?`,
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
       
-      // Match "Week X:" pattern or "Week X -" pattern
-      const weekMatch = line.match(/^Week\s+(\d+)[\s:-]+(.+)/i);
+      // Match "Week X:" pattern (flexible with : - or space)
+      const weekMatch = line.match(/^Week\s+(\d+)[\s:;-]+(.+)/i);
       if (weekMatch) {
         // Save previous task if exists
         if (currentTaskTitle) {
-          tasks.push({
+          const task = {
             title: currentTaskTitle,
             description: currentDescription.trim(),
             priority: 'medium',
             category: 'learning',
-            estimated_hours: parseInt(currentWeek) * 5 || 5,
+            estimated_hours: Math.min(parseInt(currentWeek) * 8, 40), // 8 hours per week, max 40
             target_date: null
-          });
+          };
+          tasks.push(task);
+          console.log(`✅ Parsed: ${task.title}`);
         }
         
         currentWeek = weekMatch[1];
         currentTaskTitle = `Week ${currentWeek}: ${weekMatch[2]}`;
         currentDescription = '';
+        console.log(`🔍 Found Week ${currentWeek}`);
         continue;
       }
       
-      // Collect subtasks/description (lines starting with -, •, or similar)
-      if (currentTaskTitle && (line.startsWith('-') || line.startsWith('•') || line.startsWith('*'))) {
-        const cleaned = line.replace(/^[-•*]\s*/, '').trim();
-        if (cleaned) {
-          currentDescription += cleaned + '\n';
+      // Collect subtasks/description (lines starting with -, •, *, or just indented text)
+      if (currentTaskTitle) {
+        if (line.startsWith('-') || line.startsWith('•') || line.startsWith('*')) {
+          const cleaned = line.replace(/^[-•*]\s*/, '').trim();
+          if (cleaned && !cleaned.toLowerCase().startsWith('expected outcome')) {
+            currentDescription += cleaned + '\n';
+          }
         }
       }
     }
     
     // Save last task
     if (currentTaskTitle) {
-      tasks.push({
+      const task = {
         title: currentTaskTitle,
         description: currentDescription.trim(),
         priority: 'medium',
         category: 'learning',
-        estimated_hours: parseInt(currentWeek) * 5 || 5,
+        estimated_hours: Math.min(parseInt(currentWeek) * 8, 40),
         target_date: null
-      });
+      };
+      tasks.push(task);
+      console.log(`✅ Parsed: ${task.title}`);
     }
     
-    console.log('📋 Parsed tasks from AI response:', tasks);
+    console.log(`📋 Total tasks parsed: ${tasks.length}`);
+    tasks.forEach((task, i) => {
+      console.log(`  ${i + 1}. ${task.title} (${task.estimated_hours}h)`);
+    });
+    
     return tasks;
   };
 
-  // Enhanced validation function (your existing code)
+  // Enhanced validation function
   const validateAndCleanProjectData = (projectData) => {
+    console.log('🧹 Validating and cleaning project data...');
+    console.log('📥 Input tasks:', projectData.tasks?.length || 0);
+    
     const cleaned = {
       title: String(projectData.title || 'Untitled Project').trim().substring(0, 100),
       description: String(projectData.description || projectData.detailed_description || 'AI-generated project').trim().substring(0, 500),
@@ -158,18 +176,22 @@ What would you like to work on today?`,
       estimated_duration: projectData.estimated_duration || 'medium',
       status: 'active',
       is_public: false,
-      // NEW: Include tasks
       tasks: projectData.tasks || []
     };
+
+    console.log('📤 Output tasks:', cleaned.tasks?.length || 0);
+    if (cleaned.tasks && cleaned.tasks.length > 0) {
+      console.log('📋 Task titles:');
+      cleaned.tasks.forEach((task, i) => {
+        console.log(`  ${i + 1}. ${task.title}`);
+      });
+    }
 
     Object.keys(cleaned).forEach(key => {
       if (cleaned[key] === undefined || cleaned[key] === null) {
         delete cleaned[key];
       }
     });
-
-    console.log('🔍 Cleaned project data:', cleaned);
-    console.log('📋 Tasks included:', cleaned.tasks?.length || 0);
 
     return cleaned;
   };
@@ -250,14 +272,6 @@ What would you like to work on today?`,
       return ['Web Development'];
     }
     
-    const validTopics = [
-      'Web Development', 'Mobile Development', 'Desktop Development',
-      'Game Development', 'Data Science', 'Machine Learning', 'AI',
-      'Backend Development', 'Frontend Development', 'Full Stack',
-      'DevOps', 'Cloud Computing', 'Cybersecurity', 'Blockchain',
-      'IoT', 'AR/VR', 'API Development', 'Database', 'Testing'
-    ];
-    
     const cleaned = topics
       .map(topic => String(topic).trim())
       .filter(topic => topic && topic.length > 0)
@@ -267,7 +281,7 @@ What would you like to work on today?`,
   };
 
   const cleanTechnologyName = (tech) => {
-    if (!tech) return tech;
+    if (!tech) return null;
     
     let cleaned = tech
       .trim()
@@ -298,11 +312,30 @@ What would you like to work on today?`,
     };
     
     const lowerCleaned = cleaned.toLowerCase();
-    return techMap[lowerCleaned] || cleaned;
+    const mapped = techMap[lowerCleaned];
+    
+    if (mapped) {
+      return mapped;
+    }
+    
+    // Filter out things that aren't technologies
+    const invalidWords = ['scoring', 'score', 'restart', 'option', 'timer', 'feature', 'system', 'tracking', 'leaderboard', 'feedback'];
+    const isInvalid = invalidWords.some(word => lowerCleaned.includes(word));
+    
+    if (isInvalid) {
+      console.log(`⚠️ Rejected invalid tech: "${cleaned}"`);
+      return null;
+    }
+    
+    return cleaned;
   };
 
-  // ENHANCED: Extract project data with tasks
+  // ENHANCED: Extract project data with proper task parsing
   const extractProjectDataFromText = (content) => {
+    console.log('🔍 EXTRACTING PROJECT DATA...');
+    console.log('📄 Content length:', content.length);
+    console.log('📄 First 200 chars:', content.substring(0, 200));
+    
     const projects = [];
     
     const sanitizeTitle = (raw) => {
@@ -311,112 +344,84 @@ What would you like to work on today?`,
         .replace(/\*\*/g, '')
         .replace(/[#*_`]/g, '')
         .trim();
-
       s = s.replace(/^[\s\-•]*\d+\.\s*/, '').trim();
       s = s.replace(/^[\s\-•]+/, '').trim();
       s = s.replace(/^(?:project\s*(?:name|title)|title|name)\s*:?\s*/i, '').trim();
       s = s.replace(/^["'`]+|["'`]+$/g, '').trim();
-
       return s || 'Untitled Project';
     };
 
-    // Try to extract numbered project sections
-    const projectSections = content.split(/\*\*\d+\.\s+/).slice(1);
+    // Extract title from **Title** format
+    const titleMatch = content.match(/\*\*([^*]+)\*\*/);
+    const title = titleMatch ? sanitizeTitle(titleMatch[1]) : 'AI Suggested Project';
+    console.log('📌 Title:', title);
+
+    // Extract description (first paragraph after title)
+    const lines = content.split('\n').filter(l => l.trim());
+    let description = '';
+    let foundTitle = false;
     
-    if (projectSections.length > 0) {
-      projectSections.forEach((section, index) => {
-        const lines = section.split('\n').filter(line => line.trim());
-        if (lines.length === 0) return;
-        
-        const firstLine = lines[0];
-        const nameMatch = firstLine.match(/^(.+?)\*\*/);
-        let nameCandidate = nameMatch ? nameMatch[1].trim() : firstLine.trim();
-        let name = sanitizeTitle(nameCandidate);
-        
-        let description = '';
-        let technologies = [];
-        let difficulty = 'medium';
-        
-        for (let i = 1; i < lines.length; i++) {
-          const line = lines[i].trim();
-          
-          if (line && !description && !/^[•·-]/.test(line) && !/^(Key Features|Technologies|Time Estimate|Difficulty|Weekly Task Breakdown):/i.test(line)) {
-            description = line;
-          }
-          
-          if (/Technologies:/i.test(line)) {
-            const techLine = line.replace(/Technologies:/i, '').trim();
-            technologies = techLine
-              .split(/[,•·+&/|]/)
-              .map(t => cleanTechnologyName(t.trim()))
-              .filter(t => t && t.length > 0);
-          }
-          
-          if (/Difficulty:/i.test(line)) {
-            const diffLine = line.replace(/Difficulty:/i, '').trim().toLowerCase();
-            difficulty = validateDifficultyLevel(diffLine);
-          }
-        }
-        
-        // NEW: Parse tasks from section
-        const tasks = parseTasksFromContent(section);
-        
-        const project = {
-          title: name,
-          description: description || 'AI-generated project idea',
-          detailed_description: section.trim(),
-          difficulty_level: difficulty,
-          required_experience_level: validateExperienceLevel(difficulty),
-          maximum_members: 1,
-          programming_languages: technologies.length > 0 ? technologies : ['JavaScript'],
-          topics: ['Web Development'],
-          estimated_duration: 'medium',
-          tasks: tasks // NEW: Include tasks
-        };
-        
-        projects.push(project);
-      });
-    }
-    
-    // Fallback: create a single project from the entire content
-    if (projects.length === 0) {
-      const titleMatch = content.match(/\*\*(.+?)\*\*/);
-      const title = titleMatch ? sanitizeTitle(titleMatch[1]) : 'AI Suggested Project';
-      
-      const sentences = content.split(/[.!?]+/).filter(s => s.trim());
-      const description = sentences.slice(0, 2).join('.').trim() + (sentences.length ? '.' : '');
-      
-      const techMatches = content.match(/(?:using|with|in|built with)\s+([^.!?]+)/gi);
-      let technologies = ['JavaScript'];
-      if (techMatches) {
-        const extractedTechs = techMatches.join(' ')
-          .split(/[,&+/|]/)
-          .map(t => cleanTechnologyName(t.replace(/using|with|in|built with/gi, '').trim()))
-          .filter(t => t && t.length > 0 && t.length < 20);
-        if (extractedTechs.length > 0) {
-          technologies = extractedTechs.slice(0, 3);
-        }
+    for (const line of lines) {
+      if (line.includes('**') && !foundTitle) {
+        foundTitle = true;
+        continue;
       }
-      
-      // NEW: Parse tasks from content
-      const tasks = parseTasksFromContent(content);
-      
-      const project = {
-        title,
-        description: description || content.split('\n')[0] || 'AI-generated project idea',
-        detailed_description: content.trim(),
-        difficulty_level: 'medium',
-        required_experience_level: 'intermediate',
-        maximum_members: 1,
-        programming_languages: technologies,
-        topics: ['Web Development'],
-        estimated_duration: 'medium',
-        tasks: tasks // NEW: Include tasks
-      };
-      
-      projects.push(project);
+      if (foundTitle && line.trim() && !line.startsWith('-') && !line.startsWith('•') && 
+          !line.match(/^(Key Features|Technologies|Time Estimate|Difficulty|Week \d+):/i)) {
+        description = line.trim();
+        break;
+      }
     }
-    
+    console.log('📝 Description:', description.substring(0, 100));
+
+    // Extract technologies
+    let technologies = ['JavaScript'];
+    const techMatch = content.match(/Technologies:\s*([^\n]+)/i);
+    if (techMatch) {
+      const techLine = techMatch[1].trim();
+      const extractedTechs = techLine
+        .split(/[,•·+&/|]/)
+        .map(t => cleanTechnologyName(t.trim()))
+        .filter(t => t && t.length > 0 && t.length < 30);
+      
+      if (extractedTechs.length > 0) {
+        technologies = extractedTechs;
+      }
+      console.log('🔧 Technologies:', technologies);
+    }
+
+    // Extract difficulty
+    let difficulty = 'medium';
+    const diffMatch = content.match(/Difficulty:\s*([^\n]+)/i);
+    if (diffMatch) {
+      difficulty = validateDifficultyLevel(diffMatch[1].trim());
+    }
+    console.log('⚡ Difficulty:', difficulty);
+
+    // CRITICAL: Parse tasks from the FULL content
+    const tasks = parseTasksFromContent(content);
+
+    const project = {
+      title,
+      description: description || 'AI-generated project idea',
+      detailed_description: content.trim(),
+      difficulty_level: difficulty,
+      required_experience_level: validateExperienceLevel(difficulty),
+      maximum_members: 1,
+      programming_languages: technologies,
+      topics: ['Web Development'],
+      estimated_duration: 'medium',
+      tasks: tasks
+    };
+
+    console.log('✅ Project extracted:', {
+      title: project.title,
+      description: project.description.substring(0, 50) + '...',
+      technologies: project.programming_languages,
+      taskCount: project.tasks.length
+    });
+
+    projects.push(project);
     return projects;
   };
 
@@ -453,13 +458,13 @@ What would you like to work on today?`,
           role: 'assistant',
           content: response.data.message,
           timestamp: response.data.timestamp,
-          // ENHANCED: Check for task breakdown too
           isProjectSuggestion: (response.data.message.includes('**') && 
                                (response.data.message.includes('Technologies:') ||
                                 response.data.message.includes('Difficulty:') ||
                                 response.data.message.includes('Key Features:') ||
                                 response.data.message.includes('Time Estimate:') ||
-                                response.data.message.includes('Weekly Task Breakdown:'))) ||
+                                response.data.message.includes('Weekly Task Breakdown:') ||
+                                response.data.message.match(/Week\s+\d+:/i))) ||
                                response.data.message.toLowerCase().includes('project idea')
         };
         setMessages(prev => [...prev, aiMessage]);
@@ -488,9 +493,11 @@ What would you like to work on today?`,
   ];
 
   const handleShowPreview = (projectData) => {
-    const cleanedProjectData = validateAndCleanProjectData(projectData);
+    console.log('🎯 Showing preview...');
+    console.log('📦 Project data:', projectData);
+    console.log('📋 Tasks:', projectData.tasks?.length || 0);
     
-    console.log('📊 Showing preview with tasks:', cleanedProjectData.tasks?.length || 0);
+    const cleanedProjectData = validateAndCleanProjectData(projectData);
     
     window.dispatchEvent(new CustomEvent('aiProjectPreview', { 
       detail: { project: cleanedProjectData } 
@@ -582,10 +589,18 @@ What would you like to work on today?`,
             }}
             onClick={(e) => {
               e.stopPropagation();
+              console.log('🖱️ Preview button clicked');
+              console.log('📄 Message content length:', message.content.length);
+              
               const projects = extractProjectDataFromText(message.content);
+              console.log('📊 Extracted projects:', projects.length);
+              
               if (projects.length > 0) {
+                console.log('✅ Using extracted project');
+                console.log('📋 Tasks in project:', projects[0].tasks?.length || 0);
                 onShowPreview(projects[0]);
               } else {
+                console.log('⚠️ Using fallback');
                 const fallbackProject = {
                   title: "AI Suggested Project",
                   description: message.content.split('\n')[0] || "AI generated project idea",
@@ -595,8 +610,9 @@ What would you like to work on today?`,
                   maximum_members: 1,
                   programming_languages: ['JavaScript'],
                   topics: ['Web Development'],
-                  tasks: []
+                  tasks: parseTasksFromContent(message.content)
                 };
+                console.log('📋 Fallback tasks:', fallbackProject.tasks?.length || 0);
                 onShowPreview(fallbackProject);
               }
             }}
@@ -619,7 +635,6 @@ What would you like to work on today?`,
                 <span>{line.substring(2)}</span>
               </div>;
             }
-            // NEW: Highlight weekly tasks
             if (line.match(/^Week\s+\d+/i)) {
               return <div key={index} style={{ fontWeight: '600', marginTop: '12px', marginBottom: '8px', color: '#fbbf24', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <CheckCircle size={16} />

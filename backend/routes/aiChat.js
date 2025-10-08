@@ -443,7 +443,7 @@ router.post('/create-project', auth, async (req, res) => {
         user_id: userId,
         title: task.title,
         description: task.description || '',
-        status: 'todo',
+        status: 'active', // FIXED: Changed from 'todo' to 'active' to match your UI
         priority: task.priority || 'medium',
         category: task.category || 'learning',
         estimated_hours: task.estimated_hours || null,

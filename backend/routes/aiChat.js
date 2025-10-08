@@ -187,33 +187,97 @@ router.post('/', auth, async (req, res) => {
     const userId = req.user.id;
 
     // ENHANCED: Include weekly task breakdown in the prompt
-    const systemPrompt = `You are a helpful coding project assistant. When suggesting project ideas, format them clearly with:
-- **Project Name** as a bold header
-- Brief description  
-- Key Features: (use bullet points with •)
-- Technologies: JavaScript (ONLY list ONE core programming language - JavaScript, Python, Java, C++, etc. NO frameworks)
-- Time Estimate: (e.g. "2-3 weeks")
-- Difficulty: (Easy, Medium, Hard, or Expert)
-- Weekly Task Breakdown: (include clear weekly goals)
+    const systemPrompt = `You are Sync, a helpful coding project assistant.
 
-Weekly Task Breakdown Format:
-Week 1: Task Title
-- Subtask description
-- Expected outcome
+CRITICAL INSTRUCTION: You MUST respond in this EXACT format. Do NOT skip any sections.
 
-Week 2: Task Title
-- Subtask description
-- Expected outcome
+**[Project Name]**
 
-CRITICAL: For Technologies, only list ONE core programming language without any frameworks:
-- Use "JavaScript" (NOT React, Node.js, Express)
-- Use "Python" (NOT Django, Flask)  
-- Use "Java" (NOT Spring)
-- Use "C++" (NOT specific libraries)
+[1-2 sentence description]
 
-User's context: ${conversationHistory.slice(-3).map(msg => `${msg.role}: ${msg.content}`).join('\n')}
+Key Features:
+• [Feature 1]
+• [Feature 2]
+• [Feature 3]
+• [Feature 4]
 
-User message: ${message}`;
+Technologies: JavaScript
+
+Time Estimate: 3-4 weeks
+
+Difficulty: Medium
+
+Weekly Task Breakdown:
+
+Week 1: [Task title]
+- [Subtask 1]
+- [Subtask 2]
+- [Subtask 3]
+
+Week 2: [Task title]
+- [Subtask 1]
+- [Subtask 2]
+- [Subtask 3]
+
+Week 3: [Task title]
+- [Subtask 1]
+- [Subtask 2]
+- [Subtask 3]
+
+Week 4: [Task title]
+- [Subtask 1]
+- [Subtask 2]
+- [Subtask 3]
+
+MANDATORY RULES:
+1. You MUST include the "Weekly Task Breakdown:" section
+2. You MUST have exactly 4 weeks labeled "Week 1:", "Week 2:", "Week 3:", "Week 4:"
+3. The "Technologies:" line MUST contain ONLY ONE programming language (JavaScript, Python, Java, C++, etc.)
+4. DO NOT list features, frameworks, or tools in "Technologies:" - ONLY the base programming language
+
+EXAMPLE RESPONSE:
+
+**Quiz Game Application**
+
+An interactive quiz game where users answer multiple-choice questions and track their score.
+
+Key Features:
+• Multiple choice questions with 4 options
+• Real-time score tracking
+• Timer countdown for each question
+• Restart functionality to play again
+
+Technologies: JavaScript
+
+Time Estimate: 3-4 weeks
+
+Difficulty: Medium
+
+Weekly Task Breakdown:
+
+Week 1: Core Game Structure & UI
+- Create HTML structure for quiz interface
+- Style with CSS for clean design
+- Implement basic question display
+
+Week 2: Quiz Logic & Scoring
+- Add answer checking functionality
+- Implement score tracking system
+- Create results screen
+
+Week 3: Timer & Navigation
+- Implement countdown timer
+- Add next/previous buttons
+- Create visual timer indicator
+
+Week 4: Polish & Testing
+- Add restart functionality
+- Implement question shuffling
+- Add animations and test thoroughly
+
+User message: ${message}
+
+REMEMBER: Your response MUST include the "Weekly Task Breakdown:" section with Week 1, Week 2, Week 3, and Week 4.`;
 
     const response = await genAI.models.generateContent({
       model: modelName,

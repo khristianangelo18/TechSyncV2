@@ -1,5 +1,5 @@
 // frontend/src/pages/soloproject/SoloProjectGoals.js - ALIGNED WITH DASHBOARD STYLING
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import { 
   Target, 
@@ -353,6 +353,20 @@ function SoloProjectGoals() {
     }
   }, [createIntent, showCreateModal]);
 
+  // ✅ NEW: Function to notify dashboard of changes
+  const notifyDashboardUpdate = useCallback(async () => {
+    try {
+      await SoloProjectService.logActivity(projectId, {
+        action: 'updated',
+        target: 'tasks and goals',
+        type: 'project_updated'
+      });
+      console.log('✅ Dashboard notified of changes');
+    } catch (error) {
+      console.error('Failed to notify dashboard:', error);
+    }
+  }, [projectId]);
+
   // Create item via API
   const handleCreateItem = async (e) => {
     e.preventDefault();
@@ -380,6 +394,7 @@ function SoloProjectGoals() {
           type: newItem.type
         };
         setItems(prev => [enhancedItem, ...prev]);
+        await notifyDashboardUpdate();
       }
 
       // Reset form
@@ -439,6 +454,9 @@ function SoloProjectGoals() {
             type: item.type
           } : item
         ));
+        if (newProgress === 100 || newProgress === 0 || Math.abs(newProgress - (originalItem?.progress || 0)) >= 25) {
+          await notifyDashboardUpdate();
+        }
       }
     } catch (err) {
       console.error('Progress update failed:', err);
@@ -460,6 +478,7 @@ function SoloProjectGoals() {
     try {
       await SoloProjectService.deleteGoal(projectId, itemId);
       setItems(prev => prev.filter(item => item.id !== itemId));
+      await notifyDashboardUpdate();
     } catch (err) {
       alert(err?.response?.data?.message || 'Failed to delete item');
     }
@@ -505,6 +524,7 @@ function SoloProjectGoals() {
         setItems(prev => prev.map(item => 
           item.id === editingItem.id ? { ...item, ...updatedItem, type: newItem.type } : item
         ));
+        await notifyDashboardUpdate();
       }
 
       setEditingItem(null);
@@ -638,22 +658,138 @@ function SoloProjectGoals() {
 
   // Item Card Component
   const ItemCard = ({ item, isKanban = false }) => (
-    <div style={{
-      ...styles.itemCard,
-      ...(isKanban ? styles.kanbanCard : {})
-    }}>
+    <div 
+      style={{
+        ...styles.itemCard,
+        ...(isKanban ? styles.kanbanCard : {})
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = 'translateY(-4px)';
+        e.currentTarget.style.boxShadow = '0 12px 40px rgba(0, 0, 0, 0.5)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = 'translateY(0)';
+        e.currentTarget.style.boxShadow = '0 8px 32px rgba(0, 0, 0, 0.3)';
+      }}
+    >
+      {/* Header with type and priority */}
+      <div style={styles.itemHeader}>
+        <div style={styles.itemTypeIndicator}>
+          <div style={styles.itemTypeIcon}>
+            {item.type === 'task' ? 
+              <CheckSquare size={16} style={{ color: '#3b82f6' }} /> : 
+              <Target size={16} style={{ color: '#a855f7' }} />
+            }
+          </div>
+          <span style={styles.itemTypeText}>
+            {item.type === 'task' ? 'Task' : 'Goal'}
+          </span>
+        </div>
+        <div 
+          style={{
+            ...styles.priorityBadge,
+            backgroundColor: getPriorityColor(item.priority)
+          }}
+        >
+          <AlertCircle size={12} />
+          {item.priority}
+        </div>
+      </div>
+
+      {/* Title */}
+      <h3 style={styles.itemTitle}>{item.title}</h3>
+
+      {/* Description */}
+      {item.description && (
+        <p style={styles.itemDescription}>
+          {item.description.length > 150 
+            ? `${item.description.substring(0, 150)}...` 
+            : item.description}
+        </p>
+      )}
+
+      {/* Progress Section */}
+      <div style={styles.progressSection}>
+        <div style={styles.progressBar}>
+          <div 
+            style={{
+              ...styles.progressFill,
+              width: `${item.progress || 0}%`
+            }}
+          />
+        </div>
+        
+        <div style={styles.progressControls}>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={item.progress || 0}
+            onChange={(e) => updateItemProgress(item.id, parseInt(e.target.value))}
+            style={styles.progressSlider}
+          />
+          <span style={styles.progressText}>{item.progress || 0}%</span>
+        </div>
+
+        <div style={styles.quickProgress}>
+          {[0, 25, 50, 75, 100].map(value => (
+            <button
+              key={value}
+              style={{
+                ...styles.progressButton,
+                ...((item.progress || 0) === value ? styles.progressButtonActive : {})
+              }}
+              onClick={() => updateItemProgress(item.id, value)}
+            >
+              {value}%
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Meta Information */}
+      <div style={styles.itemMeta}>
+        <div style={styles.itemDetails}>
+          <div style={styles.itemMetaItem}>
+            <Calendar size={14} style={{ marginRight: '4px' }} />
+            {formatDate(item.target_date)}
+          </div>
+          <div style={styles.itemCategory}>
+            {getCategoryIcon(item.category)}
+            <span style={{ marginLeft: '4px' }}>
+              {item.category?.replace('_', ' ')}
+            </span>
+          </div>
+          {item.estimated_hours && (
+            <div style={styles.itemMetaItem}>
+              <Clock size={14} style={{ marginRight: '4px' }} />
+              {item.estimated_hours}h estimated
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Footer with status and actions */}
       <div style={styles.itemFooter}>
-        <span style={{
-          ...styles.statusBadge,
-          backgroundColor: getStatusColor(item.status)
-        }}>
-          {item.status.replace('_', ' ')}
+        <span 
+          style={{
+            ...styles.statusBadge,
+            backgroundColor: getStatusColor(item.status)
+          }}
+        >
+          {item.status?.replace('_', ' ')}
         </span>
         
         <div style={styles.itemActions}>
           <button 
             style={styles.editButton}
             onClick={() => startEditItem(item)}
+            onMouseEnter={(e) => {
+              e.target.style.backgroundColor = '#4b5563';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+            }}
           >
             <Edit size={12} style={{ marginRight: '4px' }} />
             Edit
@@ -661,6 +797,14 @@ function SoloProjectGoals() {
           <button 
             style={styles.deleteButton}
             onClick={() => deleteItem(item.id)}
+            onMouseEnter={(e) => {
+              e.target.style.backgroundColor = '#dc2626';
+              e.target.style.color = 'white';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.backgroundColor = 'rgba(220, 38, 38, 0.1)';
+              e.target.style.color = '#dc2626';
+            }}
           >
             <Trash2 size={12} style={{ marginRight: '4px' }} />
             Delete

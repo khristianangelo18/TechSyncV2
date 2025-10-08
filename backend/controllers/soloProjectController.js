@@ -300,40 +300,107 @@ const getDashboardData = async (req, res) => {
     });
 
     // Fetch project tasks for statistics
-    const { data: tasks, error: tasksError } = await supabase
-      .from('project_tasks')
-      .select('id, status, priority, created_at, completed_at')
-      .eq('project_id', projectId);
-
-    if (tasksError) {
-      console.error('Error fetching tasks:', tasksError);
-    }
-
-    // Fetch goals for additional statistics
-    const { data: goals, error: goalsError } = await supabase
+    const { data: allItems, error: itemsError } = await supabase
       .from('solo_project_goals')
-      .select('id, status, priority, created_at, completed_at')
+      .select('*')
       .eq('project_id', projectId);
 
-    if (goalsError) {
-      console.error('Error fetching goals:', goalsError);
+    if (itemsError) {
+      console.error('Error fetching items:', itemsError);
     }
+
+    console.log('📊 Raw items from database:', allItems); // Debug log
+
+    // ✅ Separate tasks from goals based on estimated_hours field
+    const allTasks = (allItems || []).filter(item => 
+      item.estimated_hours !== null && item.estimated_hours > 0
+    );
+    const allGoals = (allItems || []).filter(item => 
+      !item.estimated_hours || item.estimated_hours === null || item.estimated_hours === 0
+    );
+
+    console.log('✅ Tasks found:', allTasks.length); // Debug log
+    console.log('✅ Goals found:', allGoals.length); // Debug log
 
     // Calculate task statistics
-    const allTasks = tasks || [];
     const completed = allTasks.filter(task => task.status === 'completed');
-    const inProgress = allTasks.filter(task => task.status === 'in_progress');
+    const inProgress = allTasks.filter(task => task.status === 'in_progress' || task.status === 'active');
     const completionRate = allTasks.length > 0 ?
       Math.round((completed.length / allTasks.length) * 100) : 0;
 
     // Calculate goal statistics
-    const allGoals = goals || [];
     const completedGoals = allGoals.filter(goal => goal.status === 'completed');
-    const activeGoals = allGoals.filter(goal => goal.status === 'active');
+    const activeGoals = allGoals.filter(goal => goal.status === 'active' || goal.status === 'in_progress');
 
     // Get today's time tracking (mock for now - will be implemented with real tracking)
-    const timeSpentToday = Math.floor(Math.random() * 8) + 1; // Mock data
-    const streakDays = Math.floor(Math.random() * 30) + 1; // Mock data
+    // ✅ REAL: Calculate actual time spent today
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // Fetch time tracking entries for today
+      const { data: todayTimeEntries } = await supabase
+        .from('solo_project_time_tracking')
+        .select('duration_minutes')
+        .eq('project_id', projectId)
+        .gte('logged_at', today.toISOString());
+
+      // Calculate total hours for today
+      const totalMinutesToday = (todayTimeEntries || []).reduce(
+        (sum, entry) => sum + (entry.duration_minutes || 0), 
+        0
+      );
+      const timeSpentToday = Math.round((totalMinutesToday / 60) * 10) / 10; // Round to 1 decimal
+
+      // ✅ REAL: Calculate streak days based on activity
+      const { data: recentActivities } = await supabase
+        .from('user_activity')
+        .select('created_at')
+        .eq('project_id', projectId)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      // Calculate consecutive days with activity
+      let streakDays = 0;
+      if (recentActivities && recentActivities.length > 0) {
+        const activityDates = recentActivities.map(a => {
+          const date = new Date(a.created_at);
+          date.setHours(0, 0, 0, 0);
+          return date.getTime();
+        });
+        
+        // Remove duplicates and sort
+        const uniqueDates = [...new Set(activityDates)].sort((a, b) => b - a);
+        
+        // Count consecutive days
+        const todayTime = today.getTime();
+        let currentDate = todayTime;
+        
+        for (let i = 0; i < uniqueDates.length; i++) {
+          if (uniqueDates[i] === currentDate) {
+            streakDays++;
+            currentDate -= 24 * 60 * 60 * 1000; // Go back 1 day
+          } else if (uniqueDates[i] < currentDate) {
+            break; // Streak broken
+          }
+        }
+        
+        // If no activity today, start from yesterday
+        if (uniqueDates[0] < todayTime && streakDays === 0) {
+          currentDate = todayTime - 24 * 60 * 60 * 1000;
+          for (let i = 0; i < uniqueDates.length; i++) {
+            if (uniqueDates[i] === currentDate) {
+              streakDays++;
+              currentDate -= 24 * 60 * 60 * 1000;
+            } else if (uniqueDates[i] < currentDate) {
+              break;
+            }
+          }
+        }
+      }
+
+      console.log('⏱️ Time spent today:', timeSpentToday, 'hours');
+      console.log('🔥 Current streak:', streakDays, 'days');
 
     const dashboardData = {
       project, // FIXED: Now includes programming languages and topics
@@ -476,6 +543,57 @@ const logActivity = async (req, res) => {
     }
 
     console.log('✅ Activity logged successfully:', activity.id);
+
+    // ✅ AUTO-LOG TIME ENTRY with REALISTIC estimates
+    let estimatedMinutes = 2; // Default: 2 minutes for quick actions
+
+    // More realistic time estimates based on actual user behavior
+    if (action === 'created' && target.includes('task')) {
+      estimatedMinutes = 3; // Creating a task: 2-3 minutes
+    } else if (action === 'created' && target.includes('goal')) {
+      estimatedMinutes = 5; // Creating a goal (more thoughtful): 4-6 minutes
+    } else if (action === 'updated' && target.includes('task')) {
+      estimatedMinutes = 2; // Quick update: 1-2 minutes
+    } else if (action === 'updated' && target.includes('progress')) {
+      estimatedMinutes = 1; // Just clicking progress: <1 minute
+    } else if (action === 'completed' || (metadata && metadata.progress === 100)) {
+      estimatedMinutes = 5; // Completing something: testing + marking: 3-5 minutes
+    } else if (action === 'deleted') {
+      estimatedMinutes = 1; // Deleting is quick: <1 minute
+    } else if (action === 'navigated to') {
+      estimatedMinutes = 0; // Don't log time for just navigating
+    } else {
+      estimatedMinutes = 2; // General actions: ~2 minutes
+    }
+
+    // Only log if estimated time > 0
+    if (estimatedMinutes > 0) {
+      // Determine activity type based on the action
+      let activityType = 'planning';
+      if (type.includes('task') || action.includes('completed')) {
+        activityType = 'coding';
+      } else if (action.includes('note')) {
+        activityType = 'documentation';
+      }
+
+      // Log the time entry
+      const { error: timeError } = await supabase
+        .from('solo_project_time_tracking')
+        .insert({
+          project_id: projectId,
+          description: `${action} ${target}`,
+          duration_minutes: estimatedMinutes,
+          activity_type: activityType,
+          logged_at: new Date().toISOString()
+        });
+
+      if (timeError) {
+        console.warn('⚠️ Could not log time entry:', timeError);
+        // Don't fail the request if time logging fails
+      } else {
+        console.log(`⏱️ Time entry logged: ${estimatedMinutes} minutes (${activityType})`);
+      }
+    }
 
     res.json({
       success: true,

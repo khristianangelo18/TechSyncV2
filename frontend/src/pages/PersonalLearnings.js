@@ -288,17 +288,26 @@ const PersonalLearnings = ({ userId }) => {
             const progress = enrollmentData?.progress || 0;
             
             return (
-              <div 
-                key={learning.id} 
-                style={{
-                  ...styles.card,
-                  ...(isCourse ? styles.courseCard : {})
-                }}
-              >
-                <div style={{
-                  ...styles.providerBadge,
-                  ...getProviderBadgeStyle(provider)
-                }}>
+            <div
+              key={learning.id}
+              style={{
+                ...styles.card,
+                ...(isCourse ? styles.courseCard : {}),
+                position: 'relative',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                minHeight: '380px', // keeps cards uniform
+              }}
+            >
+              {/* ---- CARD CONTENT ---- */}
+              <div style={{ flexGrow: 1 }}>
+                <div
+                  style={{
+                    ...styles.providerBadge,
+                    ...getProviderBadgeStyle(provider),
+                  }}
+                >
                   {getProviderIcon(provider)}
                   <span style={{ textTransform: 'uppercase' }}>
                     {isCourse ? 'COURSE' : provider}
@@ -306,15 +315,11 @@ const PersonalLearnings = ({ userId }) => {
                 </div>
 
                 {learning.difficulty && (
-                  <div style={styles.difficultyBadge}>
-                    {learning.difficulty}
-                  </div>
+                  <div style={styles.difficultyBadge}>{learning.difficulty}</div>
                 )}
 
                 {isCourse && resource.icon && (
-                  <div style={styles.courseIcon}>
-                    {resource.icon}
-                  </div>
+                  <div style={styles.courseIcon}>{resource.icon}</div>
                 )}
 
                 <h3 style={styles.resourceTitle}>
@@ -323,8 +328,8 @@ const PersonalLearnings = ({ userId }) => {
 
                 {resource.description && (
                   <p style={styles.resourceDescription}>
-                    {resource.description.length > 150 
-                      ? resource.description.substring(0, 150) + '...' 
+                    {resource.description.length > 150
+                      ? resource.description.substring(0, 150) + '...'
                       : resource.description}
                   </p>
                 )}
@@ -349,9 +354,7 @@ const PersonalLearnings = ({ userId }) => {
                 {!isCourse && (
                   <div style={styles.resourceMeta}>
                     {resource.author && (
-                      <span style={styles.metaItem}>
-                        By {resource.author}
-                      </span>
+                      <span style={styles.metaItem}>By {resource.author}</span>
                     )}
                     {resource.readTime && (
                       <span style={styles.metaItem}>
@@ -375,27 +378,58 @@ const PersonalLearnings = ({ userId }) => {
                       <span style={styles.progressPercent}>{Math.round(progress)}%</span>
                     </div>
                     <div style={styles.progressBarBg}>
-                      <div 
+                      <div
                         style={{
                           ...styles.progressBarFill,
-                          width: `${progress}%`
+                          width: `${progress}%`,
                         }}
                       />
                     </div>
                   </div>
                 )}
+              </div>
 
-                <div style={styles.savedInfo}>
-                  Saved {new Date(learning.savedAt).toLocaleDateString()}
+              {/* ---- FOOTER (DATE + BUTTONS) ---- */}
+              <div
+                style={{
+                  marginTop: 'auto',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                  paddingTop: '12px',
+                }}
+              >
+                {/* Saved date in consistent format */}
+                <div
+                  style={{
+                    fontSize: '12px',
+                    color: '#9ca3af',
+                    textAlign: 'left',
+                  }}
+                >
+                  Saved{' '}
+                  {new Date(learning.savedAt).toLocaleDateString('en-US', {
+                    month: 'numeric',
+                    day: 'numeric',
+                    year: 'numeric',
+                  })}
                 </div>
 
-                <div style={styles.cardActions}>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: '8px',
+                  }}
+                >
                   {isCourse ? (
                     <button
                       onClick={() => handleCourseClick(resource)}
                       style={{
                         ...styles.viewButton,
-                        ...(enrolled ? styles.enrolledButton : {})
+                        ...(enrolled ? styles.enrolledButton : {}),
+                        flex: 1,
                       }}
                     >
                       {enrolled ? (
@@ -410,12 +444,13 @@ const PersonalLearnings = ({ userId }) => {
                       href={resource.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      style={styles.viewButton}
+                      style={{ ...styles.viewButton, flex: 1 }}
                     >
                       <ExternalLink size={16} />
                       View Resource
                     </a>
                   )}
+
                   <button
                     onClick={() => handleRemove(learning.id)}
                     style={styles.removeButton}
@@ -425,7 +460,8 @@ const PersonalLearnings = ({ userId }) => {
                   </button>
                 </div>
               </div>
-            );
+            </div>
+          );
           })}
         </div>
       )}
@@ -545,11 +581,29 @@ const styles = {
     borderRadius: '12px',
     border: '1px solid #2d3748',
     padding: '1.5rem',
-    transition: 'all 0.2s'
+    transition: 'all 0.2s',
+    display: 'flex',
+    flexDirection: 'column',
+    minHeight: '420px'
   },
   courseCard: {
-    border: '2px solid #3b82f6',
     backgroundColor: '#1a1d24'
+  },
+  cardContent: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column'
+  },
+  cardFooter: {
+    marginTop: 'auto',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1rem',
+    position: 'relative',
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+    minHeight: '360px',
   },
   providerBadge: {
     display: 'inline-flex',
@@ -680,7 +734,8 @@ const styles = {
     backgroundColor: '#10b981'
   },
   startButton: {
-    backgroundColor: '#3b82f6'
+    backgroundColor: '#3b82f6',
+    width: '100%'
   },
   removeButton: {
     padding: '0.75rem',

@@ -540,7 +540,7 @@ const CourseLearn = () => {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <button
-              onClick={() => navigate('/courses')}
+              onClick={() => navigate('/learns')}
               style={{
                 padding: '0.5rem',
                 backgroundColor: 'transparent',

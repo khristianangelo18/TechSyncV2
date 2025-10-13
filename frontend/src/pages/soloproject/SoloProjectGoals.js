@@ -22,253 +22,165 @@ import {
   Search,
   BookOpen,
   TestTube,
-  Zap
+  Zap,
+  PanelLeft
 } from 'lucide-react';
 import SoloProjectService from '../../services/soloProjectService';
 
-// Background symbols component - SAME AS DASHBOARD
+// Background symbols component - WITH FLOATING ANIMATIONS
 const BackgroundSymbols = () => (
-  <div style={{
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    width: '100vw',
-    height: '100vh',
-    zIndex: 1,
-    pointerEvents: 'none'
-  }}>
+  <>
+    {/* Floating Animation CSS */}
+    <style>
+      {`
+        @keyframes floatAround1 {
+          0%, 100% { transform: translate(0, 0) rotate(-15deg); }
+          25% { transform: translate(20px, -15px) rotate(-10deg); }
+          50% { transform: translate(-10px, 20px) rotate(-20deg); }
+          75% { transform: translate(15px, 5px) rotate(-12deg); }
+        }
+        @keyframes floatAround2 {
+          0%, 100% { transform: translate(0, 0) rotate(20deg); }
+          33% { transform: translate(-20px, 10px) rotate(25deg); }
+          66% { transform: translate(25px, -8px) rotate(15deg); }
+        }
+        @keyframes floatAround3 {
+          0%, 100% { transform: translate(0, 0) rotate(-25deg); }
+          20% { transform: translate(-15px, -20px) rotate(-20deg); }
+          40% { transform: translate(20px, 15px) rotate(-30deg); }
+          60% { transform: translate(-8px, -10px) rotate(-22deg); }
+          80% { transform: translate(12px, 18px) rotate(-28deg); }
+        }
+        @keyframes floatAround4 {
+          0%, 100% { transform: translate(0, 0) rotate(30deg); }
+          50% { transform: translate(-30px, 25px) rotate(35deg); }
+        }
+        @keyframes floatAround5 {
+          0%, 100% { transform: translate(0, 0) rotate(-10deg); }
+          25% { transform: translate(15px, -20px) rotate(-5deg); }
+          50% { transform: translate(-25px, 15px) rotate(-15deg); }
+          75% { transform: translate(20px, 10px) rotate(-8deg); }
+        }
+        @keyframes floatAround6 {
+          0%, 100% { transform: translate(0, 0) rotate(15deg); }
+          33% { transform: translate(-12px, -15px) rotate(20deg); }
+          66% { transform: translate(25px, 20px) rotate(10deg); }
+        }
+        @keyframes driftSlow {
+          0%, 100% { transform: translate(0, 0) rotate(35deg); }
+          25% { transform: translate(-25px, 15px) rotate(40deg); }
+          50% { transform: translate(15px, -25px) rotate(30deg); }
+          75% { transform: translate(-8px, 30px) rotate(38deg); }
+        }
+        @keyframes gentleDrift {
+          0%, 100% { transform: translate(0, 0) rotate(-20deg); }
+          50% { transform: translate(20px, -30px) rotate(-15deg); }
+        }
+        @keyframes floatExtra1 {
+          0%, 100% { transform: translate(0, 0) rotate(18deg); }
+          33% { transform: translate(-18px, 20px) rotate(23deg); }
+          66% { transform: translate(22px, -15px) rotate(13deg); }
+        }
+        @keyframes floatExtra2 {
+          0%, 100% { transform: translate(0, 0) rotate(-37deg); }
+          25% { transform: translate(25px, 18px) rotate(-32deg); }
+          50% { transform: translate(-20px, -22px) rotate(-42deg); }
+          75% { transform: translate(15px, -10px) rotate(-35deg); }
+        }
+        @keyframes floatExtra3 {
+          0%, 100% { transform: translate(0, 0) rotate(28deg); }
+          50% { transform: translate(-28px, 30px) rotate(33deg); }
+        }
+        @keyframes floatExtra4 {
+          0%, 100% { transform: translate(0, 0) rotate(24deg); }
+          40% { transform: translate(20px, -25px) rotate(29deg); }
+          80% { transform: translate(-15px, 20px) rotate(19deg); }
+        }
+        @keyframes floatExtra5 {
+          0%, 100% { transform: translate(0, 0) rotate(25deg); }
+          35% { transform: translate(-22px, -18px) rotate(30deg); }
+          70% { transform: translate(18px, 25px) rotate(20deg); }
+        }
+        @keyframes floatExtra6 {
+          0%, 100% { transform: translate(0, 0) rotate(-19deg); }
+          50% { transform: translate(25px, -20px) rotate(-14deg); }
+        }
+        @keyframes globalLogoRotate {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+
+        .global-loading-spinner {
+          animation: globalLogoRotate 2s linear infinite;
+        }
+        .floating-symbol {
+          animation-timing-function: ease-in-out;
+          animation-iteration-count: infinite;
+        }
+        
+        .floating-symbol:nth-child(1) { animation: floatAround1 12s infinite; }
+        .floating-symbol:nth-child(2) { animation: floatAround2 15s infinite; animation-delay: -2s; }
+        .floating-symbol:nth-child(3) { animation: floatAround3 10s infinite; animation-delay: -4s; }
+        .floating-symbol:nth-child(4) { animation: floatAround4 18s infinite; animation-delay: -6s; }
+        .floating-symbol:nth-child(5) { animation: floatAround5 14s infinite; animation-delay: -1s; }
+        .floating-symbol:nth-child(6) { animation: floatAround6 11s infinite; animation-delay: -5s; }
+        .floating-symbol:nth-child(7) { animation: driftSlow 20s infinite; animation-delay: -8s; }
+        .floating-symbol:nth-child(8) { animation: gentleDrift 16s infinite; animation-delay: -3s; }
+        .floating-symbol:nth-child(9) { animation: floatExtra1 13s infinite; animation-delay: -7s; }
+        .floating-symbol:nth-child(10) { animation: floatExtra2 17s infinite; animation-delay: -9s; }
+        .floating-symbol:nth-child(11) { animation: floatExtra3 14s infinite; animation-delay: -4s; }
+        .floating-symbol:nth-child(12) { animation: floatExtra4 19s infinite; animation-delay: -10s; }
+        .floating-symbol:nth-child(13) { animation: floatExtra5 11s infinite; animation-delay: -2s; }
+        .floating-symbol:nth-child(14) { animation: floatExtra6 15s infinite; animation-delay: -6s; }
+        .floating-symbol:nth-child(15) { animation: floatAround1 13s infinite; animation-delay: -5s; }
+        .floating-symbol:nth-child(16) { animation: floatAround2 16s infinite; animation-delay: -8s; }
+      `}
+    </style>
+    
     <div style={{
-      position: 'absolute',
-      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      fontStyle: 'normal',
-      fontWeight: 900,
-      fontSize: '24px',
-      lineHeight: '29px',
-      userSelect: 'none',
-      pointerEvents: 'none',
-      left: '52.81%', top: '48.12%', color: '#2E3344', transform: 'rotate(-10.79deg)'
-    }}>&#60;/&#62;</div>
-    <div style={{
-      position: 'absolute',
-      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      fontStyle: 'normal',
-      fontWeight: 900,
-      fontSize: '24px',
-      lineHeight: '29px',
-      userSelect: 'none',
-      pointerEvents: 'none',
-      left: '28.19%', top: '71.22%', color: '#292A2E', transform: 'rotate(-37.99deg)'
-    }}>&#60;/&#62;</div>
-    <div style={{
-      position: 'absolute',
-      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      fontStyle: 'normal',
-      fontWeight: 900,
-      fontSize: '24px',
-      lineHeight: '29px',
-      userSelect: 'none',
-      pointerEvents: 'none',
-      left: '95.09%', top: '48.12%', color: '#ABB5CE', transform: 'rotate(34.77deg)'
-    }}>&#60;/&#62;</div>
-    <div style={{
-      position: 'absolute',
-      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      fontStyle: 'normal',
-      fontWeight: 900,
-      fontSize: '24px',
-      lineHeight: '29px',
-      userSelect: 'none',
-      pointerEvents: 'none',
-      left: '86.46%', top: '15.33%', color: '#2E3344', transform: 'rotate(28.16deg)'
-    }}>&#60;/&#62;</div>
-    <div style={{
-      position: 'absolute',
-      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      fontStyle: 'normal',
-      fontWeight: 900,
-      fontSize: '24px',
-      lineHeight: '29px',
-      userSelect: 'none',
-      pointerEvents: 'none',
-      left: '7.11%', top: '80.91%', color: '#ABB5CE', transform: 'rotate(24.5deg)'
-    }}>&#60;/&#62;</div>
-    <div style={{
-      position: 'absolute',
-      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      fontStyle: 'normal',
-      fontWeight: 900,
-      fontSize: '24px',
-      lineHeight: '29px',
-      userSelect: 'none',
-      pointerEvents: 'none',
-      left: '48.06%', top: '8.5%', color: '#ABB5CE', transform: 'rotate(25.29deg)'
-    }}>&#60;/&#62;</div>
-    <div style={{
-      position: 'absolute',
-      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      fontStyle: 'normal',
-      fontWeight: 900,
-      fontSize: '24px',
-      lineHeight: '29px',
-      userSelect: 'none',
-      pointerEvents: 'none',
-      left: '72.84%', top: '4.42%', color: '#2E3344', transform: 'rotate(-19.68deg)'
-    }}>&#60;/&#62;</div>
-    <div style={{
-      position: 'absolute',
-      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      fontStyle: 'normal',
-      fontWeight: 900,
-      fontSize: '24px',
-      lineHeight: '29px',
-      userSelect: 'none',
-      pointerEvents: 'none',
-      left: '9.6%', top: '0%', color: '#1F232E', transform: 'rotate(-6.83deg)'
-    }}>&#60;/&#62;</div>
-    <div style={{
-      position: 'absolute',
-      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      fontStyle: 'normal',
-      fontWeight: 900,
-      fontSize: '24px',
-      lineHeight: '29px',
-      userSelect: 'none',
-      pointerEvents: 'none',
-      left: '31.54%', top: '54.31%', color: '#6C758E', transform: 'rotate(25.29deg)'
-    }}>&#60;/&#62;</div>
-    <div style={{
-      position: 'absolute',
-      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      fontStyle: 'normal',
-      fontWeight: 900,
-      fontSize: '24px',
-      lineHeight: '29px',
-      userSelect: 'none',
-      pointerEvents: 'none',
-      left: '25.28%', top: '15.89%', color: '#1F232E', transform: 'rotate(-6.83deg)'
-    }}>&#60;/&#62;</div>
-    <div style={{
-      position: 'absolute',
-      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      fontStyle: 'normal',
-      fontWeight: 900,
-      fontSize: '24px',
-      lineHeight: '29px',
-      userSelect: 'none',
-      pointerEvents: 'none',
-      left: '48.55%', top: '82.45%', color: '#292A2E', transform: 'rotate(-10.79deg)'
-    }}>&#60;/&#62;</div>
-    <div style={{
-      position: 'absolute',
-      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      fontStyle: 'normal',
-      fontWeight: 900,
-      fontSize: '24px',
-      lineHeight: '29px',
-      userSelect: 'none',
-      pointerEvents: 'none',
-      left: '24.41%', top: '92.02%', color: '#2E3344', transform: 'rotate(18.2deg)'
-    }}>&#60;/&#62;</div>
-    <div style={{
-      position: 'absolute',
-      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      fontStyle: 'normal',
-      fontWeight: 900,
-      fontSize: '24px',
-      lineHeight: '29px',
-      userSelect: 'none',
-      pointerEvents: 'none',
-      left: '0%', top: '12.8%', color: '#ABB5CE', transform: 'rotate(37.85deg)'
-    }}>&#60;/&#62;</div>
-    <div style={{
-      position: 'absolute',
-      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      fontStyle: 'normal',
-      fontWeight: 900,
-      fontSize: '24px',
-      lineHeight: '29px',
-      userSelect: 'none',
-      pointerEvents: 'none',
-      left: '81.02%', top: '94.27%', color: '#6C758E', transform: 'rotate(-37.99deg)'
-    }}>&#60;/&#62;</div>
-    <div style={{
-      position: 'absolute',
-      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      fontStyle: 'normal',
-      fontWeight: 900,
-      fontSize: '24px',
-      lineHeight: '29px',
-      userSelect: 'none',
-      pointerEvents: 'none',
-      left: '96.02%', top: '0%', color: '#2E3344', transform: 'rotate(-37.99deg)'
-    }}>&#60;/&#62;</div>
-    <div style={{
-      position: 'absolute',
-      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      fontStyle: 'normal',
-      fontWeight: 900,
-      fontSize: '24px',
-      lineHeight: '29px',
-      userSelect: 'none',
-      pointerEvents: 'none',
-      left: '0.07%', top: '41.2%', color: '#6C758E', transform: 'rotate(-10.79deg)'
-    }}>&#60;/&#62;</div>
-    <div style={{
-      position: 'absolute',
-      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      fontStyle: 'normal',
-      fontWeight: 900,
-      fontSize: '24px',
-      lineHeight: '29px',
-      userSelect: 'none',
-      pointerEvents: 'none',
-      left: '15%', top: '35%', color: '#3A4158', transform: 'rotate(15deg)'
-    }}>&#60;/&#62;</div>
-    <div style={{
-      position: 'absolute',
-      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      fontStyle: 'normal',
-      fontWeight: 900,
-      fontSize: '24px',
-      lineHeight: '29px',
-      userSelect: 'none',
-      pointerEvents: 'none',
-      left: '65%', top: '25%', color: '#5A6B8C', transform: 'rotate(-45deg)'
-    }}>&#60;/&#62;</div>
-    <div style={{
-      position: 'absolute',
-      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      fontStyle: 'normal',
-      fontWeight: 900,
-      fontSize: '24px',
-      lineHeight: '29px',
-      userSelect: 'none',
-      pointerEvents: 'none',
-      left: '85%', top: '65%', color: '#2B2F3E', transform: 'rotate(30deg)'
-    }}>&#60;/&#62;</div>
-    <div style={{
-      position: 'absolute',
-      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      fontStyle: 'normal',
-      fontWeight: 900,
-      fontSize: '24px',
-      lineHeight: '29px',
-      userSelect: 'none',
-      pointerEvents: 'none',
-      left: '42%', top: '35%', color: '#4F5A7A', transform: 'rotate(-20deg)'
-    }}>&#60;/&#62;</div>
-    <div style={{
-      position: 'absolute',
-      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      fontStyle: 'normal',
-      fontWeight: 900,
-      fontSize: '24px',
-      lineHeight: '29px',
-      userSelect: 'none',
-      pointerEvents: 'none',
-      left: '12%', top: '60%', color: '#8A94B8', transform: 'rotate(40deg)'
-    }}>&#60;/&#62;</div>
-  </div>
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      width: '100vw',
+      height: '100vh',
+      zIndex: 1,
+      pointerEvents: 'none'
+    }}>
+      {[
+        { left: '52.81%', top: '48.12%', color: '#2E3344', rotate: '-10.79deg' },
+        { left: '28.19%', top: '71.22%', color: '#292A2E', rotate: '-37.99deg' },
+        { left: '95.09%', top: '48.12%', color: '#ABB5CE', rotate: '34.77deg' },
+        { left: '86.46%', top: '15.33%', color: '#2E3344', rotate: '28.16deg' },
+        { left: '7.11%', top: '80.91%', color: '#ABB5CE', rotate: '24.5deg' },
+        { left: '48.06%', top: '8.5%', color: '#ABB5CE', rotate: '25.29deg' },
+        { left: '72.84%', top: '4.42%', color: '#2E3344', rotate: '-19.68deg' },
+        { left: '9.6%', top: '0%', color: '#1F232E', rotate: '-6.83deg' },
+        { left: '31.54%', top: '54.31%', color: '#6C758E', rotate: '25.29deg' },
+        { left: '25.28%', top: '15.89%', color: '#1F232E', rotate: '-6.83deg' },
+        { left: '48.55%', top: '82.45%', color: '#292A2E', rotate: '-10.79deg' },
+        { left: '24.41%', top: '92.02%', color: '#2E3344', rotate: '18.2deg' },
+        { left: '0%', top: '12.8%', color: '#ABB5CE', rotate: '37.85deg' },
+        { left: '81.02%', top: '94.27%', color: '#6C758E', rotate: '-37.99deg' },
+        { left: '96.02%', top: '0%', color: '#2E3344', rotate: '-37.99deg' },
+        { left: '0.07%', top: '41.2%', color: '#6C758E', rotate: '-10.79deg' }
+      ].map((pos, i) => (
+        <div key={i} className="floating-symbol" style={{
+          position: 'absolute',
+          fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+          fontStyle: 'normal',
+          fontWeight: 900,
+          fontSize: '24px',
+          lineHeight: '29px',
+          userSelect: 'none',
+          pointerEvents: 'none',
+          left: pos.left,
+          top: pos.top,
+          color: pos.color,
+          transform: `rotate(${pos.rotate})`
+        }}>&#60;/&#62;</div>
+      ))}
+    </div>
+  </>
 );
 
 function SoloProjectGoals() {
@@ -278,7 +190,7 @@ function SoloProjectGoals() {
   // Check if we came here with a specific intent (task vs goal)
   const searchParams = new URLSearchParams(location.search);
   const createIntent = searchParams.get('intent'); // 'task' or 'goal'
-
+  
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -296,6 +208,33 @@ function SoloProjectGoals() {
   });
   const [activeTab, setActiveTab] = useState('all');
   const [editingItem, setEditingItem] = useState(null);
+  
+  // NEW STATE: Track sidebar collapsed state
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    const saved = localStorage.getItem('soloProjectSidebarCollapsed');
+    return saved === 'true';
+  });
+
+  // NEW: Function to toggle sidebar
+  const toggleSidebar = () => {
+    const newCollapsedState = !isSidebarCollapsed;
+    setIsSidebarCollapsed(newCollapsedState);
+    localStorage.setItem('soloProjectSidebarCollapsed', newCollapsedState.toString());
+    
+    window.dispatchEvent(new CustomEvent('soloProjectSidebarToggle', {
+      detail: { collapsed: newCollapsedState }
+    }));
+  };
+
+  // NEW: Sync with sidebar toggle events
+  useEffect(() => {
+    const handleSidebarToggle = (event) => {
+      setIsSidebarCollapsed(event.detail.collapsed);
+    };
+
+    window.addEventListener('soloProjectSidebarToggle', handleSidebarToggle);
+    return () => window.removeEventListener('soloProjectSidebarToggle', handleSidebarToggle);
+  }, []);
 
   // Enhanced data fetching with proper progress tracking
   useEffect(() => {
@@ -813,442 +752,28 @@ function SoloProjectGoals() {
       </div>
     </div>
   );
-
-  if (loading) {
-    return (
-      <div style={styles.container}>
-        <BackgroundSymbols />
-        <div style={styles.loadingState}>
-          <h2>Loading tasks & goals...</h2>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div style={styles.container}>
-      {/* Background Code Symbols */}
-      <BackgroundSymbols />
-
-      {/* Header */}
-      <div style={styles.header}>
-        <div style={styles.headerTop}>
-          <h1 style={styles.title}>Tasks & Goals</h1>
-          <button 
-            style={styles.createButton}
-            onClick={() => setShowCreateModal(true)}
-            onMouseEnter={(e) => {
-              e.target.style.transform = 'translateY(-2px)';
-              e.target.style.boxShadow = '0 8px 24px rgba(147, 51, 234, 0.4)';
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.transform = 'translateY(0)';
-              e.target.style.boxShadow = '0 4px 12px rgba(147, 51, 234, 0.3)';
-            }}
-          >
-            <Plus size={16} style={{ marginRight: '8px' }} />
-            Add Item
-          </button>
-        </div>
-
-        {/* View Mode Toggle */}
-        <div style={styles.viewToggle}>
-          <button 
-            style={{
-              ...styles.viewButton,
-              ...(viewMode === 'list' ? styles.viewButtonActive : {})
-            }}
-            onClick={() => setViewMode('list')}
-          >
-            <List size={16} style={{ marginRight: '6px' }} />
-            List
-          </button>
-          <button 
-            style={{
-              ...styles.viewButton,
-              ...(viewMode === 'kanban' ? styles.viewButtonActive : {})
-            }}
-            onClick={() => setViewMode('kanban')}
-          >
-            <Kanban size={16} style={{ marginRight: '6px' }} />
-            Kanban
-          </button>
-          <button 
-            style={{
-              ...styles.viewButton,
-              ...(viewMode === 'goals' ? styles.viewButtonActive : {})
-            }}
-            onClick={() => setViewMode('goals')}
-          >
-            <Target size={16} style={{ marginRight: '6px' }} />
-            Goals Focus
-          </button>
-        </div>
-
-        {/* Stats Bar */}
-        <div style={styles.statsBar}>
-          <div style={styles.statItem}>
-            <CheckSquare size={14} style={{ marginRight: '4px', color: '#3b82f6' }} />
-            {itemStats.tasks} Tasks
-          </div>
-          <div style={styles.statItem}>
-            <Target size={14} style={{ marginRight: '4px', color: '#a855f7' }} />
-            {itemStats.goals} Goals
-          </div>
-          <div style={styles.statItem}>
-            <BarChart3 size={14} style={{ marginRight: '4px', color: '#10b981' }} />
-            {itemStats.completed} Completed
-          </div>
-          <div style={styles.statItem}>
-            <Zap size={14} style={{ marginRight: '4px', color: '#f59e0b' }} />
-            {itemStats.active} Active
-          </div>
-          {itemStats.overdue > 0 && (
-            <div style={{...styles.statItem, color: '#dc3545'}}>
-              <AlertCircle size={14} style={{ marginRight: '4px', color: '#dc3545' }} />
-              {itemStats.overdue} Overdue
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Filter Tabs */}
-      <div style={styles.filterTabs}>
-        {[
-          { key: 'all', label: 'All Items', count: itemStats.total },
-          { key: 'active', label: 'Active', count: itemStats.active },
-          { key: 'completed', label: 'Completed', count: itemStats.completed },
-          { key: 'tasks', label: 'Tasks Only', count: itemStats.tasks },
-          { key: 'goals', label: 'Goals Only', count: itemStats.goals },
-          ...(itemStats.overdue > 0 ? [{ key: 'overdue', label: 'Overdue', count: itemStats.overdue }] : [])
-        ].map(tab => (
-          <button
-            key={tab.key}
-            style={{
-              ...styles.filterTab,
-              ...(activeTab === tab.key ? styles.filterTabActive : {})
-            }}
-            onClick={() => setActiveTab(tab.key)}
-          >
-            {tab.label} ({tab.count})
-          </button>
-        ))}
-      </div>
-
-      {/* Error Message */}
-      {error && (
-        <div style={styles.errorMessage}>
-          <AlertCircle size={16} style={{ marginRight: '8px' }} />
-          {error}
-        </div>
-      )}
-
-      {/* Main Content */}
-      <div style={styles.content}>
-        {viewMode === 'kanban' ? (
-          <KanbanView />
-        ) : (
-          <div style={styles.itemGrid}>
-            {filteredItems.length > 0 ? (
-              filteredItems.map(item => (
-                <ItemCard key={item.id} item={item} />
-              ))
-            ) : (
-              <div style={styles.emptyState}>
-                <div style={styles.emptyStateIcon}>
-                  {activeTab === 'tasks' ? 
-                    <CheckSquare size={48} style={{ opacity: 0.5 }} /> : 
-                    activeTab === 'goals' ? 
-                    <Target size={48} style={{ opacity: 0.5 }} /> : 
-                    <BarChart3 size={48} style={{ opacity: 0.5 }} />
-                  }
-                </div>
-                <div style={styles.emptyStateText}>
-                  No {activeTab === 'all' ? 'items' : activeTab} found
-                </div>
-                <button 
-                  style={styles.emptyStateButton}
-                  onClick={() => setShowCreateModal(true)}
-                >
-                  <Plus size={16} style={{ marginRight: '8px' }} />
-                  Create your first {activeTab === 'tasks' ? 'task' : activeTab === 'goals' ? 'goal' : 'item'}
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Create/Edit Modal */}
-      {showCreateModal && (
-        <div style={styles.modal} onClick={() => {
-          setShowCreateModal(false);
-          setEditingItem(null);
-          setNewItem({
-            title: '',
-            description: '',
-            target_date: '',
-            priority: 'medium',
-            category: 'feature',
-            type: 'goal',
-            estimated_hours: '',
-            task_type: 'development'
-          });
-        }}>
-          <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-            {/* Header */}
-            <div style={styles.modalHeader}>
-              <h2 style={styles.modalTitle}>
-                {editingItem ? 'Edit' : 'Create'} {newItem.type === 'task' ? 'Task' : 'Goal'}
-              </h2>
-              <button 
-                style={styles.closeButton}
-                onClick={() => {
-                  setShowCreateModal(false);
-                  setEditingItem(null);
-                }}
-                onMouseEnter={(e) => e.target.style.backgroundColor = '#f1f5f9'}
-                onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
-              >
-                <X size={24} />
-              </button>
-            </div>
-
-            {/* Body with scrollable content */}
-            <div style={styles.modalBody}>
-              {/* Type Toggle */}
-              <div style={styles.typeToggle}>
-                <button
-                  type="button"
-                  style={{
-                    ...styles.typeButton,
-                    ...(newItem.type === 'task' ? styles.typeButtonActive : {})
-                  }}
-                  onClick={() => setNewItem({...newItem, type: 'task'})}
-                  onMouseEnter={(e) => {
-                    if (newItem.type !== 'task') {
-                      e.target.style.backgroundColor = '#f8fafc';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (newItem.type !== 'task') {
-                      e.target.style.backgroundColor = 'white';
-                    }
-                  }}
-                >
-                  <CheckSquare size={16} />
-                  Task
-                </button>
-                <button
-                  type="button"
-                  style={{
-                    ...styles.typeButton,
-                    ...(newItem.type === 'goal' ? styles.typeButtonActive : {})
-                  }}
-                  onClick={() => setNewItem({...newItem, type: 'goal'})}
-                  onMouseEnter={(e) => {
-                    if (newItem.type !== 'goal') {
-                      e.target.style.backgroundColor = '#f8fafc';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (newItem.type !== 'goal') {
-                      e.target.style.backgroundColor = 'white';
-                    }
-                  }}
-                >
-                  <Target size={16} />
-                  Goal
-                </button>
-              </div>
-
-              {/* Form Container */}
-              <div style={styles.formContainer}>
-                <form onSubmit={editingItem ? handleUpdateItem : handleCreateItem}>
-                  {/* Title Field */}
-                  <div style={styles.formGroup}>
-                    <label style={styles.formLabel}>Title *</label>
-                    <input
-                      style={styles.formInput}
-                      type="text"
-                      value={newItem.title}
-                      onChange={(e) => setNewItem({ ...newItem, title: e.target.value })}
-                      placeholder={`Enter ${newItem.type} title`}
-                      required
-                      onFocus={(e) => {
-                        e.target.style.borderColor = '#a855f7';
-                        e.target.style.boxShadow = '0 0 0 3px rgba(168, 85, 247, 0.1)';
-                      }}
-                      onBlur={(e) => {
-                        e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)';
-                        e.target.style.boxShadow = 'none';
-                      }}
-                    />
-                  </div>
-
-                  {/* Description Field */}
-                  <div style={styles.formGroup}>
-                    <label style={styles.formLabel}>Description</label>
-                    <textarea
-                      style={styles.formTextarea}
-                      value={newItem.description}
-                      onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
-                      placeholder={`Describe your ${newItem.type}...`}
-                      onFocus={(e) => {
-                        e.target.style.borderColor = '#a855f7';
-                        e.target.style.boxShadow = '0 0 0 3px rgba(168, 85, 247, 0.1)';
-                      }}
-                      onBlur={(e) => {
-                        e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)';
-                        e.target.style.boxShadow = 'none';
-                      }}
-                    />
-                  </div>
-
-                  {/* Priority and Category Row */}
-                  <div style={styles.formRow}>
-                    <div style={styles.formGroup}>
-                      <label style={styles.formLabel}>Priority</label>
-                      <select
-                        style={styles.formInput}
-                        value={newItem.priority}
-                        onChange={(e) => setNewItem({ ...newItem, priority: e.target.value })}
-                      >
-                        <option value="low">Low Priority</option>
-                        <option value="medium">Medium Priority</option>
-                        <option value="high">High Priority</option>
-                      </select>
-                    </div>
-
-                    <div style={styles.formGroup}>
-                      <label style={styles.formLabel}>Category</label>
-                      <select
-                        style={styles.formInput}
-                        value={newItem.category}
-                        onChange={(e) => setNewItem({ ...newItem, category: e.target.value })}
-                      >
-                        <option value="learning">Learning</option>
-                        <option value="feature">Feature</option>
-                        <option value="bug_fix">Bug Fix</option>
-                        <option value="optimization">Optimization</option>
-                        <option value="documentation">Documentation</option>
-                        <option value="testing">Testing</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Task-specific Fields */}
-                  {newItem.type === 'task' && (
-                    <div style={styles.taskSpecificFields}>
-                      <div style={styles.formRow}>
-                        <div style={styles.formGroup}>
-                          <label style={styles.formLabel}>Task Type</label>
-                          <select
-                            style={styles.formInput}
-                            value={newItem.task_type}
-                            onChange={(e) => setNewItem({ ...newItem, task_type: e.target.value })}
-                          >
-                            <option value="development">Development</option>
-                            <option value="design">Design</option>
-                            <option value="research">Research</option>
-                            <option value="planning">Planning</option>
-                            <option value="testing">Testing</option>
-                            <option value="documentation">Documentation</option>
-                          </select>
-                        </div>
-
-                        <div style={styles.formGroup}>
-                          <label style={styles.formLabel}>Estimated Hours</label>
-                          <input
-                            style={styles.formInput}
-                            type="number"
-                            value={newItem.estimated_hours}
-                            onChange={(e) => setNewItem({ ...newItem, estimated_hours: e.target.value })}
-                            placeholder="0"
-                            min="0"
-                            step="0.5"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Goal-specific Fields */}
-                  {newItem.type === 'goal' && (
-                    <div style={styles.goalSpecificFields}>
-                      <p style={styles.goalNote}>
-                        <Target size={16} />
-                        Goals are tracked with progress updates and focus on long-term objectives
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Target Date */}
-                  <div style={styles.formGroup}>
-                    <label style={styles.formLabel}>
-                      {newItem.type === 'task' ? 'Due Date' : 'Target Date'}
-                    </label>
-                    <input
-                      style={styles.formInput}
-                      type="date"
-                      value={newItem.target_date}
-                      onChange={(e) => setNewItem({ ...newItem, target_date: e.target.value })}
-                    />
-                  </div>
-                </form>
-              </div>
-            </div>
-
-            {/* Footer Actions */}
-            <div style={styles.formActions}>
-              <button
-                type="button"
-                style={styles.cancelButton}
-                onClick={() => {
-                  setShowCreateModal(false);
-                  setEditingItem(null);
-                }}
-                onMouseEnter={(e) => Object.assign(e.target.style, styles.cancelButtonHover)}
-                onMouseLeave={(e) => {
-                  e.target.style.backgroundColor = 'rgba(26, 28, 32, 0.95)';
-                  e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)';
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                style={{
-                  ...styles.submitButton,
-                  ...(newItem.title.trim() ? {} : styles.submitButtonDisabled)
-                }}
-                onClick={editingItem ? handleUpdateItem : handleCreateItem}
-                disabled={!newItem.title.trim()}
-                onMouseEnter={(e) => {
-                  if (newItem.title.trim()) {
-                    Object.assign(e.target.style, styles.submitButtonHover);
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (newItem.title.trim()) {
-                    e.target.style.backgroundColor = '#a855f7';
-                    e.target.style.transform = 'none';
-                    e.target.style.boxShadow = '0 4px 6px -1px rgba(168, 85, 247, 0.1)';
-                  }
-                }}
-              >
-                {editingItem ? 'Update' : 'Create'} {newItem.type === 'task' ? 'Task' : 'Goal'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// COMPLETE STYLES ALIGNED WITH DASHBOARD
+  // COMPLETE STYLES ALIGNED WITH DASHBOARD
 const styles = {
+  // NEW: Toggle button styles
+  toggleButton: {
+    position: 'fixed',
+    top: '20px',
+    left: isSidebarCollapsed ? '100px' : '290px',
+    zIndex: 1100,
+    width: '40px',
+    height: '40px',
+    borderRadius: '10px',
+    backgroundColor: 'rgba(26, 28, 32, 0.95)',
+    border: '1px solid rgba(255, 255, 255, 0.2)',
+    color: '#9ca3af',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transition: 'all 0.3s ease',
+    backdropFilter: 'blur(20px)',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)'
+  },
   container: {
     minHeight: 'calc(100vh - 40px)',
     backgroundColor: '#0F1116',
@@ -1257,8 +782,8 @@ const styles = {
     overflow: 'hidden',
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
     padding: '20px',
-    paddingLeft: '270px', // Match dashboard sidebar spacing
-    marginLeft: '-150px'   // Match dashboard sidebar spacing
+    paddingLeft: '120px',  // Adjusted for toggle button
+    marginLeft: '0'
   },
   header: {
     position: 'relative',
@@ -1617,14 +1142,16 @@ const styles = {
     margin: '0 auto'
   },
   loadingState: {
-    position: 'relative',
-    zIndex: 10,
     display: 'flex',
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    minHeight: '400px',
+    gap: '15px',
+    minHeight: '60vh',
     fontSize: '18px',
-    color: '#9ca3af'
+    color: '#9ca3af',
+    zIndex: 10,
+    position: 'relative'
   },
   errorMessage: {
     position: 'relative',
@@ -1854,5 +1381,503 @@ const styles = {
     boxShadow: 'none'
   }
 };
+
+  if (loading) {
+      return (
+        <>
+        {/* Sidebar Toggle Button - OUTSIDE CONTAINER */}
+        <button
+          style={styles.toggleButton}
+          onClick={toggleSidebar}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.15)';
+            e.currentTarget.style.color = '#3b82f6';
+            e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.4)';
+            e.currentTarget.style.transform = 'scale(1.05)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(26, 28, 32, 0.95)';
+            e.currentTarget.style.color = '#9ca3af';
+            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+            e.currentTarget.style.transform = 'scale(1)';
+          }}
+          aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          <PanelLeft size={20} />
+        </button>
+  
+        <div style={styles.container}>
+          <BackgroundSymbols />
+          <div style={styles.loadingState}>
+            <div style={{
+              width: '48px',
+              height: '48px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }} className="global-loading-spinner">
+              <img 
+                src="/images/logo/TechSyncLogo.png" 
+                alt="TechSync Logo" 
+                style={{
+                  width: '125%',
+                  height: '125%',
+                  objectFit: 'contain'
+                }}
+              />
+            </div>
+            <span>Loading solo project dashboard...</span>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <>
+      {/* Sidebar Toggle Button - OUTSIDE CONTAINER */}
+      <button
+        style={styles.toggleButton}
+        onClick={toggleSidebar}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.15)';
+          e.currentTarget.style.color = '#3b82f6';
+          e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.4)';
+          e.currentTarget.style.transform = 'scale(1.05)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.backgroundColor = 'rgba(26, 28, 32, 0.95)';
+          e.currentTarget.style.color = '#9ca3af';
+          e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+          e.currentTarget.style.transform = 'scale(1)';
+        }}
+        aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+      >
+        <PanelLeft size={20} />
+      </button>
+      
+      <div style={styles.container}>
+        {/* Background Code Symbols */}
+        <BackgroundSymbols />
+
+        {/* Header */}
+        <div style={styles.header}>
+          <div style={styles.headerTop}>
+            <h1 style={styles.title}>Tasks & Goals</h1>
+            <button 
+              style={styles.createButton}
+              onClick={() => setShowCreateModal(true)}
+              onMouseEnter={(e) => {
+                e.target.style.transform = 'translateY(-2px)';
+                e.target.style.boxShadow = '0 8px 24px rgba(147, 51, 234, 0.4)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.transform = 'translateY(0)';
+                e.target.style.boxShadow = '0 4px 12px rgba(147, 51, 234, 0.3)';
+              }}
+            >
+              <Plus size={16} style={{ marginRight: '8px' }} />
+              Add Item
+            </button>
+          </div>
+
+          {/* View Mode Toggle */}
+          <div style={styles.viewToggle}>
+            <button 
+              style={{
+                ...styles.viewButton,
+                ...(viewMode === 'list' ? styles.viewButtonActive : {})
+              }}
+              onClick={() => setViewMode('list')}
+            >
+              <List size={16} style={{ marginRight: '6px' }} />
+              List
+            </button>
+            <button 
+              style={{
+                ...styles.viewButton,
+                ...(viewMode === 'kanban' ? styles.viewButtonActive : {})
+              }}
+              onClick={() => setViewMode('kanban')}
+            >
+              <Kanban size={16} style={{ marginRight: '6px' }} />
+              Kanban
+            </button>
+            <button 
+              style={{
+                ...styles.viewButton,
+                ...(viewMode === 'goals' ? styles.viewButtonActive : {})
+              }}
+              onClick={() => setViewMode('goals')}
+            >
+              <Target size={16} style={{ marginRight: '6px' }} />
+              Goals Focus
+            </button>
+          </div>
+
+          {/* Stats Bar */}
+          <div style={styles.statsBar}>
+            <div style={styles.statItem}>
+              <CheckSquare size={14} style={{ marginRight: '4px', color: '#3b82f6' }} />
+              {itemStats.tasks} Tasks
+            </div>
+            <div style={styles.statItem}>
+              <Target size={14} style={{ marginRight: '4px', color: '#a855f7' }} />
+              {itemStats.goals} Goals
+            </div>
+            <div style={styles.statItem}>
+              <BarChart3 size={14} style={{ marginRight: '4px', color: '#10b981' }} />
+              {itemStats.completed} Completed
+            </div>
+            <div style={styles.statItem}>
+              <Zap size={14} style={{ marginRight: '4px', color: '#f59e0b' }} />
+              {itemStats.active} Active
+            </div>
+            {itemStats.overdue > 0 && (
+              <div style={{...styles.statItem, color: '#dc3545'}}>
+                <AlertCircle size={14} style={{ marginRight: '4px', color: '#dc3545' }} />
+                {itemStats.overdue} Overdue
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Filter Tabs */}
+        <div style={styles.filterTabs}>
+          {[
+            { key: 'all', label: 'All Items', count: itemStats.total },
+            { key: 'active', label: 'Active', count: itemStats.active },
+            { key: 'completed', label: 'Completed', count: itemStats.completed },
+            { key: 'tasks', label: 'Tasks Only', count: itemStats.tasks },
+            { key: 'goals', label: 'Goals Only', count: itemStats.goals },
+            ...(itemStats.overdue > 0 ? [{ key: 'overdue', label: 'Overdue', count: itemStats.overdue }] : [])
+          ].map(tab => (
+            <button
+              key={tab.key}
+              style={{
+                ...styles.filterTab,
+                ...(activeTab === tab.key ? styles.filterTabActive : {})
+              }}
+              onClick={() => setActiveTab(tab.key)}
+            >
+              {tab.label} ({tab.count})
+            </button>
+          ))}
+        </div>
+
+        {/* Error Message */}
+        {error && (
+          <div style={styles.errorMessage}>
+            <AlertCircle size={16} style={{ marginRight: '8px' }} />
+            {error}
+          </div>
+        )}
+
+        {/* Main Content */}
+        <div style={styles.content}>
+          {viewMode === 'kanban' ? (
+            <KanbanView />
+          ) : (
+            <div style={styles.itemGrid}>
+              {filteredItems.length > 0 ? (
+                filteredItems.map(item => (
+                  <ItemCard key={item.id} item={item} />
+                ))
+              ) : (
+                <div style={styles.emptyState}>
+                  <div style={styles.emptyStateIcon}>
+                    {activeTab === 'tasks' ? 
+                      <CheckSquare size={48} style={{ opacity: 0.5 }} /> : 
+                      activeTab === 'goals' ? 
+                      <Target size={48} style={{ opacity: 0.5 }} /> : 
+                      <BarChart3 size={48} style={{ opacity: 0.5 }} />
+                    }
+                  </div>
+                  <div style={styles.emptyStateText}>
+                    No {activeTab === 'all' ? 'items' : activeTab} found
+                  </div>
+                  <button 
+                    style={styles.emptyStateButton}
+                    onClick={() => setShowCreateModal(true)}
+                  >
+                    <Plus size={16} style={{ marginRight: '8px' }} />
+                    Create your first {activeTab === 'tasks' ? 'task' : activeTab === 'goals' ? 'goal' : 'item'}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Create/Edit Modal */}
+        {showCreateModal && (
+          <div style={styles.modal} onClick={() => {
+            setShowCreateModal(false);
+            setEditingItem(null);
+            setNewItem({
+              title: '',
+              description: '',
+              target_date: '',
+              priority: 'medium',
+              category: 'feature',
+              type: 'goal',
+              estimated_hours: '',
+              task_type: 'development'
+            });
+          }}>
+            <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+              {/* Header */}
+              <div style={styles.modalHeader}>
+                <h2 style={styles.modalTitle}>
+                  {editingItem ? 'Edit' : 'Create'} {newItem.type === 'task' ? 'Task' : 'Goal'}
+                </h2>
+                <button 
+                  style={styles.closeButton}
+                  onClick={() => {
+                    setShowCreateModal(false);
+                    setEditingItem(null);
+                  }}
+                  onMouseEnter={(e) => e.target.style.backgroundColor = '#f1f5f9'}
+                  onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              {/* Body with scrollable content */}
+              <div style={styles.modalBody}>
+                {/* Type Toggle */}
+                <div style={styles.typeToggle}>
+                  <button
+                    type="button"
+                    style={{
+                      ...styles.typeButton,
+                      ...(newItem.type === 'task' ? styles.typeButtonActive : {})
+                    }}
+                    onClick={() => setNewItem({...newItem, type: 'task'})}
+                    onMouseEnter={(e) => {
+                      if (newItem.type !== 'task') {
+                        e.target.style.backgroundColor = '#f8fafc';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (newItem.type !== 'task') {
+                        e.target.style.backgroundColor = 'white';
+                      }
+                    }}
+                  >
+                    <CheckSquare size={16} />
+                    Task
+                  </button>
+                  <button
+                    type="button"
+                    style={{
+                      ...styles.typeButton,
+                      ...(newItem.type === 'goal' ? styles.typeButtonActive : {})
+                    }}
+                    onClick={() => setNewItem({...newItem, type: 'goal'})}
+                    onMouseEnter={(e) => {
+                      if (newItem.type !== 'goal') {
+                        e.target.style.backgroundColor = '#f8fafc';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (newItem.type !== 'goal') {
+                        e.target.style.backgroundColor = 'white';
+                      }
+                    }}
+                  >
+                    <Target size={16} />
+                    Goal
+                  </button>
+                </div>
+
+                {/* Form Container */}
+                <div style={styles.formContainer}>
+                  <form onSubmit={editingItem ? handleUpdateItem : handleCreateItem}>
+                    {/* Title Field */}
+                    <div style={styles.formGroup}>
+                      <label style={styles.formLabel}>Title *</label>
+                      <input
+                        style={styles.formInput}
+                        type="text"
+                        value={newItem.title}
+                        onChange={(e) => setNewItem({ ...newItem, title: e.target.value })}
+                        placeholder={`Enter ${newItem.type} title`}
+                        required
+                        onFocus={(e) => {
+                          e.target.style.borderColor = '#a855f7';
+                          e.target.style.boxShadow = '0 0 0 3px rgba(168, 85, 247, 0.1)';
+                        }}
+                        onBlur={(e) => {
+                          e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                          e.target.style.boxShadow = 'none';
+                        }}
+                      />
+                    </div>
+
+                    {/* Description Field */}
+                    <div style={styles.formGroup}>
+                      <label style={styles.formLabel}>Description</label>
+                      <textarea
+                        style={styles.formTextarea}
+                        value={newItem.description}
+                        onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
+                        placeholder={`Describe your ${newItem.type}...`}
+                        onFocus={(e) => {
+                          e.target.style.borderColor = '#a855f7';
+                          e.target.style.boxShadow = '0 0 0 3px rgba(168, 85, 247, 0.1)';
+                        }}
+                        onBlur={(e) => {
+                          e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                          e.target.style.boxShadow = 'none';
+                        }}
+                      />
+                    </div>
+
+                    {/* Priority and Category Row */}
+                    <div style={styles.formRow}>
+                      <div style={styles.formGroup}>
+                        <label style={styles.formLabel}>Priority</label>
+                        <select
+                          style={styles.formInput}
+                          value={newItem.priority}
+                          onChange={(e) => setNewItem({ ...newItem, priority: e.target.value })}
+                        >
+                          <option value="low">Low Priority</option>
+                          <option value="medium">Medium Priority</option>
+                          <option value="high">High Priority</option>
+                        </select>
+                      </div>
+
+                      <div style={styles.formGroup}>
+                        <label style={styles.formLabel}>Category</label>
+                        <select
+                          style={styles.formInput}
+                          value={newItem.category}
+                          onChange={(e) => setNewItem({ ...newItem, category: e.target.value })}
+                        >
+                          <option value="learning">Learning</option>
+                          <option value="feature">Feature</option>
+                          <option value="bug_fix">Bug Fix</option>
+                          <option value="optimization">Optimization</option>
+                          <option value="documentation">Documentation</option>
+                          <option value="testing">Testing</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Task-specific Fields */}
+                    {newItem.type === 'task' && (
+                      <div style={styles.taskSpecificFields}>
+                        <div style={styles.formRow}>
+                          <div style={styles.formGroup}>
+                            <label style={styles.formLabel}>Task Type</label>
+                            <select
+                              style={styles.formInput}
+                              value={newItem.task_type}
+                              onChange={(e) => setNewItem({ ...newItem, task_type: e.target.value })}
+                            >
+                              <option value="development">Development</option>
+                              <option value="design">Design</option>
+                              <option value="research">Research</option>
+                              <option value="planning">Planning</option>
+                              <option value="testing">Testing</option>
+                              <option value="documentation">Documentation</option>
+                            </select>
+                          </div>
+
+                          <div style={styles.formGroup}>
+                            <label style={styles.formLabel}>Estimated Hours</label>
+                            <input
+                              style={styles.formInput}
+                              type="number"
+                              value={newItem.estimated_hours}
+                              onChange={(e) => setNewItem({ ...newItem, estimated_hours: e.target.value })}
+                              placeholder="0"
+                              min="0"
+                              step="0.5"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Goal-specific Fields */}
+                    {newItem.type === 'goal' && (
+                      <div style={styles.goalSpecificFields}>
+                        <p style={styles.goalNote}>
+                          <Target size={16} />
+                          Goals are tracked with progress updates and focus on long-term objectives
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Target Date */}
+                    <div style={styles.formGroup}>
+                      <label style={styles.formLabel}>
+                        {newItem.type === 'task' ? 'Due Date' : 'Target Date'}
+                      </label>
+                      <input
+                        style={styles.formInput}
+                        type="date"
+                        value={newItem.target_date}
+                        onChange={(e) => setNewItem({ ...newItem, target_date: e.target.value })}
+                      />
+                    </div>
+                  </form>
+                </div>
+              </div>
+
+              {/* Footer Actions */}
+              <div style={styles.formActions}>
+                <button
+                  type="button"
+                  style={styles.cancelButton}
+                  onClick={() => {
+                    setShowCreateModal(false);
+                    setEditingItem(null);
+                  }}
+                  onMouseEnter={(e) => Object.assign(e.target.style, styles.cancelButtonHover)}
+                  onMouseLeave={(e) => {
+                    e.target.style.backgroundColor = 'rgba(26, 28, 32, 0.95)';
+                    e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  style={{
+                    ...styles.submitButton,
+                    ...(newItem.title.trim() ? {} : styles.submitButtonDisabled)
+                  }}
+                  onClick={editingItem ? handleUpdateItem : handleCreateItem}
+                  disabled={!newItem.title.trim()}
+                  onMouseEnter={(e) => {
+                    if (newItem.title.trim()) {
+                      Object.assign(e.target.style, styles.submitButtonHover);
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (newItem.title.trim()) {
+                      e.target.style.backgroundColor = '#a855f7';
+                      e.target.style.transform = 'none';
+                      e.target.style.boxShadow = '0 4px 6px -1px rgba(168, 85, 247, 0.1)';
+                    }
+                  }}
+                >
+                  {editingItem ? 'Update' : 'Create'} {newItem.type === 'task' ? 'Task' : 'Goal'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
 
 export default SoloProjectGoals;

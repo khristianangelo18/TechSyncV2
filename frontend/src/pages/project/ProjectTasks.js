@@ -1,9 +1,10 @@
-// frontend/src/pages/project/ProjectTasks.js - WITH FLOATING ANIMATIONS - COMPLETE
+// frontend/src/pages/project/ProjectTasks.js - WITH SIDEBAR TOGGLE
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { taskService } from '../../services/taskService';
 import { projectService } from '../../services/projectService';
+import { PanelLeft } from 'lucide-react';
 
 // Background symbols component - WITH FLOATING ANIMATIONS
 const BackgroundSymbols = () => (
@@ -407,6 +408,39 @@ function ProjectTasks() {
   const [sortOrder, setSortOrder] = useState('desc');
   const [showSuccess, setShowSuccess] = useState(null);
 
+  // NEW STATE: Track sidebar collapsed state
+  // This stores whether the sidebar is currently collapsed (true) or expanded (false)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    // Load the saved sidebar state from localStorage when the component first loads
+    const saved = localStorage.getItem('projectSidebarCollapsed');
+    return saved === 'true';
+  });
+
+  // NEW: Function to toggle sidebar
+  // When clicked, this flips the sidebar between collapsed and expanded states
+  const toggleSidebar = () => {
+    const newCollapsedState = !isSidebarCollapsed;
+    setIsSidebarCollapsed(newCollapsedState);
+    // Save the new state to localStorage so it persists across page reloads
+    localStorage.setItem('projectSidebarCollapsed', newCollapsedState.toString());
+    
+    // Dispatch a custom event so other components (like the actual sidebar) can react to this change
+    window.dispatchEvent(new CustomEvent('projectSidebarToggle', {
+      detail: { collapsed: newCollapsedState }
+    }));
+  };
+
+  // NEW: Sync with sidebar toggle events
+  // Listen for toggle events from other components (like if the sidebar itself has a toggle button)
+  useEffect(() => {
+    const handleSidebarToggle = (event) => {
+      setIsSidebarCollapsed(event.detail.collapsed);
+    };
+
+    window.addEventListener('projectSidebarToggle', handleSidebarToggle);
+    return () => window.removeEventListener('projectSidebarToggle', handleSidebarToggle);
+  }, []);
+
   const [taskForm, setTaskForm] = useState({
     title: '',
     description: '',
@@ -760,6 +794,27 @@ function ProjectTasks() {
   };
 
   const styles = {
+    // NEW: Toggle button styles
+    // This is the button that floats on the page and toggles the sidebar
+    toggleButton: {
+      position: 'fixed',
+      top: '20px',
+      left: isSidebarCollapsed ? '100px' : '290px', // Moves left/right based on sidebar state
+      zIndex: 1100, // High z-index so it stays on top
+      width: '40px',
+      height: '40px',
+      borderRadius: '10px',
+      backgroundColor: 'rgba(26, 28, 32, 0.95)',
+      border: '1px solid rgba(255, 255, 255, 0.2)',
+      color: '#9ca3af',
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      transition: 'all 0.3s ease', // Smooth animation when sidebar toggles
+      backdropFilter: 'blur(20px)',
+      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)'
+    },
     container: {
       minHeight: 'calc(100vh - 40px)',
       backgroundColor: '#0F1116',
@@ -768,8 +823,8 @@ function ProjectTasks() {
       overflow: 'hidden',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       padding: '20px',
-      paddingLeft: '270px',
-      marginLeft: '-150px'
+      paddingLeft: '120px',  // Fixed value for both states
+      transition: 'padding-left 0.3s ease'
     },
     header: {
       position: 'relative',
@@ -997,17 +1052,15 @@ function ProjectTasks() {
       fontSize: '16px',
       marginBottom: '24px'
     },
-    loadingState: {
-      position: 'relative',
-      zIndex: 10,
-      textAlign: 'center',
-      padding: '60px',
-      color: '#9ca3af',
-      fontSize: '18px',
+    loading: {
       display: 'flex',
-      alignItems: 'center',
+      flexDirection: 'row',
       justifyContent: 'center',
-      gap: '15px'
+      alignItems: 'center',
+      gap: '15px',
+      minHeight: '400px',
+      fontSize: '18px',
+      color: '#9ca3af'
     },
     modal: {
       position: 'fixed',
@@ -1130,17 +1183,40 @@ function ProjectTasks() {
 
   if (loading) {
     return (
-      <div style={styles.container}>
-        <BackgroundSymbols />
-        <div style={styles.loadingState}>
-          <div style={{
-            width: '48px',
-            height: '48px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }} className="global-loading-spinner">
-            <img 
+      <>
+        {/* Sidebar Toggle Button - OUTSIDE CONTAINER */}
+        <button
+          style={styles.toggleButton}
+          onClick={toggleSidebar}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.15)';
+            e.currentTarget.style.color = '#3b82f6';
+            e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.4)';
+            e.currentTarget.style.transform = 'scale(1.05)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(26, 28, 32, 0.95)';
+            e.currentTarget.style.color = '#9ca3af';
+            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+            e.currentTarget.style.transform = 'scale(1)';
+          }}
+          aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          <PanelLeft size={20} />
+        </button>
+
+        <div style={styles.container}>
+          <BackgroundSymbols />
+          <div style={styles.loading}>
+            <div style={{
+              width: '48px',
+              height: '48px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }} className="global-loading-spinner">
+              <img 
               src="/images/logo/TechSyncLogo.png" 
               alt="TechSync Logo" 
               style={{
@@ -1149,412 +1225,437 @@ function ProjectTasks() {
                 objectFit: 'contain'
               }}
             />
+            </div>
+            <span>Loading project tasks...</span>
           </div>
-          <span>Loading tasks...</span>
         </div>
-      </div>
+      </>
     );
   }
 
   const assignableMembers = getAllAssignableMembers();
 
   return (
-    <div style={styles.container}>
-      <BackgroundSymbols />
-      {renderSuccessMessage()}
+    <>
+      {/* Sidebar Toggle Button - OUTSIDE CONTAINER */}
+      <button
+        style={styles.toggleButton}
+        onClick={toggleSidebar}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.15)';
+          e.currentTarget.style.color = '#3b82f6';
+          e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.4)';
+          e.currentTarget.style.transform = 'scale(1.05)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.backgroundColor = 'rgba(26, 28, 32, 0.95)';
+          e.currentTarget.style.color = '#9ca3af';
+          e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+          e.currentTarget.style.transform = 'scale(1)';
+        }}
+        aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+      >
+        <PanelLeft size={20} />
+      </button>
 
-      <div style={styles.header}>
-        <div style={styles.headerLeft}>
-          <h1 style={styles.title}>Project Tasks</h1>
-          <p style={styles.subtitle}>
-            {project ? `${project.title} - Task Management` : 'Manage and track project tasks'}
-          </p>
+      <div style={styles.container}>
+        <BackgroundSymbols />
+        {renderSuccessMessage()}
+
+        <div style={styles.header}>
+          <div style={styles.headerLeft}>
+            <h1 style={styles.title}>Project Tasks</h1>
+            <p style={styles.subtitle}>
+              {project ? `${project.title} - Task Management` : 'Manage and track project tasks'}
+            </p>
+          </div>
+          <div style={styles.headerRight}>
+            {canCreateTasks && (
+              <button
+                style={styles.createButton}
+                onClick={() => {
+                  setEditingTask(null);
+                  resetForm();
+                  setError(null);
+                  setShowCreateModal(true);
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.transform = 'translateY(-2px)';
+                  e.target.style.boxShadow = '0 6px 20px rgba(16, 185, 129, 0.4)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.transform = 'translateY(0)';
+                  e.target.style.boxShadow = '0 4px 16px rgba(16, 185, 129, 0.3)';
+                }}
+              >
+                + Create Task
+              </button>
+            )}
+          </div>
         </div>
-        <div style={styles.headerRight}>
-          {canCreateTasks && (
-            <button
-              style={styles.createButton}
-              onClick={() => {
-                setEditingTask(null);
-                resetForm();
-                setError(null);
-                setShowCreateModal(true);
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.transform = 'translateY(-2px)';
-                e.target.style.boxShadow = '0 6px 20px rgba(16, 185, 129, 0.4)';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.transform = 'translateY(0)';
-                e.target.style.boxShadow = '0 4px 16px rgba(16, 185, 129, 0.3)';
-              }}
+
+        <div style={styles.controls}>
+          <div style={styles.filterGroup}>
+            <label style={styles.filterLabel}>Filter:</label>
+            <select
+              style={styles.filterSelect}
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
             >
-              + Create Task
+              <option value="all">All Tasks</option>
+              <option value="my_tasks">My Tasks</option>
+              <option value="todo">To Do</option>
+              <option value="in_progress">In Progress</option>
+              <option value="in_review">In Review</option>
+              <option value="completed">Completed</option>
+              <option value="blocked">Blocked</option>
+            </select>
+          </div>
+
+          <div style={styles.sortControls}>
+            <label style={styles.filterLabel}>Sort by:</label>
+            <select
+              style={styles.filterSelect}
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+            >
+              <option value="created_at">Created Date</option>
+              <option value="due_date">Due Date</option>
+              <option value="priority">Priority</option>
+              <option value="status">Status</option>
+              <option value="title">Title</option>
+            </select>
+            
+            <button
+              style={styles.actionButton}
+              onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+              onMouseEnter={(e) => e.target.style.transform = 'translateY(-1px)'}
+              onMouseLeave={(e) => e.target.style.transform = 'translateY(0)'}
+            >
+              {sortOrder === 'asc' ? '↑' : '↓'}
             </button>
-          )}
-        </div>
-      </div>
+          </div>
 
-      <div style={styles.controls}>
-        <div style={styles.filterGroup}>
-          <label style={styles.filterLabel}>Filter:</label>
-          <select
-            style={styles.filterSelect}
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-          >
-            <option value="all">All Tasks</option>
-            <option value="my_tasks">My Tasks</option>
-            <option value="todo">To Do</option>
-            <option value="in_progress">In Progress</option>
-            <option value="in_review">In Review</option>
-            <option value="completed">Completed</option>
-            <option value="blocked">Blocked</option>
-          </select>
-        </div>
-
-        <div style={styles.sortControls}>
-          <label style={styles.filterLabel}>Sort by:</label>
-          <select
-            style={styles.filterSelect}
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-          >
-            <option value="created_at">Created Date</option>
-            <option value="due_date">Due Date</option>
-            <option value="priority">Priority</option>
-            <option value="status">Status</option>
-            <option value="title">Title</option>
-          </select>
-          
           <button
-            style={styles.actionButton}
-            onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+            style={styles.refreshButton}
+            onClick={fetchTasks}
             onMouseEnter={(e) => e.target.style.transform = 'translateY(-1px)'}
             onMouseLeave={(e) => e.target.style.transform = 'translateY(0)'}
           >
-            {sortOrder === 'asc' ? '↑' : '↓'}
+            Refresh
           </button>
         </div>
 
-        <button
-          style={styles.refreshButton}
-          onClick={fetchTasks}
-          onMouseEnter={(e) => e.target.style.transform = 'translateY(-1px)'}
-          onMouseLeave={(e) => e.target.style.transform = 'translateY(0)'}
-        >
-          Refresh
-        </button>
-      </div>
+        {renderErrorMessage()}
 
-      {renderErrorMessage()}
-
-      {filteredTasks.length === 0 ? (
-        <div style={styles.emptyState}>
-          <h2 style={styles.emptyTitle}>No tasks found</h2>
-          <p style={styles.emptyText}>
-            {filter === 'all' 
-              ? 'No tasks have been created yet.' 
-              : `No tasks match the current filter: ${filter.replace('_', ' ')}`
-            }
-          </p>
-          {canCreateTasks && filter === 'all' && (
-            <button
-              style={styles.createButton}
-              onClick={() => {
-                setEditingTask(null);
-                resetForm();
-                setError(null);
-                setShowCreateModal(true);
-              }}
-            >
-              Create First Task
-            </button>
-          )}
-        </div>
-      ) : (
-        <div style={styles.tasksGrid}>
-          {filteredTasks.map((task) => (
-            <div
-              key={task.id}
-              style={styles.taskCard}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-4px)';
-                e.currentTarget.style.boxShadow = '0 12px 40px rgba(0, 0, 0, 0.3)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 8px 32px rgba(0, 0, 0, 0.2)';
-              }}
-            >
-              <div style={styles.taskHeader}>
-                <h3 style={styles.taskTitle}>{task.title}</h3>
-              </div>
-
-              <div style={styles.taskMeta}>
-                <span
-                  style={{
-                    ...styles.statusBadge,
-                    backgroundColor: getStatusColor(task.status),
-                    color: getStatusTextColor(task.status)
-                  }}
-                >
-                  {task.status.replace('_', ' ')}
-                </span>
-                <span
-                  style={{
-                    ...styles.priorityBadge,
-                    backgroundColor: getPriorityColor(task.priority)
-                  }}
-                >
-                  {task.priority}
-                </span>
-              </div>
-
-              {task.description && (
-                <p style={styles.taskDescription}>
-                  {task.description.length > 150
-                    ? task.description.substring(0, 150) + '...'
-                    : task.description
-                  }
-                </p>
-              )}
-
-              <div style={styles.taskFooter}>
-                <div style={styles.taskInfo}>
-                  <div>Due: {formatDate(task.due_date)}</div>
-                  <div>Assigned: {getMemberName(task.assigned_to)}</div>
+        {filteredTasks.length === 0 ? (
+          <div style={styles.emptyState}>
+            <h2 style={styles.emptyTitle}>No tasks found</h2>
+            <p style={styles.emptyText}>
+              {filter === 'all' 
+                ? 'No tasks have been created yet.' 
+                : `No tasks match the current filter: ${filter.replace('_', ' ')}`
+              }
+            </p>
+            {canCreateTasks && filter === 'all' && (
+              <button
+                style={styles.createButton}
+                onClick={() => {
+                  setEditingTask(null);
+                  resetForm();
+                  setError(null);
+                  setShowCreateModal(true);
+                }}
+              >
+                Create First Task
+              </button>
+            )}
+          </div>
+        ) : (
+          <div style={styles.tasksGrid}>
+            {filteredTasks.map((task) => (
+              <div
+                key={task.id}
+                style={styles.taskCard}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                  e.currentTarget.style.boxShadow = '0 12px 40px rgba(0, 0, 0, 0.3)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 8px 32px rgba(0, 0, 0, 0.2)';
+                }}
+              >
+                <div style={styles.taskHeader}>
+                  <h3 style={styles.taskTitle}>{task.title}</h3>
                 </div>
-                
-                <div style={styles.taskActions}>
+
+                <div style={styles.taskMeta}>
+                  <span
+                    style={{
+                      ...styles.statusBadge,
+                      backgroundColor: getStatusColor(task.status),
+                      color: getStatusTextColor(task.status)
+                    }}
+                  >
+                    {task.status.replace('_', ' ')}
+                  </span>
+                  <span
+                    style={{
+                      ...styles.priorityBadge,
+                      backgroundColor: getPriorityColor(task.priority)
+                    }}
+                  >
+                    {task.priority}
+                  </span>
+                </div>
+
+                {task.description && (
+                  <p style={styles.taskDescription}>
+                    {task.description.length > 150
+                      ? task.description.substring(0, 150) + '...'
+                      : task.description
+                    }
+                  </p>
+                )}
+
+                <div style={styles.taskFooter}>
+                  <div style={styles.taskInfo}>
+                    <div>Due: {formatDate(task.due_date)}</div>
+                    <div>Assigned: {getMemberName(task.assigned_to)}</div>
+                  </div>
+                  
+                  <div style={styles.taskActions}>
+                    <button
+                      style={styles.viewButton}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        viewTaskDetail(task.id);
+                      }}
+                      onMouseEnter={(e) => e.target.style.transform = 'translateY(-1px)'}
+                      onMouseLeave={(e) => e.target.style.transform = 'translateY(0)'}
+                    >
+                      View
+                    </button>
+                    
+                    {canCreateTasks && (
+                      <>
+                        <button
+                          style={styles.editButton}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            editTask(task);
+                          }}
+                          onMouseEnter={(e) => e.target.style.transform = 'translateY(-1px)'}
+                          onMouseLeave={(e) => e.target.style.transform = 'translateY(0)'}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          style={styles.deleteButton}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteTask(task.id);
+                          }}
+                          onMouseEnter={(e) => e.target.style.transform = 'translateY(-1px)'}
+                          onMouseLeave={(e) => e.target.style.transform = 'translateY(0)'}
+                        >
+                          Delete
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {showCreateModal && (
+          <div style={styles.modal} onClick={() => {
+            setShowCreateModal(false);
+            setEditingTask(null);
+            resetForm();
+            setError(null);
+          }}>
+            <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+              <div style={styles.modalHeader}>
+                <h2 style={styles.modalTitle}>
+                  {editingTask ? 'Edit Task' : 'Create New Task'}
+                </h2>
+              </div>
+
+              {renderErrorMessage()}
+
+              <form onSubmit={handleSaveTask}>
+                <div style={styles.formGroup}>
+                  <label style={styles.label} htmlFor="title">Title *</label>
+                  <input
+                    id="title"
+                    type="text"
+                    name="title"
+                    value={taskForm.title}
+                    onChange={handleInputChange}
+                    style={styles.input}
+                    required
+                    placeholder="Enter task title"
+                  />
+                </div>
+
+                <div style={styles.formGroup}>
+                  <label style={styles.label} htmlFor="description">Description</label>
+                  <textarea
+                    id="description"
+                    name="description"
+                    value={taskForm.description}
+                    onChange={handleInputChange}
+                    style={styles.textarea}
+                    placeholder="Enter task description"
+                  />
+                </div>
+
+                <div style={styles.formGroup}>
+                  <label style={styles.label} htmlFor="task_type">Task Type</label>
+                  <select
+                    id="task_type"
+                    name="task_type"
+                    value={taskForm.task_type}
+                    onChange={handleInputChange}
+                    style={styles.select}
+                  >
+                    <option value="development">Development</option>
+                    <option value="design">Design</option>
+                    <option value="testing">Testing</option>
+                    <option value="documentation">Documentation</option>
+                    <option value="research">Research</option>
+                    <option value="meeting">Meeting</option>
+                    <option value="review">Review</option>
+                  </select>
+                </div>
+
+                <div style={styles.formGroup}>
+                  <label style={styles.label} htmlFor="priority">Priority</label>
+                  <select
+                    id="priority"
+                    name="priority"
+                    value={taskForm.priority}
+                    onChange={handleInputChange}
+                    style={styles.select}
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="urgent">Urgent</option>
+                  </select>
+                </div>
+
+                <div style={styles.formGroup}>
+                  <label style={styles.label} htmlFor="status">Status</label>
+                  <select
+                    id="status"
+                    name="status"
+                    value={taskForm.status}
+                    onChange={handleInputChange}
+                    style={styles.select}
+                  >
+                    <option value="todo">To Do</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="in_review">In Review</option>
+                    <option value="completed">Completed</option>
+                    <option value="blocked">Blocked</option>
+                  </select>
+                </div>
+
+                <div style={styles.formGroup}>
+                  <label style={styles.label} htmlFor="assigned_to">Assigned To</label>
+                  <select
+                    id="assigned_to"
+                    name="assigned_to"
+                    value={taskForm.assigned_to}
+                    onChange={handleInputChange}
+                    style={styles.select}
+                  >
+                    <option value="">Unassigned</option>
+                    {assignableMembers.map(member => (
+                      <option key={member.id} value={member.id}>
+                        {member.name} {member.role !== 'member' ? `(${member.role})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  {assignableMembers.length === 0 && (
+                    <small style={styles.memberNote}>
+                      No members found. Only project owner and members can be assigned tasks.
+                    </small>
+                  )}
+                </div>
+
+                <div style={styles.formGroup}>
+                  <label style={styles.label} htmlFor="estimated_hours">Estimated Hours</label>
+                  <input
+                    id="estimated_hours"
+                    type="number"
+                    name="estimated_hours"
+                    value={taskForm.estimated_hours}
+                    onChange={handleInputChange}
+                    style={styles.input}
+                    min="0"
+                    step="0.5"
+                    placeholder="0"
+                  />
+                </div>
+
+                <div style={styles.formGroup}>
+                  <label style={styles.label} htmlFor="due_date">Due Date</label>
+                  <input
+                    id="due_date"
+                    type="date"
+                    name="due_date"
+                    value={taskForm.due_date}
+                    onChange={handleInputChange}
+                    style={styles.input}
+                  />
+                </div>
+
+                <div style={styles.modalActions}>
                   <button
-                    style={styles.viewButton}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      viewTaskDetail(task.id);
+                    type="button"
+                    style={styles.cancelButton}
+                    onClick={() => {
+                      setShowCreateModal(false);
+                      setEditingTask(null);
+                      resetForm();
+                      setError(null);
                     }}
                     onMouseEnter={(e) => e.target.style.transform = 'translateY(-1px)'}
                     onMouseLeave={(e) => e.target.style.transform = 'translateY(0)'}
                   >
-                    View
+                    Cancel
                   </button>
-                  
-                  {canCreateTasks && (
-                    <>
-                      <button
-                        style={styles.editButton}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          editTask(task);
-                        }}
-                        onMouseEnter={(e) => e.target.style.transform = 'translateY(-1px)'}
-                        onMouseLeave={(e) => e.target.style.transform = 'translateY(0)'}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        style={styles.deleteButton}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteTask(task.id);
-                        }}
-                        onMouseEnter={(e) => e.target.style.transform = 'translateY(-1px)'}
-                        onMouseLeave={(e) => e.target.style.transform = 'translateY(0)'}
-                      >
-                        Delete
-                      </button>
-                    </>
-                  )}
+                  <button
+                    type="submit"
+                    style={styles.saveButton}
+                    disabled={!taskForm.title.trim()}
+                    onMouseEnter={(e) => {
+                      if (!e.target.disabled) {
+                        e.target.style.transform = 'translateY(-1px)';
+                        e.target.style.boxShadow = '0 6px 20px rgba(16, 185, 129, 0.4)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.transform = 'translateY(0)';
+                      e.target.style.boxShadow = 'none';
+                    }}
+                  >
+                    {editingTask ? 'Update Task' : 'Create Task'}
+                  </button>
                 </div>
-              </div>
+              </form>
             </div>
-          ))}
-        </div>
-      )}
-
-      {showCreateModal && (
-        <div style={styles.modal} onClick={() => {
-          setShowCreateModal(false);
-          setEditingTask(null);
-          resetForm();
-          setError(null);
-        }}>
-          <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-            <div style={styles.modalHeader}>
-              <h2 style={styles.modalTitle}>
-                {editingTask ? 'Edit Task' : 'Create New Task'}
-              </h2>
-            </div>
-
-            {renderErrorMessage()}
-
-            <form onSubmit={handleSaveTask}>
-              <div style={styles.formGroup}>
-                <label style={styles.label} htmlFor="title">Title *</label>
-                <input
-                  id="title"
-                  type="text"
-                  name="title"
-                  value={taskForm.title}
-                  onChange={handleInputChange}
-                  style={styles.input}
-                  required
-                  placeholder="Enter task title"
-                />
-              </div>
-
-              <div style={styles.formGroup}>
-                <label style={styles.label} htmlFor="description">Description</label>
-                <textarea
-                  id="description"
-                  name="description"
-                  value={taskForm.description}
-                  onChange={handleInputChange}
-                  style={styles.textarea}
-                  placeholder="Enter task description"
-                />
-              </div>
-
-              <div style={styles.formGroup}>
-                <label style={styles.label} htmlFor="task_type">Task Type</label>
-                <select
-                  id="task_type"
-                  name="task_type"
-                  value={taskForm.task_type}
-                  onChange={handleInputChange}
-                  style={styles.select}
-                >
-                  <option value="development">Development</option>
-                  <option value="design">Design</option>
-                  <option value="testing">Testing</option>
-                  <option value="documentation">Documentation</option>
-                  <option value="research">Research</option>
-                  <option value="meeting">Meeting</option>
-                  <option value="review">Review</option>
-                </select>
-              </div>
-
-              <div style={styles.formGroup}>
-                <label style={styles.label} htmlFor="priority">Priority</label>
-                <select
-                  id="priority"
-                  name="priority"
-                  value={taskForm.priority}
-                  onChange={handleInputChange}
-                  style={styles.select}
-                >
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                  <option value="urgent">Urgent</option>
-                </select>
-              </div>
-
-              <div style={styles.formGroup}>
-                <label style={styles.label} htmlFor="status">Status</label>
-                <select
-                  id="status"
-                  name="status"
-                  value={taskForm.status}
-                  onChange={handleInputChange}
-                  style={styles.select}
-                >
-                  <option value="todo">To Do</option>
-                  <option value="in_progress">In Progress</option>
-                  <option value="in_review">In Review</option>
-                  <option value="completed">Completed</option>
-                  <option value="blocked">Blocked</option>
-                </select>
-              </div>
-
-              <div style={styles.formGroup}>
-                <label style={styles.label} htmlFor="assigned_to">Assigned To</label>
-                <select
-                  id="assigned_to"
-                  name="assigned_to"
-                  value={taskForm.assigned_to}
-                  onChange={handleInputChange}
-                  style={styles.select}
-                >
-                  <option value="">Unassigned</option>
-                  {assignableMembers.map(member => (
-                    <option key={member.id} value={member.id}>
-                      {member.name} {member.role !== 'member' ? `(${member.role})` : ''}
-                    </option>
-                  ))}
-                </select>
-                {assignableMembers.length === 0 && (
-                  <small style={styles.memberNote}>
-                    No members found. Only project owner and members can be assigned tasks.
-                  </small>
-                )}
-              </div>
-
-              <div style={styles.formGroup}>
-                <label style={styles.label} htmlFor="estimated_hours">Estimated Hours</label>
-                <input
-                  id="estimated_hours"
-                  type="number"
-                  name="estimated_hours"
-                  value={taskForm.estimated_hours}
-                  onChange={handleInputChange}
-                  style={styles.input}
-                  min="0"
-                  step="0.5"
-                  placeholder="0"
-                />
-              </div>
-
-              <div style={styles.formGroup}>
-                <label style={styles.label} htmlFor="due_date">Due Date</label>
-                <input
-                  id="due_date"
-                  type="date"
-                  name="due_date"
-                  value={taskForm.due_date}
-                  onChange={handleInputChange}
-                  style={styles.input}
-                />
-              </div>
-
-              <div style={styles.modalActions}>
-                <button
-                  type="button"
-                  style={styles.cancelButton}
-                  onClick={() => {
-                    setShowCreateModal(false);
-                    setEditingTask(null);
-                    resetForm();
-                    setError(null);
-                  }}
-                  onMouseEnter={(e) => e.target.style.transform = 'translateY(-1px)'}
-                  onMouseLeave={(e) => e.target.style.transform = 'translateY(0)'}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  style={styles.saveButton}
-                  disabled={!taskForm.title.trim()}
-                  onMouseEnter={(e) => {
-                    if (!e.target.disabled) {
-                      e.target.style.transform = 'translateY(-1px)';
-                      e.target.style.boxShadow = '0 6px 20px rgba(16, 185, 129, 0.4)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.transform = 'translateY(0)';
-                    e.target.style.boxShadow = 'none';
-                  }}
-                >
-                  {editingTask ? 'Update Task' : 'Create Task'}
-                </button>
-              </div>
-            </form>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </>
   );
 }
 

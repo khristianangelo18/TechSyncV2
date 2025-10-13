@@ -875,6 +875,17 @@ function App() {
                   } 
                 />
 
+                <Route 
+                  path="/soloproject/:projectId/help" 
+                  element={
+                    <ProtectedRoute>
+                      <SoloProjectLayout>
+                        <HelpCenter />
+                      </SoloProjectLayout>
+                    </ProtectedRoute>
+                  } 
+                />
+
                 {/* Redirect /soloproject/:id to /soloproject/:id/dashboard */}
                 <Route 
                   path="/soloproject/:projectId" 

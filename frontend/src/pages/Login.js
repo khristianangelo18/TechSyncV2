@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Eye, EyeOff, Home } from 'lucide-react';
+import { Eye, EyeOff, Home, LogIn, UserPlus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 // Isolated background styles - never changes
@@ -399,33 +399,63 @@ function Login() {
     },
     logoSection: {
       display: 'flex',
+      flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: '0.75rem',
+      padding: '0.5rem',
+      borderRadius: '12px',
+      marginBottom: '1rem'
+    },
+    logoIconWrapper: {
       cursor: 'pointer',
       transition: 'all 0.3s ease',
       padding: '0.5rem',
-      borderRadius: '12px'
+      borderRadius: '12px',
+      marginBottom: '0.25rem'
     },
     logoIcon: {
-      width: '70px',
-      height: '70px',
+      width: '60px',
+      height: '60px',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      transition: 'transform 0.3s ease'
+      transition: 'transform 0.3s ease',
+      marginBottom: '0.25rem'
     },
     logoImage: {
-      width: '200%',
-      height: '200%',
+      width: '100%',
+      height: '100%',
       objectFit: 'contain'
+    },
+    logoText: {
+      fontSize: '28px',
+      fontWeight: '700',
+      background: 'linear-gradient(135deg, #4b5563, #6b7280, #9ca3af, #eef0f4ff)',
+      WebkitBackgroundClip: 'text',
+      WebkitTextFillColor: 'transparent',
+      backgroundClip: 'text',
+      letterSpacing: '-0.5px',
+      lineHeight: '1',
+      marginTop: '0.25rem'
+    },
+    logoTagline: {
+      fontSize: '8px',
+      color: '#6b7280',
+      letterSpacing: '0.5px',
+      textTransform: 'uppercase',
+      marginTop: '0.25rem',
+      fontWeight: '400'
     },
     title: {
       textAlign: 'center',
       fontSize: '1.5rem',
       fontWeight: '600',
       color: 'white',
-      letterSpacing: '-0.025em'
+      letterSpacing: '-0.025em',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '0.5rem'
     },
     formGroup: {
       // No marginBottom here
@@ -473,7 +503,11 @@ function Login() {
       borderRadius: '10px',
       marginBottom: '1rem',
       transition: 'all 0.3s ease',
-      letterSpacing: '0.025em'
+      letterSpacing: '0.025em',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '0.5rem'
     },
     buttonDisabled: {
       background: 'rgba(107, 114, 128, 0.5)',
@@ -592,8 +626,8 @@ function Login() {
     @keyframes floatAround1 {
       0%, 100% { transform: translate(0, 0) rotate(-10.79deg); }
       25% { transform: translate(30px, -20px) rotate(-5deg); }
-      50% { transform: translate(-15px, 25px) rotate(-15deg); }
-      75% { transform: translate(20px, 10px) rotate(-8deg); }
+      50% { transform: translate(15px, -25px) rotate(10deg); }
+      75% { transform: translate(-15px, 10px) rotate(18deg); }
     }
 
     @keyframes floatAround2 {
@@ -650,8 +684,8 @@ function Login() {
     @keyframes waveMotion {
       0%, 100% { transform: translate(0, 0) rotate(15deg); }
       25% { transform: translate(30px, 10px) rotate(20deg); }
-      50% { transform: translate(15px, -25px) rotate(10deg); }
-      75% { transform: translate(-15px, 10px) rotate(18deg); }
+      50% { transform translate(-15px, 25px) rotate(-15deg); }
+      75% { transform: translate(20px, 10px) rotate(-8deg); }
     }
 
     @keyframes circularDrift {
@@ -674,7 +708,7 @@ function Login() {
     .floating-symbol:nth-child(6) { animation: floatAround6 14s infinite; animation-delay: -7s; }
     .floating-symbol:nth-child(7) { animation: driftSlow 22s infinite; animation-delay: -10s; }
     .floating-symbol:nth-child(8) { animation: gentleDrift 19s infinite; animation-delay: -1s; }
-    .floating-symbol:spiralFloat 17s infinite; animation-delay: -6s; }
+    .floating-symbol:nth-child(9) { animation: spiralFloat 17s infinite; animation-delay: -6s; }
     .floating-symbol:nth-child(10) { animation: waveMotion 13s infinite; animation-delay: -4s; }
     .floating-symbol:nth-child(11) { animation: circularDrift 21s infinite; animation-delay: -9s; }
     .floating-symbol:nth-child(12) { animation: floatAround1 16s infinite; animation-delay: -2s; }
@@ -690,6 +724,12 @@ function Login() {
     .floating-symbol:nth-child(22) { animation: floatAround1 14s infinite; animation-delay: -9s; }
     .floating-symbol:nth-child(23) { animation: floatAround2 16s infinite; animation-delay: -3s; }
     .floating-symbol:nth-child(24) { animation: driftSlow 18s infinite; animation-delay: -7s; }
+
+    body {
+      overflow: ${isRegistering ? 'auto' : 'hidden'} !important;
+      margin: 0;
+      padding: 0;
+    }
 
     .login-input:focus {
       outline: none !important;
@@ -720,14 +760,22 @@ function Login() {
     }
     
     .logo-section:hover {
-      background: rgba(255, 255, 255, 0.05) !important;
-      transform: translateY(-2px) !important;
+      background: transparent !important;
+      transform: none !important;
     }
-    
+
     .logo-section:hover .logo-icon {
       transform: rotate(45deg) scale(1.1) !important;
     }
-    
+
+    .logo-icon-wrapper:hover {
+      background: rgba(255, 255, 255, 0.05) !important;
+      transform: translateY(-2px) !important;
+    }
+
+    .logo-icon-wrapper:hover .logo-icon {
+      transform: rotate(45deg) scale(1.1) !important;
+    }
     .enhanced-home-button:hover {
       background: linear-gradient(135deg, rgba(31, 35, 40, 0.98), rgba(20, 22, 26, 1)) !important;
       border-color: rgba(59, 130, 246, 0.4) !important;
@@ -764,30 +812,9 @@ function Login() {
     return (
       <>
         <style>
-          {`
-            ${hoverStyles}
-            
-            body {
-              overflow: hidden !important;
-            }
-          `}
+          {hoverStyles}
         </style>
-        <div style={{
-          width: '100vw',
-          height: '100svh',
-          maxHeight: '100vh',
-          backgroundColor: '#0F1116',
-          color: 'white',
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          overflow: 'hidden',
-          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '0.5rem'
-        }}>
+        <div style={styles.pageContainer}>
         
         <div style={{
           position: 'fixed',
@@ -868,30 +895,35 @@ function Login() {
 
         <div style={{
           ...styles.container,
-          padding: '2.5rem 2rem'
+          padding: '1.5rem 2rem 2rem',
+          minHeight: '500px'
         }}>
-          <div 
-            style={{
-              ...styles.logoSection,
-              marginBottom: '1.5rem'
-            }}
-            className="logo-section"
-            onClick={() => navigate('/')}
-            title="Go back to TechSync homepage"
-          >
-            <div style={styles.logoIcon} className="logo-icon">
-              <img 
-                src="/images/logo/logofour.png" 
-                alt="TechSync Logo" 
-                style={styles.logoImage}
-              />
+          <div style={styles.logoSection} className="logo-section">
+            <div 
+              style={styles.logoIconWrapper}
+              className="logo-icon-wrapper"
+              onClick={() => navigate('/')}
+              title="Go back to TechSync homepage"
+            >
+              <div style={styles.logoIcon} className="logo-icon">
+                <img 
+                  src="/images/logo/techsyncinitiallogo.png" 
+                  alt="TechSync Logo" 
+                  style={styles.logoImage}
+                />
+              </div>
             </div>
+            <div style={styles.logoText}>TechSync</div>
+            <div style={styles.logoTagline}>Code with PURPOSE, Learn with PRECISION</div>
           </div>
           
           <h2 style={{
             ...styles.title,
             marginBottom: '1rem'
-          }}>Sign In with TechSync</h2>
+          }}>
+            <LogIn size={24} color="#60a5fa" />
+            Sign In with TechSync
+          </h2>
           
           {error && <div style={styles.error}>{error}</div>}
           {validationErrors.form && <div style={styles.error}>{validationErrors.form}</div>}
@@ -961,6 +993,7 @@ function Login() {
                 ...(loading ? styles.buttonDisabled : {})
               }}
             >
+              <LogIn size={18} />
               {loading ? 'Signing in...' : 'Login'}
             </button>
           </form>
@@ -1091,28 +1124,32 @@ function Login() {
         ...styles.container,
         padding: '1.5rem 1.75rem'
       }}>
-        <div 
-          style={{
-            ...styles.logoSection,
-            marginBottom: '1rem'
-          }}
-          className="logo-section"
-          onClick={() => navigate('/')}
-          title="Go back to TechSync homepage"
-        >
-          <div style={styles.logoIcon} className="logo-icon">
-            <img 
-              src="/images/logo/logotwo.png" 
-              alt="" 
-              style={styles.logoImage}
-            />
+        <div style={styles.logoSection} className="logo-section">
+          <div 
+            style={styles.logoIconWrapper}
+            className="logo-icon-wrapper"
+            onClick={() => navigate('/')}
+            title="Go back to TechSync homepage"
+          >
+            <div style={styles.logoIcon} className="logo-icon">
+              <img 
+                src="/images/logo/techsyncinitiallogo.png" 
+                alt="TechSync Logo" 
+                style={styles.logoImage}
+              />
+            </div>
           </div>
+          <div style={styles.logoText}>TechSync</div>
+          <div style={styles.logoTagline}>Code with PURPOSE, Learn with PRECISION</div>
         </div>
         
         <h2 style={{
           ...styles.title,
           marginBottom: '1rem'
-        }}>Sign Up with TechSync</h2>
+        }}>
+          <UserPlus size={24} color="#60a5fa"/>
+          Sign Up with TechSync
+        </h2>
         
         {error && <div style={styles.error}>{error}</div>}
         {validationErrors.form && <div style={styles.error}>{validationErrors.form}</div>}
@@ -1323,6 +1360,7 @@ function Login() {
               opacity: loading || !isFormValid ? 0.6 : 1
             }}
           >
+            <UserPlus size={24}/>
             {loading ? 'Creating Account...' : 'Sign Up'}
           </button>
         </form>

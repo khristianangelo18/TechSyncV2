@@ -1,10 +1,10 @@
-// frontend/src/pages/Profile.js - COMPLETE WITH AWARDS INTEGRATION
+// frontend/src/pages/Profile.js - COMPLETE WITH AWARDS INTEGRATION AND SIDEBAR TOGGLE
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { authService } from '../services/authService';
 import { projectService } from '../services/projectService';
 import AwardsDisplay from '../components/AwardsDisplay';
-import { User, Settings, Shield, Calendar, Target, Users, Eye, EyeOff, SquarePen, Award } from 'lucide-react';
+import { User, Settings, Shield, Calendar, Target, Users, Eye, EyeOff, SquarePen, Award, PanelLeft } from 'lucide-react';
 
 // Background symbols component with animations
 const BackgroundSymbols = () => (
@@ -116,6 +116,12 @@ function Profile() {
   const [awardStats, setAwardStats] = useState(null);
   const [loadingAwards, setLoadingAwards] = useState(false);
 
+  // Sidebar state - initialize from localStorage with lazy initialization
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    const saved = localStorage.getItem('sidebarCollapsed');
+    return saved === 'true';
+  });
+
   useEffect(() => {
     if (user) {
       setFormData({
@@ -182,6 +188,27 @@ function Profile() {
       fetchAwardStats();
     }
   }, [user]);
+
+  // Listen for sidebar state changes from Sidebar component
+  useEffect(() => {
+    const handleSidebarToggle = (event) => {
+      setIsSidebarCollapsed(event.detail.collapsed);
+    };
+
+    window.addEventListener('sidebarToggle', handleSidebarToggle);
+    return () => window.removeEventListener('sidebarToggle', handleSidebarToggle);
+  }, []);
+
+  // Function to toggle sidebar
+  const toggleSidebar = () => {
+    const newCollapsedState = !isSidebarCollapsed;
+    setIsSidebarCollapsed(newCollapsedState);
+    localStorage.setItem('sidebarCollapsed', newCollapsedState.toString());
+    
+    window.dispatchEvent(new CustomEvent('sidebarToggle', {
+      detail: { collapsed: newCollapsedState }
+    }));
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -303,541 +330,588 @@ function Profile() {
   }
 
   return (
-    <div style={styles.container}>
-      <BackgroundSymbols />
+    <>
+      {/* Sidebar Toggle Button */}
+      <button
+        style={{
+          ...styles.toggleButton,
+          left: isSidebarCollapsed ? '100px' : '290px'
+        }}
+        onClick={toggleSidebar}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.15)';
+          e.currentTarget.style.color = '#3b82f6';
+          e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.4)';
+          e.currentTarget.style.transform = 'scale(1.05)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.backgroundColor = 'rgba(26, 28, 32, 0.95)';
+          e.currentTarget.style.color = '#9ca3af';
+          e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+          e.currentTarget.style.transform = 'scale(1)';
+        }}
+        aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+      >
+        <PanelLeft size={20} />
+      </button>
 
-      {notification.message && (
-        <div style={{
-          ...styles.notification,
-          ...(notification.type === 'success' ? styles.notificationSuccess : styles.notificationError)
-        }}>
-          {notification.message}
-        </div>
-      )}
+      <div style={styles.container}>
+        <BackgroundSymbols />
 
-      <div style={styles.header}>
-        <div style={styles.headerTop}>
-          <h1 style={styles.title}>
-            <User size={28} style={{ color: '#3b82f6' }} />
-            Profile
-          </h1>
-        </div>
-
-        <div style={styles.profileHeader}>
-          <div style={styles.avatarLarge}>
-            {user?.full_name?.charAt(0)?.toUpperCase() || 
-             user?.username?.charAt(0)?.toUpperCase() || 'U'}
+        {notification.message && (
+          <div style={{
+            ...styles.notification,
+            ...(notification.type === 'success' ? styles.notificationSuccess : styles.notificationError)
+          }}>
+            {notification.message}
           </div>
-          <div style={styles.userDetails}>
-            <h2 style={styles.userName}>
-              {user?.full_name || user?.username || 'User'}
-            </h2>
-            <p style={styles.userMeta}>
-              @{user?.username} • Joined {new Date(user?.created_at).toLocaleDateString('en-US', { 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
-              })}
-            </p>
-            <div style={styles.progressContainer}>
-              <div style={styles.progressLabel}>
-                Profile Completion: {getProfileCompletionPercentage()}%
-              </div>
-              <div style={styles.progressBar}>
-                <div 
-                  style={{
-                    ...styles.progressFill,
-                    width: `${getProfileCompletionPercentage()}%`
-                  }}
-                />
+        )}
+
+        <div style={styles.header}>
+          <div style={styles.headerTop}>
+            <h1 style={styles.title}>
+              <User size={28} style={{ color: '#3b82f6' }} />
+              Profile
+            </h1>
+          </div>
+
+          <div style={styles.profileHeader}>
+            <div style={styles.avatarLarge}>
+              {user?.full_name?.charAt(0)?.toUpperCase() || 
+               user?.username?.charAt(0)?.toUpperCase() || 'U'}
+            </div>
+            <div style={styles.userDetails}>
+              <h2 style={styles.userName}>
+                {user?.full_name || user?.username || 'User'}
+              </h2>
+              <p style={styles.userMeta}>
+                @{user?.username} • Joined {new Date(user?.created_at).toLocaleDateString('en-US', { 
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric' 
+                })}
+              </p>
+              <div style={styles.progressContainer}>
+                <div style={styles.progressLabel}>
+                  Profile Completion: {getProfileCompletionPercentage()}%
+                </div>
+                <div style={styles.progressBar}>
+                  <div 
+                    style={{
+                      ...styles.progressFill,
+                      width: `${getProfileCompletionPercentage()}%`
+                    }}
+                  />
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div style={styles.overviewSection}>
-        <h3 style={styles.overviewTitle}>
-          <Target size={20} style={{ color: '#3b82f6' }} />
-          Dashboard Overview
-        </h3>
-        
-        <div style={styles.userInfoContainer}>
-          <div style={styles.userInfoSection}>
-            <h4 style={styles.userInfoTitle}>
-              <User size={16} style={{ color: '#3b82f6', marginRight: '8px' }} />
-              Profile Info
-            </h4>
-            <div style={styles.userInfoGrid}>
-              <div style={styles.userInfoItem}>
-                <span style={styles.userInfoLabel}>Experience:</span>
-                <span style={styles.userInfoValue}>{user?.years_experience || 0} years</span>
-              </div>
-              <div style={styles.userInfoItem}>
-                <span style={styles.userInfoLabel}>Username:</span>
-                <span style={styles.userInfoValue}>@{user?.username}</span>
-              </div>
-              <div style={styles.userInfoItem}>
-                <span style={styles.userInfoLabel}>Email:</span>
-                <span style={styles.userInfoValue}>{user?.email}</span>
-              </div>
-              {user?.github_username && (
+        <div style={styles.overviewSection}>
+          <h3 style={styles.overviewTitle}>
+            <Target size={20} style={{ color: '#3b82f6' }} />
+            Dashboard Overview
+          </h3>
+          
+          <div style={styles.userInfoContainer}>
+            <div style={styles.userInfoSection}>
+              <h4 style={styles.userInfoTitle}>
+                <User size={16} style={{ color: '#3b82f6', marginRight: '8px' }} />
+                Profile Info
+              </h4>
+              <div style={styles.userInfoGrid}>
                 <div style={styles.userInfoItem}>
-                  <span style={styles.userInfoLabel}>GitHub:</span>
-                  <span style={styles.userInfoValue}>@{user.github_username}</span>
+                  <span style={styles.userInfoLabel}>Experience:</span>
+                  <span style={styles.userInfoValue}>{user?.years_experience || 0} years</span>
+                </div>
+                <div style={styles.userInfoItem}>
+                  <span style={styles.userInfoLabel}>Username:</span>
+                  <span style={styles.userInfoValue}>@{user?.username}</span>
+                </div>
+                <div style={styles.userInfoItem}>
+                  <span style={styles.userInfoLabel}>Email:</span>
+                  <span style={styles.userInfoValue}>{user?.email}</span>
+                </div>
+                {user?.github_username && (
+                  <div style={styles.userInfoItem}>
+                    <span style={styles.userInfoLabel}>GitHub:</span>
+                    <span style={styles.userInfoValue}>@{user.github_username}</span>
+                  </div>
+                )}
+              </div>
+              
+              {user?.bio && (
+                <div style={styles.bioSection}>
+                  <span style={styles.userInfoLabel}>Bio:</span>
+                  <p style={styles.bioText}>{user.bio}</p>
                 </div>
               )}
             </div>
-            
-            {user?.bio && (
-              <div style={styles.bioSection}>
-                <span style={styles.userInfoLabel}>Bio:</span>
-                <p style={styles.bioText}>{user.bio}</p>
-              </div>
-            )}
-          </div>
 
-          <div style={styles.userInfoSection}>
-            <h4 style={styles.userInfoTitle}>Programming Languages</h4>
-            {user?.programming_languages && user.programming_languages.length > 0 ? (
-              <div style={styles.skillsContainer}>
-                {user.programming_languages.map(lang => (
-                  <span key={lang.id} style={styles.languageTag}>
-                    {lang.programming_languages?.name || lang.name}
-                    <span style={styles.skillLevel}>({lang.proficiency_level})</span>
-                  </span>
-                ))}
-              </div>
-            ) : (
-              <p style={styles.emptySkills}>No programming languages added yet</p>
-            )}
-          </div>
-
-          <div style={styles.userInfoSection}>
-            <h4 style={styles.userInfoTitle}>Areas of Interest</h4>
-            {user?.topics && user.topics.length > 0 ? (
-              <div style={styles.skillsContainer}>
-                {user.topics.map(topic => (
-                  <span key={topic.id} style={styles.topicTag}>
-                    {topic.topics?.name || topic.name}
-                    <span style={styles.skillLevel}>({topic.interest_level})</span>
-                  </span>
-                ))}
-              </div>
-            ) : (
-              <p style={styles.emptySkills}>No topics selected yet</p>
-            )}
-          </div>
-        </div>
-
-        <div style={styles.statsContainer}>
-          <div style={styles.dashboardStatCard}>
-            <div style={styles.statValue}>
-              {loadingStats ? '...' : projectStats.activeProjects}
-            </div>
-            <div style={styles.statLabelDashboard}>Active Projects</div>
-          </div>
-          <div style={styles.dashboardStatCard}>
-            <div style={styles.statValue}>
-              {loadingStats ? '...' : projectStats.completedProjects}
-            </div>
-            <div style={styles.statLabelDashboard}>Completed Projects</div>
-          </div>
-          <div style={styles.dashboardStatCard}>
-            <div style={styles.statValue}>
-              {loadingStats ? '...' : projectStats.friends}
-            </div>
-            <div style={styles.statLabelDashboard}>Friends</div>
-          </div>
-          <div style={styles.dashboardStatCard}>
-            <div style={styles.statValue}>
-              {loadingStats ? '...' : projectStats.learningModules}
-            </div>
-            <div style={styles.statLabelDashboard}>Learning Modules</div>
-          </div>
-          <div style={styles.dashboardStatCard}>
-            <div style={styles.statValue}>
-              {loadingAwards ? '...' : awardStats?.total_awards || 0}
-            </div>
-            <div style={styles.statLabelDashboard}>Total Awards</div>
-          </div>
-        </div>
-
-        {/* Awards Section */}
-        <div style={styles.awardsSection}>
-          <h3 style={styles.sectionTitle}>
-            <Award size={18} style={{ color: '#FFD700' }} />
-            Your Achievements
-          </h3>
-          <AwardsDisplay compact={false} />
-        </div>
-
-        <div style={styles.activitySection}>
-          <h3 style={styles.sectionTitle}>
-            <Target size={18} style={{ color: '#10b981' }} />
-            Recent Activity
-          </h3>
-          <div style={styles.emptyState}>
-            No recent activity yet. Start by joining a project or connecting with other developers!
-          </div>
-        </div>
-      </div>
-
-      <div style={styles.content}>
-        <div style={styles.mainContent}>
-          <div style={styles.section}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{...styles.sectionTitle, margin: 0}}>
-                <User size={18} style={{ color: '#3b82f6' }} />
-                Personal Information
-              </h3>
-              <button
-                onClick={() => toggleSectionEdit('personal')}
-                style={{
-                  background: 'rgba(59, 130, 246, 0.15)',
-                  border: '1px solid rgba(59, 130, 246, 0.3)',
-                  borderRadius: '8px',
-                  color: '#3b82f6',
-                  padding: '8px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  transition: 'all 0.3s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.background = 'rgba(59, 130, 246, 0.25)';
-                  e.target.style.transform = 'translateY(-1px)';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.background = 'rgba(59, 130, 246, 0.15)';
-                  e.target.style.transform = 'translateY(0)';
-                }}
-              >
-                <SquarePen size={16} />
-              </button>
-            </div>
-            
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Full Name</label>
-              {editingSections.personal ? (
-                <input
-                  type="text"
-                  name="full_name"
-                  value={formData.full_name}
-                  onChange={handleInputChange}
-                  style={styles.input}
-                  placeholder="Enter your full name"
-                />
+            <div style={styles.userInfoSection}>
+              <h4 style={styles.userInfoTitle}>Programming Languages</h4>
+              {user?.programming_languages && user.programming_languages.length > 0 ? (
+                <div style={styles.skillsContainer}>
+                  {user.programming_languages.map(lang => (
+                    <span key={lang.id} style={styles.languageTag}>
+                      {lang.programming_languages?.name || lang.name}
+                      <span style={styles.skillLevel}>({lang.proficiency_level})</span>
+                    </span>
+                  ))}
+                </div>
               ) : (
-                <p style={styles.value}>{formData.full_name || 'Not provided'}</p>
+                <p style={styles.emptySkills}>No programming languages added yet</p>
               )}
             </div>
 
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Bio</label>
-              {editingSections.personal ? (
-                <textarea
-                  name="bio"
-                  value={formData.bio}
-                  onChange={handleInputChange}
-                  style={{...styles.input, minHeight: '100px'}}
-                  placeholder="Tell us about yourself..."
-                />
+            <div style={styles.userInfoSection}>
+              <h4 style={styles.userInfoTitle}>Areas of Interest</h4>
+              {user?.topics && user.topics.length > 0 ? (
+                <div style={styles.skillsContainer}>
+                  {user.topics.map(topic => (
+                    <span key={topic.id} style={styles.topicTag}>
+                      {topic.topics?.name || topic.name}
+                      <span style={styles.skillLevel}>({topic.interest_level})</span>
+                    </span>
+                  ))}
+                </div>
               ) : (
-                <p style={styles.value}>{formData.bio || 'No bio provided'}</p>
+                <p style={styles.emptySkills}>No topics selected yet</p>
               )}
             </div>
+          </div>
 
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Years of Experience</label>
-              {editingSections.personal ? (
-                <input
-                  type="number"
-                  name="years_experience"
-                  value={formData.years_experience}
-                  onChange={handleInputChange}
-                  style={styles.input}
-                  min="0"
-                  max="50"
-                />
-              ) : (
-                <p style={styles.value}>{formData.years_experience || 0} years</p>
-              )}
+          <div style={styles.statsContainer}>
+            <div style={styles.dashboardStatCard}>
+              <div style={styles.statValue}>
+                {loadingStats ? '...' : projectStats.activeProjects}
+              </div>
+              <div style={styles.statLabelDashboard}>Active Projects</div>
             </div>
+            <div style={styles.dashboardStatCard}>
+              <div style={styles.statValue}>
+                {loadingStats ? '...' : projectStats.completedProjects}
+              </div>
+              <div style={styles.statLabelDashboard}>Completed Projects</div>
+            </div>
+            <div style={styles.dashboardStatCard}>
+              <div style={styles.statValue}>
+                {loadingStats ? '...' : projectStats.friends}
+              </div>
+              <div style={styles.statLabelDashboard}>Friends</div>
+            </div>
+            <div style={styles.dashboardStatCard}>
+              <div style={styles.statValue}>
+                {loadingStats ? '...' : projectStats.learningModules}
+              </div>
+              <div style={styles.statLabelDashboard}>Learning Modules</div>
+            </div>
+            <div style={styles.dashboardStatCard}>
+              <div style={styles.statValue}>
+                {loadingAwards ? '...' : awardStats?.total_awards || 0}
+              </div>
+              <div style={styles.statLabelDashboard}>Total Awards</div>
+            </div>
+          </div>
 
-            {editingSections.personal && (
-              <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
-                <button
-                  onClick={() => handleSaveProfile('personal')}
-                  disabled={loading}
-                  style={styles.saveButton}
-                >
-                  {loading ? 'Saving...' : 'Save Changes'}
-                </button>
+          {/* Awards Section */}
+          <div style={styles.awardsSection}>
+            <h3 style={styles.sectionTitle}>
+              <Award size={18} style={{ color: '#FFD700' }} />
+              Your Achievements
+            </h3>
+            <AwardsDisplay compact={false} />
+          </div>
+
+          <div style={styles.activitySection}>
+            <h3 style={styles.sectionTitle}>
+              <Target size={18} style={{ color: '#10b981' }} />
+              Recent Activity
+            </h3>
+            <div style={styles.emptyState}>
+              No recent activity yet. Start by joining a project or connecting with other developers!
+            </div>
+          </div>
+        </div>
+
+        <div style={styles.content}>
+          <div style={styles.mainContent}>
+            <div style={styles.section}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <h3 style={{...styles.sectionTitle, margin: 0}}>
+                  <User size={18} style={{ color: '#3b82f6' }} />
+                  Personal Information
+                </h3>
                 <button
                   onClick={() => toggleSectionEdit('personal')}
-                  style={styles.cancelButton}
+                  style={{
+                    background: 'rgba(59, 130, 246, 0.15)',
+                    border: '1px solid rgba(59, 130, 246, 0.3)',
+                    borderRadius: '8px',
+                    color: '#3b82f6',
+                    padding: '8px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.3s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = 'rgba(59, 130, 246, 0.25)';
+                    e.target.style.transform = 'translateY(-1px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = 'rgba(59, 130, 246, 0.15)';
+                    e.target.style.transform = 'translateY(0)';
+                  }}
                 >
-                  Cancel
+                  <SquarePen size={16} />
                 </button>
               </div>
-            )}
-          </div>
-
-          <div style={styles.section}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{...styles.sectionTitle, margin: 0}}>
-                <Users size={18} style={{ color: '#10b981' }} />
-                Social Links
-              </h3>
-              <button
-                onClick={() => toggleSectionEdit('social')}
-                style={{
-                  background: 'rgba(16, 185, 129, 0.15)',
-                  border: '1px solid rgba(16, 185, 129, 0.3)',
-                  borderRadius: '8px',
-                  color: '#10b981',
-                  padding: '8px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  transition: 'all 0.3s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.background = 'rgba(16, 185, 129, 0.25)';
-                  e.target.style.transform = 'translateY(-1px)';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.background = 'rgba(16, 185, 129, 0.15)';
-                  e.target.style.transform = 'translateY(0)';
-                }}
-              >
-                <SquarePen size={16} />
-              </button>
-            </div>
-
-            <div style={styles.formGroup}>
-              <label style={styles.label}>GitHub Username</label>
-              {editingSections.social ? (
-                <input
-                  type="text"
-                  name="github_username"
-                  value={formData.github_username}
-                  onChange={handleInputChange}
-                  style={styles.input}
-                  placeholder="your-github-username"
-                />
-              ) : (
-                <p style={styles.value}>{formData.github_username || 'Not provided'}</p>
-              )}
-            </div>
-
-            <div style={styles.formGroup}>
-              <label style={styles.label}>LinkedIn URL</label>
-              {editingSections.social ? (
-                <input
-                  type="url"
-                  name="linkedin_url"
-                  value={formData.linkedin_url}
-                  onChange={handleInputChange}
-                  style={styles.input}
-                  placeholder="https://linkedin.com/in/your-profile"
-                />
-              ) : (
-                <p style={styles.value}>{formData.linkedin_url || 'Not provided'}</p>
-              )}
-            </div>
-
-            {editingSections.social && (
-              <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
-                <button
-                  onClick={() => handleSaveProfile('social')}
-                  disabled={loading}
-                  style={styles.saveButton}
-                >
-                  {loading ? 'Saving...' : 'Save Changes'}
-                </button>
-                <button
-                  onClick={() => toggleSectionEdit('social')}
-                  style={styles.cancelButton}
-                >
-                  Cancel
-                </button>
+              
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Full Name</label>
+                {editingSections.personal ? (
+                  <input
+                    type="text"
+                    name="full_name"
+                    value={formData.full_name}
+                    onChange={handleInputChange}
+                    style={styles.input}
+                    placeholder="Enter your full name"
+                  />
+                ) : (
+                  <p style={styles.value}>{formData.full_name || 'Not provided'}</p>
+                )}
               </div>
-            )}
-          </div>
 
-          <div style={styles.section}>
-            <h3 style={styles.sectionTitle}>
-              <Shield size={18} style={{ color: '#f59e0b' }} />
-              Security Settings
-            </h3>
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Bio</label>
+                {editingSections.personal ? (
+                  <textarea
+                    name="bio"
+                    value={formData.bio}
+                    onChange={handleInputChange}
+                    style={{...styles.input, minHeight: '100px'}}
+                    placeholder="Tell us about yourself..."
+                  />
+                ) : (
+                  <p style={styles.value}>{formData.bio || 'No bio provided'}</p>
+                )}
+              </div>
 
-            {!showChangePassword ? (
-              <button
-                onClick={() => setShowChangePassword(true)}
-                style={styles.changePasswordButton}
-              >
-                Change Password
-              </button>
-            ) : (
-              <>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Current Password</label>
-                  <div style={{ position: 'relative' }}>
-                    <input
-                      type={showPasswords.current ? 'text' : 'password'}
-                      name="currentPassword"
-                      value={passwordData.currentPassword}
-                      onChange={handlePasswordChange}
-                      style={styles.input}
-                      placeholder="Enter current password"
-                    />
-                    <button
-                      onClick={() => setShowPasswords(prev => ({ ...prev, current: !prev.current }))}
-                      style={styles.eyeButton}
-                    >
-                      {showPasswords.current ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
-                  </div>
-                </div>
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Years of Experience</label>
+                {editingSections.personal ? (
+                  <input
+                    type="number"
+                    name="years_experience"
+                    value={formData.years_experience}
+                    onChange={handleInputChange}
+                    style={styles.input}
+                    min="0"
+                    max="50"
+                  />
+                ) : (
+                  <p style={styles.value}>{formData.years_experience || 0} years</p>
+                )}
+              </div>
 
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>New Password</label>
-                  <div style={{ position: 'relative' }}>
-                    <input
-                      type={showPasswords.new ? 'text' : 'password'}
-                      name="newPassword"
-                      value={passwordData.newPassword}
-                      onChange={handlePasswordChange}
-                      style={styles.input}
-                      placeholder="Enter new password"
-                    />
-                    <button
-                      onClick={() => setShowPasswords(prev => ({ ...prev, new: !prev.new }))}
-                      style={styles.eyeButton}
-                    >
-                      {showPasswords.new ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
-                  </div>
-                </div>
-
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Confirm New Password</label>
-                  <div style={{ position: 'relative' }}>
-                    <input
-                      type={showPasswords.confirm ? 'text' : 'password'}
-                      name="confirmPassword"
-                      value={passwordData.confirmPassword}
-                      onChange={handlePasswordChange}
-                      style={styles.input}
-                      placeholder="Confirm new password"
-                    />
-                    <button
-                      onClick={() => setShowPasswords(prev => ({ ...prev, confirm: !prev.confirm }))}
-                      style={styles.eyeButton}
-                    >
-                      {showPasswords.confirm ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
-                  </div>
-                </div>
-
+              {editingSections.personal && (
                 <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
                   <button
-                    onClick={handleChangePassword}
+                    onClick={() => handleSaveProfile('personal')}
                     disabled={loading}
                     style={styles.saveButton}
                   >
-                    {loading ? 'Changing...' : 'Change Password'}
+                    {loading ? 'Saving...' : 'Save Changes'}
                   </button>
                   <button
-                    onClick={() => {
-                      setShowChangePassword(false);
-                      setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
-                      setShowPasswords({ current: false, new: false, confirm: false });
-                    }}
+                    onClick={() => toggleSectionEdit('personal')}
                     style={styles.cancelButton}
                   >
                     Cancel
                   </button>
                 </div>
-              </>
-            )}
-          </div>
-        </div>
+              )}
+            </div>
 
-        <div style={styles.sidebar}>
-          <div style={styles.section}>
-            <h3 style={styles.sectionTitle}>
-              <Calendar size={18} style={{ color: '#8b5cf6' }} />
-              Account Details
-            </h3>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>User ID</label>
-              <p style={{ ...styles.value, fontFamily: 'monospace' }}>
-                {user?.id}
-              </p>
+            <div style={styles.section}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <h3 style={{...styles.sectionTitle, margin: 0}}>
+                  <Users size={18} style={{ color: '#10b981' }} />
+                  Social Links
+                </h3>
+                <button
+                  onClick={() => toggleSectionEdit('social')}
+                  style={{
+                    background: 'rgba(16, 185, 129, 0.15)',
+                    border: '1px solid rgba(16, 185, 129, 0.3)',
+                    borderRadius: '8px',
+                    color: '#10b981',
+                    padding: '8px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.3s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = 'rgba(16, 185, 129, 0.25)';
+                    e.target.style.transform = 'translateY(-1px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = 'rgba(16, 185, 129, 0.15)';
+                    e.target.style.transform = 'translateY(0)';
+                  }}
+                >
+                  <SquarePen size={16} />
+                </button>
+              </div>
+
+              <div style={styles.formGroup}>
+                <label style={styles.label}>GitHub Username</label>
+                {editingSections.social ? (
+                  <input
+                    type="text"
+                    name="github_username"
+                    value={formData.github_username}
+                    onChange={handleInputChange}
+                    style={styles.input}
+                    placeholder="your-github-username"
+                  />
+                ) : (
+                  <p style={styles.value}>{formData.github_username || 'Not provided'}</p>
+                )}
+              </div>
+
+              <div style={styles.formGroup}>
+                <label style={styles.label}>LinkedIn URL</label>
+                {editingSections.social ? (
+                  <input
+                    type="url"
+                    name="linkedin_url"
+                    value={formData.linkedin_url}
+                    onChange={handleInputChange}
+                    style={styles.input}
+                    placeholder="https://linkedin.com/in/your-profile"
+                  />
+                ) : (
+                  <p style={styles.value}>{formData.linkedin_url || 'Not provided'}</p>
+                )}
+              </div>
+
+              {editingSections.social && (
+                <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
+                  <button
+                    onClick={() => handleSaveProfile('social')}
+                    disabled={loading}
+                    style={styles.saveButton}
+                  >
+                    {loading ? 'Saving...' : 'Save Changes'}
+                  </button>
+                  <button
+                    onClick={() => toggleSectionEdit('social')}
+                    style={styles.cancelButton}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div style={styles.section}>
+              <h3 style={styles.sectionTitle}>
+                <Shield size={18} style={{ color: '#f59e0b' }} />
+                Security Settings
+              </h3>
+
+              {!showChangePassword ? (
+                <button
+                  onClick={() => setShowChangePassword(true)}
+                  style={styles.changePasswordButton}
+                >
+                  Change Password
+                </button>
+              ) : (
+                <>
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>Current Password</label>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type={showPasswords.current ? 'text' : 'password'}
+                        name="currentPassword"
+                        value={passwordData.currentPassword}
+                        onChange={handlePasswordChange}
+                        style={styles.input}
+                        placeholder="Enter current password"
+                      />
+                      <button
+                        onClick={() => setShowPasswords(prev => ({ ...prev, current: !prev.current }))}
+                        style={styles.eyeButton}
+                      >
+                        {showPasswords.current ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>New Password</label>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type={showPasswords.new ? 'text' : 'password'}
+                        name="newPassword"
+                        value={passwordData.newPassword}
+                        onChange={handlePasswordChange}
+                        style={styles.input}
+                        placeholder="Enter new password"
+                      />
+                      <button
+                        onClick={() => setShowPasswords(prev => ({ ...prev, new: !prev.new }))}
+                        style={styles.eyeButton}
+                      >
+                        {showPasswords.new ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>Confirm New Password</label>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type={showPasswords.confirm ? 'text' : 'password'}
+                        name="confirmPassword"
+                        value={passwordData.confirmPassword}
+                        onChange={handlePasswordChange}
+                        style={styles.input}
+                        placeholder="Confirm new password"
+                      />
+                      <button
+                        onClick={() => setShowPasswords(prev => ({ ...prev, confirm: !prev.confirm }))}
+                        style={styles.eyeButton}
+                      >
+                        {showPasswords.confirm ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
+                    <button
+                      onClick={handleChangePassword}
+                      disabled={loading}
+                      style={styles.saveButton}
+                    >
+                      {loading ? 'Changing...' : 'Change Password'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowChangePassword(false);
+                        setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+                        setShowPasswords({ current: false, new: false, confirm: false });
+                      }}
+                      style={styles.cancelButton}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
-          <div style={styles.section}>
-            <h3 style={styles.sectionTitle}>Profile Tips</h3>
-            <div style={{
-              background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(5, 150, 105, 0.08))',
-              border: '1px solid rgba(16, 185, 129, 0.25)',
-              borderRadius: '12px',
-              padding: '16px',
-              backdropFilter: 'blur(20px)'
-            }}>
-              <p style={{ margin: '0 0 12px 0', fontWeight: '500', color: '#d1d5db' }}>
-                Complete your profile to:
-              </p>
-              <ul style={{ margin: 0, paddingLeft: '16px', lineHeight: '1.6', color: '#9ca3af' }}>
-                <li>Get better project recommendations</li>
-                <li>Connect with like-minded collaborators</li>
-                <li>Showcase your skills and experience</li>
-                <li>Build your professional network</li>
-              </ul>
+          <div style={styles.sidebar}>
+            <div style={styles.section}>
+              <h3 style={styles.sectionTitle}>
+                <Calendar size={18} style={{ color: '#8b5cf6' }} />
+                Account Details
+              </h3>
+              <div style={styles.formGroup}>
+                <label style={styles.label}>User ID</label>
+                <p style={{ ...styles.value, fontFamily: 'monospace' }}>
+                  {user?.id}
+                </p>
+              </div>
+            </div>
+
+            <div style={styles.section}>
+              <h3 style={styles.sectionTitle}>Profile Tips</h3>
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(5, 150, 105, 0.08))',
+                border: '1px solid rgba(16, 185, 129, 0.25)',
+                borderRadius: '12px',
+                padding: '16px',
+                backdropFilter: 'blur(20px)'
+              }}>
+                <p style={{ margin: '0 0 12px 0', fontWeight: '500', color: '#d1d5db' }}>
+                  Complete your profile to:
+                </p>
+                <ul style={{ margin: 0, paddingLeft: '16px', lineHeight: '1.6', color: '#9ca3af' }}>
+                  <li>Get better project recommendations</li>
+                  <li>Connect with like-minded collaborators</li>
+                  <li>Showcase your skills and experience</li>
+                  <li>Build your professional network</li>
+                </ul>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <style jsx>{`
-        input:focus, textarea:focus {
-          outline: none;
-          border-color: #3b82f6;
-          box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
-        }
-
-        button:hover:not(:disabled) {
-          transform: translateY(-1px);
-        }
-
-        button:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
-        }
-
-        @media (max-width: 768px) {
-          .content {
-            grid-template-columns: 1fr !important;
+        <style jsx>{`
+          input:focus, textarea:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
           }
-        }
-      `}</style>
-    </div>
+
+          button:hover:not(:disabled) {
+            transform: translateY(-1px);
+          }
+
+          button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+          }
+
+          @media (max-width: 768px) {
+            .content {
+              grid-template-columns: 1fr !important;
+            }
+          }
+        `}</style>
+      </div>
+    </>
   );
 }
 
 const styles = {
+  toggleButton: {
+    position: 'fixed',
+    top: '20px',
+    zIndex: 1100,
+    width: '40px',
+    height: '40px',
+    borderRadius: '10px',
+    backgroundColor: 'rgba(26, 28, 32, 0.95)',
+    border: '1px solid rgba(255, 255, 255, 0.2)',
+    color: '#9ca3af',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transition: 'all 0.3s ease',
+    backdropFilter: 'blur(20px)',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)'
+  },
   container: {
     minHeight: '100vh',
     backgroundColor: '#0F1116',
     padding: '20px',
     position: 'relative',
-    overflow: 'hidden'
+    overflow: 'hidden',
+    paddingLeft: '270px',
+    marginLeft: '-150px'
   },
   notification: {
     position: 'fixed',
@@ -1042,27 +1116,6 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     gap: '20px'
-  },
-  statCard: {
-    background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(37, 99, 235, 0.08))',
-    border: '1px solid rgba(59, 130, 246, 0.25)',
-    backdropFilter: 'blur(20px)',
-    padding: '16px',
-    borderRadius: '12px',
-    textAlign: 'center'
-  },
-  statNumber: {
-    fontSize: '24px',
-    fontWeight: 'bold',
-    color: '#3b82f6',
-    margin: '0 0 4px 0'
-  },
-  statLabel: {
-    fontSize: '12px',
-    color: '#9ca3af',
-    margin: 0,
-    textTransform: 'uppercase',
-    letterSpacing: '0.5px'
   },
   overviewSection: {
     background: 'rgba(26, 28, 32, 0.8)',

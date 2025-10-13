@@ -1,9 +1,9 @@
-// frontend/src/pages/AdminDashboard.js - ENHANCED WITH FLOATING ANIMATIONS
+// frontend/src/pages/AdminDashboard.js - WITH MANUAL SIDEBAR TOGGLE
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import AdminAPI from '../services/adminAPI';
-import { Shield, Users, Folder, Puzzle, UserPlus, Settings, BarChart3, FileText } from 'lucide-react';
+import { Shield, Users, Folder, Puzzle, UserPlus, Settings, BarChart3, FileText, PanelLeft } from 'lucide-react';
 
 // Floating animation styles
 const floatingAnimationStyles = `
@@ -174,6 +174,12 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  // Sidebar state - initialize from localStorage
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    const saved = localStorage.getItem('sidebarCollapsed');
+    return saved === 'true';
+  });
+
   useEffect(() => {
     if (user?.role === 'admin' || user?.role === 'moderator') {
       fetchDashboardData();
@@ -181,6 +187,27 @@ const AdminDashboard = () => {
       setLoading(false);
     }
   }, [user]);
+
+  // Listen for sidebar state changes from Sidebar component
+  useEffect(() => {
+    const handleSidebarToggle = (event) => {
+      setIsSidebarCollapsed(event.detail.collapsed);
+    };
+
+    window.addEventListener('sidebarToggle', handleSidebarToggle);
+    return () => window.removeEventListener('sidebarToggle', handleSidebarToggle);
+  }, []);
+
+  // Function to toggle sidebar
+  const toggleSidebar = () => {
+    const newCollapsedState = !isSidebarCollapsed;
+    setIsSidebarCollapsed(newCollapsedState);
+    localStorage.setItem('sidebarCollapsed', newCollapsedState.toString());
+    
+    window.dispatchEvent(new CustomEvent('sidebarToggle', {
+      detail: { collapsed: newCollapsedState }
+    }));
+  };
 
   const fetchDashboardData = async () => {
     try {
@@ -259,6 +286,25 @@ const AdminDashboard = () => {
   );
 
   const styles = {
+    toggleButton: {
+      position: 'fixed',
+      top: '20px',
+      left: isSidebarCollapsed ? '100px' : '290px',
+      zIndex: 1100,
+      width: '40px',
+      height: '40px',
+      borderRadius: '10px',
+      backgroundColor: 'rgba(26, 28, 32, 0.95)',
+      border: '1px solid rgba(255, 255, 255, 0.2)',
+      color: '#9ca3af',
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      transition: 'all 0.3s ease',
+      backdropFilter: 'blur(20px)',
+      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)'
+    },
     container: {
       minHeight: 'calc(100vh - 40px)',
       backgroundColor: '#0F1116',
@@ -267,8 +313,8 @@ const AdminDashboard = () => {
       overflow: 'hidden',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       padding: '20px',
-      paddingLeft: '270px',
-      marginLeft: '-150px'
+      paddingLeft: '120px',
+      transition: 'padding-left 0.3s ease'
     },
     header: {
       position: 'relative',
@@ -402,8 +448,10 @@ const AdminDashboard = () => {
       position: 'relative',
       zIndex: 10,
       display: 'flex',
+      flexDirection: 'row',
       justifyContent: 'center',
       alignItems: 'center',
+      gap: '15px',
       minHeight: '400px',
       fontSize: '16px',
       color: '#9ca3af'
@@ -478,127 +526,133 @@ const AdminDashboard = () => {
 
   if (user?.role !== 'admin' && user?.role !== 'moderator') {
     return (
-      <div style={styles.container}>
-        <BackgroundSymbols />
-        <div style={styles.unauthorized}>
-          <h2>Unauthorized Access</h2>
-          <p>You don't have permission to access this page.</p>
+      <>
+        <button
+          style={styles.toggleButton}
+          onClick={toggleSidebar}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.15)';
+            e.currentTarget.style.color = '#3b82f6';
+            e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.4)';
+            e.currentTarget.style.transform = 'scale(1.05)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(26, 28, 32, 0.95)';
+            e.currentTarget.style.color = '#9ca3af';
+            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+            e.currentTarget.style.transform = 'scale(1)';
+          }}
+          aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          <PanelLeft size={20} />
+        </button>
+
+        <div style={styles.container}>
+          <BackgroundSymbols />
+          <div style={styles.unauthorized}>
+            <h2>Unauthorized Access</h2>
+            <p>You don't have permission to access this page.</p>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
   if (loading) {
     return (
-      <div style={styles.container}>
-        <BackgroundSymbols />
-        <div style={styles.loading}>
-          <div style={{
-            width: '48px',
-            height: '48px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }} className="global-loading-spinner">
-            <img 
-              src="/images/logo/TechSyncLogo.png" 
-              alt="TechSync Logo" 
-              style={{
-                width: '125%',
-                height: '125%',
-                objectFit: 'contain'
-              }}
-            />
+      <>
+        <button
+          style={styles.toggleButton}
+          onClick={toggleSidebar}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.15)';
+            e.currentTarget.style.color = '#3b82f6';
+            e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.4)';
+            e.currentTarget.style.transform = 'scale(1.05)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(26, 28, 32, 0.95)';
+            e.currentTarget.style.color = '#9ca3af';
+            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+            e.currentTarget.style.transform = 'scale(1)';
+          }}
+          aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          <PanelLeft size={20} />
+        </button>
+
+        <div style={styles.container}>
+          <BackgroundSymbols />
+          <div style={styles.loading}>
+            <div style={{
+              width: '48px',
+              height: '48px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }} className="global-loading-spinner">
+              <img 
+                src="/images/logo/TechSyncLogo.png" 
+                alt="TechSync Logo" 
+                style={{
+                  width: '125%',
+                  height: '125%',
+                  objectFit: 'contain'
+                }}
+              />
+            </div>
+            <span>Loading admin dashboard...</span>
           </div>
-          <span>Loading admin dashboard...</span>
         </div>
-      </div>
+      </>
     );
   }
 
   return (
-    <div style={styles.container}>
-      <BackgroundSymbols />
+    <>
+      <button
+        style={styles.toggleButton}
+        onClick={toggleSidebar}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.15)';
+          e.currentTarget.style.color = '#3b82f6';
+          e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.4)';
+          e.currentTarget.style.transform = 'scale(1.05)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.backgroundColor = 'rgba(26, 28, 32, 0.95)';
+          e.currentTarget.style.color = '#9ca3af';
+          e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+          e.currentTarget.style.transform = 'scale(1)';
+        }}
+        aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+      >
+        <PanelLeft size={20} />
+      </button>
 
-      <div style={styles.header}>
-        <h1 style={styles.title}>
-          <Shield size={28} style={{ color: '#3b82f6' }} />
-          Admin Dashboard
-        </h1>
-        <p style={styles.subtitle}>
-          Welcome back, {user?.full_name || user?.username}! Here's what's happening on your platform.
-        </p>
-      </div>
+      <div style={styles.container}>
+        <BackgroundSymbols />
 
-      {error && (
-        <div style={styles.errorContainer}>
-          {error}
-          <br />
-          <button 
-            style={styles.retryButton}
-            onClick={fetchDashboardData}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#2563eb';
-              e.currentTarget.style.transform = 'translateY(-2px)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#3b82f6';
-              e.currentTarget.style.transform = 'translateY(0)';
-            }}
-          >
-            Retry
-          </button>
+        <div style={styles.header}>
+          <h1 style={styles.title}>
+            <Shield size={28} style={{ color: '#3b82f6' }} />
+            Admin Dashboard
+          </h1>
+          <p style={styles.subtitle}>
+            Welcome back, {user?.full_name || user?.username}! Here's what's happening on your platform.
+          </p>
         </div>
-      )}
 
-      {stats && (
-        <div style={styles.statsGrid}>
-          <StatCard
-            title="Total Users"
-            value={stats.totalUsers?.toLocaleString() || '0'}
-            icon={<Users size={20} />}
-            color="#22c55e"
-          />
-          <StatCard
-            title="Active Projects"
-            value={stats.activeProjects?.toLocaleString() || '0'}
-            icon={<Folder size={20} />}
-            color="#3b82f6"
-          />
-          <StatCard
-            title="Total Challenges"
-            value={stats.totalChallenges?.toLocaleString() || '0'}
-            icon={<Puzzle size={20} />}
-            color="#06b6d4"
-          />
-          <StatCard
-            title="New Users (30d)"
-            value={stats.recentRegistrations?.toLocaleString() || '0'}
-            icon={<UserPlus size={20} />}
-            color="#f59e0b"
-          />
-          <StatCard
-            title="Suspended Users"
-            value={stats.suspendedUsers?.toLocaleString() || '0'}
-            icon={<Users size={20} />}
-            color="#ef4444"
-          />
-          <StatCard
-            title="Total Projects"
-            value={stats.totalProjects?.toLocaleString() || '0'}
-            icon={<BarChart3 size={20} />}
-            color="#8b5cf6"
-          />
-        </div>
-      )}
-
-      <div style={styles.contentGrid}>
-        <div style={styles.section}>
-          <h2 style={styles.sectionTitle}>Quick Actions</h2>
-          <div style={styles.quickActions}>
+        {error && (
+          <div style={styles.errorContainer}>
+            {error}
+            <br />
             <button 
-              style={styles.actionButton}
-              onClick={() => navigate('/admin/users')}
+              style={styles.retryButton}
+              onClick={fetchDashboardData}
               onMouseEnter={(e) => {
                 e.currentTarget.style.backgroundColor = '#2563eb';
                 e.currentTarget.style.transform = 'translateY(-2px)';
@@ -608,127 +662,190 @@ const AdminDashboard = () => {
                 e.currentTarget.style.transform = 'translateY(0)';
               }}
             >
-              <Users size={16} />
-              Manage Users
-            </button>
-            <button 
-              style={styles.actionButton}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#2563eb';
-                e.currentTarget.style.transform = 'translateY(-2px)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = '#3b82f6';
-                e.currentTarget.style.transform = 'translateY(0)';
-              }}
-            >
-              <Folder size={16} />
-              Manage Projects
-            </button>
-            <button 
-              style={styles.actionButton}
-              onClick={() => navigate('/challenges')}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#2563eb';
-                e.currentTarget.style.transform = 'translateY(-2px)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = '#3b82f6';
-                e.currentTarget.style.transform = 'translateY(0)';
-              }}
-            >
-              <Puzzle size={16} />
-              Manage Challenges
-            </button>
-            <button 
-              style={styles.actionButton}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#2563eb';
-                e.currentTarget.style.transform = 'translateY(-2px)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = '#3b82f6';
-                e.currentTarget.style.transform = 'translateY(0)';
-              }}
-            >
-              <Settings size={16} />
-              System Settings
-            </button>
-            <button 
-              style={styles.actionButton}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#2563eb';
-                e.currentTarget.style.transform = 'translateY(-2px)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = '#3b82f6';
-                e.currentTarget.style.transform = 'translateY(0)';
-              }}
-            >
-              <BarChart3 size={16} />
-              View Reports
-            </button>
-            <button 
-              style={styles.actionButton}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#2563eb';
-                e.currentTarget.style.transform = 'translateY(-2px)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = '#3b82f6';
-                e.currentTarget.style.transform = 'translateY(0)';
-              }}
-            >
-              <FileText size={16} />
-              Activity Logs
+              Retry
             </button>
           </div>
+        )}
 
-          <h2 style={styles.sectionTitle}>Recent Admin Activity</h2>
-          {recentActivity && recentActivity.length > 0 ? (
-            <div>
-              {recentActivity.map((activity, index) => (
-                <ActivityItem key={`${activity.id}-${index}`} activity={activity} />
-              ))}
-            </div>
-          ) : (
-            <p style={{ color: '#9ca3af', textAlign: 'center', padding: '20px' }}>
-              No recent admin activity
-            </p>
-          )}
-        </div>
+        {stats && (
+          <div style={styles.statsGrid}>
+            <StatCard
+              title="Total Users"
+              value={stats.totalUsers?.toLocaleString() || '0'}
+              icon={<Users size={20} />}
+              color="#22c55e"
+            />
+            <StatCard
+              title="Active Projects"
+              value={stats.activeProjects?.toLocaleString() || '0'}
+              icon={<Folder size={20} />}
+              color="#3b82f6"
+            />
+            <StatCard
+              title="Total Challenges"
+              value={stats.totalChallenges?.toLocaleString() || '0'}
+              icon={<Puzzle size={20} />}
+              color="#06b6d4"
+            />
+            <StatCard
+              title="New Users (30d)"
+              value={stats.recentRegistrations?.toLocaleString() || '0'}
+              icon={<UserPlus size={20} />}
+              color="#f59e0b"
+            />
+            <StatCard
+              title="Suspended Users"
+              value={stats.suspendedUsers?.toLocaleString() || '0'}
+              icon={<Users size={20} />}
+              color="#ef4444"
+            />
+            <StatCard
+              title="Total Projects"
+              value={stats.totalProjects?.toLocaleString() || '0'}
+              icon={<BarChart3 size={20} />}
+              color="#8b5cf6"
+            />
+          </div>
+        )}
 
-        <div style={styles.section}>
-          <h2 style={styles.sectionTitle}>System Status</h2>
-          <div style={styles.systemStatus}>
-            <div style={styles.statusItem}>
-              <span style={styles.statusLabel}>System Status:</span>
-              <span style={{...styles.statusValue, ...styles.statusOnline}}>
-                🟢 Online
-              </span>
+        <div style={styles.contentGrid}>
+          <div style={styles.section}>
+            <h2 style={styles.sectionTitle}>Quick Actions</h2>
+            <div style={styles.quickActions}>
+              <button 
+                style={styles.actionButton}
+                onClick={() => navigate('/admin/users')}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#2563eb';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#3b82f6';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
+              >
+                <Users size={16} />
+                Manage Users
+              </button>
+              <button 
+                style={styles.actionButton}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#2563eb';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#3b82f6';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
+              >
+                <Folder size={16} />
+                Manage Projects
+              </button>
+              <button 
+                style={styles.actionButton}
+                onClick={() => navigate('/challenges')}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#2563eb';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#3b82f6';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
+              >
+                <Puzzle size={16} />
+                Manage Challenges
+              </button>
+              <button 
+                style={styles.actionButton}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#2563eb';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#3b82f6';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
+              >
+                <Settings size={16} />
+                System Settings
+              </button>
+              <button 
+                style={styles.actionButton}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#2563eb';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#3b82f6';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
+              >
+                <BarChart3 size={16} />
+                View Reports
+              </button>
+              <button 
+                style={styles.actionButton}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#2563eb';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#3b82f6';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
+              >
+                <FileText size={16} />
+                Activity Logs
+              </button>
             </div>
-            <div style={styles.statusItem}>
-              <span style={styles.statusLabel}>Database:</span>
-              <span style={{...styles.statusValue, ...styles.statusOnline}}>
-                🟢 Connected
-              </span>
-            </div>
-            <div style={styles.statusItem}>
-              <span style={styles.statusLabel}>User Registration:</span>
-              <span style={{...styles.statusValue, ...styles.statusOnline}}>
-                🟢 Enabled
-              </span>
-            </div>
-            <div style={styles.statusItem}>
-              <span style={styles.statusLabel}>Maintenance Mode:</span>
-              <span style={{...styles.statusValue, ...styles.statusOffline}}>
-                ⚫ Disabled
-              </span>
+
+            <h2 style={styles.sectionTitle}>Recent Admin Activity</h2>
+            {recentActivity && recentActivity.length > 0 ? (
+              <div>
+                {recentActivity.map((activity, index) => (
+                  <ActivityItem key={`${activity.id}-${index}`} activity={activity} />
+                ))}
+              </div>
+            ) : (
+              <p style={{ color: '#9ca3af', textAlign: 'center', padding: '20px' }}>
+                No recent admin activity
+              </p>
+            )}
+          </div>
+
+          <div style={styles.section}>
+            <h2 style={styles.sectionTitle}>System Status</h2>
+            <div style={styles.systemStatus}>
+              <div style={styles.statusItem}>
+                <span style={styles.statusLabel}>System Status:</span>
+                <span style={{...styles.statusValue, ...styles.statusOnline}}>
+                  🟢 Online
+                </span>
+              </div>
+              <div style={styles.statusItem}>
+                <span style={styles.statusLabel}>Database:</span>
+                <span style={{...styles.statusValue, ...styles.statusOnline}}>
+                  🟢 Connected
+                </span>
+              </div>
+              <div style={styles.statusItem}>
+                <span style={styles.statusLabel}>User Registration:</span>
+                <span style={{...styles.statusValue, ...styles.statusOnline}}>
+                  🟢 Enabled
+                </span>
+              </div>
+              <div style={styles.statusItem}>
+                <span style={styles.statusLabel}>Maintenance Mode:</span>
+                <span style={{...styles.statusValue, ...styles.statusOffline}}>
+                  ⚫ Disabled
+                </span>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

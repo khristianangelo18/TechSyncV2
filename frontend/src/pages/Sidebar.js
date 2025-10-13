@@ -1,5 +1,5 @@
-// frontend/src/pages/Sidebar.js - WITH FLOATING BACKGROUND SYMBOLS
-import React, { useState, useEffect } from 'react';
+// frontend/src/pages/Sidebar.js - PORTAL APPROACH FOR MENU
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { 
@@ -21,21 +21,36 @@ function Sidebar() {
   const location = useLocation();
   const { user, logout } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+  const avatarRef = useRef(null);
   
-  // NEW STATE: For sidebar collapse functionality
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    const saved = localStorage.getItem('sidebarCollapsed');
+    return saved === 'true';
+  });
 
-  // NEW: Listen for sidebar toggle events from Dashboard
   useEffect(() => {
     const handleSidebarToggle = (event) => {
-      setIsCollapsed(event.detail.collapsed);
+      const newState = event.detail.collapsed;
+      setIsCollapsed(newState);
+      localStorage.setItem('sidebarCollapsed', newState.toString());
     };
 
     window.addEventListener('sidebarToggle', handleSidebarToggle);
     return () => window.removeEventListener('sidebarToggle', handleSidebarToggle);
   }, []);
 
-  // Main navigation items (for all users)
+  // Calculate menu position based on avatar position
+  useEffect(() => {
+    if (showUserMenu && avatarRef.current) {
+      const rect = avatarRef.current.getBoundingClientRect();
+      setMenuPosition({
+        top: rect.top - 160, // Position above avatar
+        left: 10
+      });
+    }
+  }, [showUserMenu, isCollapsed]);
+
   const mainNavItems = [
     { id: 'home', label: 'Home', path: '/', icon: Home },
     { id: 'projects', label: 'Projects', path: '/projects', icon: FolderOpen },
@@ -43,7 +58,6 @@ function Sidebar() {
     { id: 'learns', label: 'Learns', path: '/learns', icon: BookOpen }
   ];
 
-  // Admin/Moderator navigation items (only visible to admin/moderator users)
   const adminNavItems = user?.role === 'admin' || user?.role === 'moderator' ? [
     { id: 'challenges', label: 'Challenges', path: '/challenges', icon: Puzzle },
     ...(user?.role === 'admin' ? [
@@ -52,32 +66,30 @@ function Sidebar() {
     { id: 'admin', label: 'Admin Panel', path: '/admin', icon: Shield }
   ] : [];
 
-  // Bottom navigation items
   const bottomNavItems = [
     { id: 'help', label: 'Help Center', path: '/help', icon: HelpCircle }
   ];
 
   const handleNavigation = (path) => {
+    if (location.pathname === path || (path === '/' && location.pathname === '/dashboard')) {
+      return;
+    }
     navigate(path);
   };
 
-  // Improved path matching logic - FIXED to handle dashboard properly
   const isActive = (path) => {
-    // For home route, check if we're on dashboard or exact home
     if (path === '/') {
       return location.pathname === '/' || location.pathname === '/dashboard';
     }
     
-    // Special handling for admin routes to prevent overlap
     if (path === '/admin' && location.pathname === '/admin/users') {
-      return false; // Don't highlight admin panel when on manage users
+      return false;
     }
     
     if (path === '/admin/users') {
       return location.pathname === '/admin/users' || location.pathname.startsWith('/admin/users/');
     }
     
-    // For other paths, use startsWith but be more specific
     if (path === '/admin') {
       return location.pathname === '/admin' || (location.pathname.startsWith('/admin') && !location.pathname.startsWith('/admin/users'));
     }
@@ -90,7 +102,18 @@ function Sidebar() {
     setShowUserMenu(!showUserMenu);
   };
 
-  const handleProfileClick = () => {
+  const handleAvatarClick = (e) => {
+    e.stopPropagation();
+    if (isCollapsed) {
+      setShowUserMenu(!showUserMenu);
+    } else {
+      navigate('/profile');
+      setShowUserMenu(false);
+    }
+  };
+
+  const handleProfileMenuClick = (e) => {
+    e.stopPropagation();
     navigate('/profile');
     setShowUserMenu(false);
   };
@@ -107,24 +130,28 @@ function Sidebar() {
     }
   };
 
-  // Close menu when clicking outside
-  React.useEffect(() => {
-    const handleClickOutside = () => {
-      setShowUserMenu(false);
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (!e.target.closest('.user-menu-container')) {
+        setShowUserMenu(false);
+      }
     };
 
     if (showUserMenu) {
-      document.addEventListener('click', handleClickOutside);
+      setTimeout(() => {
+        document.addEventListener('click', handleClickOutside);
+      }, 0);
       return () => document.removeEventListener('click', handleClickOutside);
     }
   }, [showUserMenu]);
 
   const styles = {
     sidebar: {
-      width: isCollapsed ? '60px' : '250px', // Dynamic width based on collapse state
+      width: isCollapsed ? '60px' : '250px',
       height: '100vh',
-      backgroundColor: '#0F1116',
-      borderRight: '1px solid rgba(255, 255, 255, 0.1)',
+      background: 'linear-gradient(180deg, #1a1d24 0%, #141720 50%, #0d0f14 100%)',
+      borderRight: '1px solid rgba(59, 130, 246, 0.15)',
+      boxShadow: '4px 0 24px rgba(0, 0, 0, 0.4), inset -1px 0 0 rgba(59, 130, 246, 0.1)',
       display: 'flex',
       flexDirection: 'column',
       position: 'fixed',
@@ -132,13 +159,14 @@ function Sidebar() {
       top: 0,
       zIndex: 1000,
       overflow: 'hidden',
-      transition: 'width 0.3s ease' // Smooth transition
+      transition: 'width 0.3s ease'
     },
     backgroundSymbols: {
       position: 'absolute',
       inset: 0,
       zIndex: 1,
-      pointerEvents: 'none'
+      pointerEvents: 'none',
+      overflow: 'hidden'
     },
     codeSymbol: {
       position: 'absolute',
@@ -153,12 +181,13 @@ function Sidebar() {
     logo: {
       position: 'relative',
       zIndex: 10,
-      padding: isCollapsed ? '24px 10px' : '24px 20px', // Adjust padding for collapsed state
+      padding: isCollapsed ? '24px 14px' : '24px 20px',
       borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
       background: 'rgba(26, 28, 32, 0.95)',
       backdropFilter: 'blur(20px)',
       display: 'flex',
-      justifyContent: isCollapsed ? 'center' : 'center', // Center logo in both states
+      justifyContent: 'center',
+      alignItems: 'center',
       transition: 'padding 0.3s ease'
     },
     logoContainer: {
@@ -167,23 +196,18 @@ function Sidebar() {
       gap: '12px'
     },
     logoIcon: {
-      width: '64px',
-      height: '64px',
+      width: '32px',
+      height: '32px',
       display: 'flex',
       alignItems: 'center',
-      justifyContent: 'center'
+      justifyContent: 'center',
+      flexShrink: 0
     },
     logoImage: {
       width: '100%',
       height: '100%',
-      objectFit: 'contain'
-    },
-    logoIconInner: {
-      width: '16px',
-      height: '16px',
-      background: 'white',
-      borderRadius: '3px',
-      transform: 'rotate(-45deg)'
+      objectFit: 'contain',
+      display: 'block'
     },
     logoText: {
       fontSize: '20px',
@@ -191,9 +215,9 @@ function Sidebar() {
       color: 'white',
       margin: 0,
       letterSpacing: '-0.025em',
-      opacity: isCollapsed ? 0 : 1, // Hide text when collapsed
-      transition: 'opacity 0.3s ease',
-      whiteSpace: 'nowrap'
+      whiteSpace: 'nowrap',
+      display: isCollapsed ? 'none' : 'block',
+      transition: 'opacity 0.3s ease'
     },
     nav: {
       position: 'relative',
@@ -202,7 +226,9 @@ function Sidebar() {
       display: 'flex',
       flexDirection: 'column',
       justifyContent: 'space-between',
-      padding: '20px 0'
+      padding: '20px 0',
+      overflowY: 'auto',
+      overflowX: 'hidden'
     },
     navSection: {
       display: 'flex',
@@ -212,62 +238,62 @@ function Sidebar() {
       position: 'relative',
       display: 'flex',
       alignItems: 'center',
-      padding: isCollapsed ? '12px 10px' : '12px 20px', // Adjust padding for collapsed state
+      padding: isCollapsed ? '14px 0' : '12px 20px',
       cursor: 'pointer',
       transition: 'all 0.3s ease',
       textDecoration: 'none',
       color: '#d1d5db',
-      borderRadius: '0',
-      margin: isCollapsed ? '0 6px' : '0 12px', // Adjust margins for collapsed state
+      margin: isCollapsed ? '2px 0' : '0 12px',
       marginBottom: '4px',
       backdropFilter: 'blur(8px)',
-      justifyContent: isCollapsed ? 'center' : 'flex-start' // Center icons when collapsed
+      justifyContent: isCollapsed ? 'center' : 'flex-start',
+      borderRadius: isCollapsed ? '0' : '12px'
     },
     navItemActive: {
       backgroundColor: 'rgba(59, 130, 246, 0.15)',
       color: '#60a5fa',
       borderRadius: '12px',
-      transform: 'translateX(4px)',
+      transform: isCollapsed ? 'scale(1.1)' : 'translateX(4px)',
       boxShadow: '0 4px 12px rgba(59, 130, 246, 0.2)',
       border: '1px solid rgba(59, 130, 246, 0.3)'
     },
     navItemHover: {
       backgroundColor: 'rgba(255, 255, 255, 0.05)',
       borderRadius: '12px',
-      transform: 'translateX(2px)'
+      transform: isCollapsed ? 'scale(1.05)' : 'translateX(2px)'
     },
     adminNavItem: {
       position: 'relative',
       display: 'flex',
       alignItems: 'center',
-      padding: isCollapsed ? '12px 10px' : '12px 20px', // Adjust padding for collapsed state
+      padding: isCollapsed ? '14px 0' : '12px 20px',
       cursor: 'pointer',
       transition: 'all 0.3s ease',
       textDecoration: 'none',
       color: '#d1d5db',
-      borderRadius: '0',
-      margin: isCollapsed ? '0 6px' : '0 12px', // Adjust margins for collapsed state
+      margin: isCollapsed ? '2px 0' : '0 12px',
       marginBottom: '4px',
       backdropFilter: 'blur(8px)',
-      justifyContent: isCollapsed ? 'center' : 'flex-start' // Center icons when collapsed
+      justifyContent: isCollapsed ? 'center' : 'flex-start',
+      borderRadius: isCollapsed ? '0' : '12px'
     },
     adminNavItemActive: {
       backgroundColor: 'rgba(239, 68, 68, 0.15)',
       color: '#f87171',
       borderRadius: '12px',
-      transform: 'translateX(4px)',
+      transform: isCollapsed ? 'scale(1.1)' : 'translateX(4px)',
       boxShadow: '0 4px 12px rgba(239, 68, 68, 0.2)',
       border: '1px solid rgba(239, 68, 68, 0.3)'
     },
     adminNavItemHover: {
       backgroundColor: 'rgba(239, 68, 68, 0.1)',
       borderRadius: '12px',
-      transform: 'translateX(2px)'
+      transform: isCollapsed ? 'scale(1.05)' : 'translateX(2px)'
     },
     adminSeparator: {
       height: '1px',
       backgroundColor: 'rgba(255, 255, 255, 0.1)',
-      margin: isCollapsed ? '16px 10px' : '16px 20px', // Adjust margins for collapsed state
+      margin: isCollapsed ? '16px 15px' : '16px 20px',
       borderRadius: '1px',
       transition: 'margin 0.3s ease'
     },
@@ -279,7 +305,7 @@ function Sidebar() {
       position: 'relative',
       zIndex: 10,
       borderTop: '1px solid rgba(255, 255, 255, 0.1)',
-      padding: isCollapsed ? '20px 8px' : '20px 16px', // Adjust padding for collapsed state
+      padding: isCollapsed ? '20px 0' : '20px 16px',
       background: 'rgba(26, 28, 32, 0.95)',
       backdropFilter: 'blur(20px)',
       transition: 'padding 0.3s ease'
@@ -287,9 +313,9 @@ function Sidebar() {
     userItem: {
       display: 'flex',
       alignItems: 'center',
-      justifyContent: isCollapsed ? 'center' : 'space-between', // Center when collapsed
-      flexDirection: isCollapsed ? 'column' : 'row', // Stack vertically when collapsed
-      gap: isCollapsed ? '8px' : '0'
+      justifyContent: isCollapsed ? 'center' : 'space-between',
+      flexDirection: 'row',
+      gap: '0'
     },
     userInfo: {
       display: 'flex',
@@ -300,8 +326,7 @@ function Sidebar() {
       borderRadius: '12px',
       transition: 'all 0.3s ease',
       backdropFilter: 'blur(8px)',
-      flexDirection: isCollapsed ? 'column' : 'row', // Stack vertically when collapsed
-      gap: isCollapsed ? '6px' : '12px'
+      gap: isCollapsed ? '0' : '12px'
     },
     userInfoHover: {
       backgroundColor: 'rgba(255, 255, 255, 0.05)',
@@ -318,41 +343,36 @@ function Sidebar() {
       justifyContent: 'center',
       fontSize: '16px',
       fontWeight: 'bold',
-      marginRight: isCollapsed ? '0' : '12px', // Remove margin when collapsed
       flexShrink: 0,
-      border: '2px solid rgba(96, 165, 250, 0.3)',
-      transition: 'margin 0.3s ease'
+      border: '2px solid rgba(96, 165, 250, 0.3)'
     },
     userDetails: {
-      display: isCollapsed ? 'none' : 'block', // Hide user details when collapsed
-      transition: 'opacity 0.3s ease'
+      display: isCollapsed ? 'none' : 'block'
     },
     userName: {
       fontSize: '14px',
       fontWeight: '600',
       color: 'white',
-      lineHeight: 1.2,
-      textAlign: isCollapsed ? 'center' : 'left'
+      lineHeight: 1.2
     },
     userRole: {
       fontSize: '12px',
       color: '#9ca3af',
       textTransform: 'capitalize',
-      marginTop: '2px',
-      textAlign: isCollapsed ? 'center' : 'left'
+      marginTop: '2px'
     },
     icon: {
-      marginRight: isCollapsed ? '0' : '12px', // Remove margin when collapsed
       width: '20px',
       height: '20px',
+      flexShrink: 0,
+      marginRight: isCollapsed ? '0' : '12px',
       transition: 'margin 0.3s ease'
     },
     label: {
       fontSize: '14px',
       fontWeight: '500',
-      opacity: isCollapsed ? 0 : 1, // Hide labels when collapsed
-      transition: 'opacity 0.3s ease',
-      whiteSpace: 'nowrap'
+      whiteSpace: 'nowrap',
+      display: isCollapsed ? 'none' : 'block'
     },
     threeDots: {
       background: 'rgba(255, 255, 255, 0.05)',
@@ -360,31 +380,16 @@ function Sidebar() {
       fontSize: '16px',
       color: '#9ca3af',
       cursor: 'pointer',
-      padding: isCollapsed ? '4px' : '6px 8px', // Smaller padding when collapsed
+      padding: '6px 8px',
       borderRadius: '8px',
       transition: 'all 0.3s ease',
       backdropFilter: 'blur(8px)',
-      display: isCollapsed ? 'none' : 'block' // Hide three dots when collapsed
+      display: isCollapsed ? 'none' : 'block'
     },
     threeDotsHover: {
       backgroundColor: 'rgba(255, 255, 255, 0.1)',
       color: 'white',
       transform: 'translateY(-1px)'
-    },
-    userMenu: {
-      position: 'absolute',
-      bottom: '100%',
-      left: isCollapsed ? '70px' : '20px', // Adjust position when collapsed
-      right: isCollapsed ? 'auto' : '20px',
-      width: isCollapsed ? '200px' : 'auto', // Fixed width when collapsed
-      backgroundColor: '#1a1c20',
-      border: '1px solid rgba(255, 255, 255, 0.1)',
-      borderRadius: '12px',
-      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
-      zIndex: 1001,
-      overflow: 'hidden',
-      backdropFilter: 'blur(20px)',
-      transition: 'all 0.3s ease'
     },
     menuItem: {
       display: 'flex',
@@ -417,33 +422,21 @@ function Sidebar() {
       borderRadius: '8px',
       fontWeight: 'bold',
       border: '1px solid rgba(239, 68, 68, 0.3)',
-      opacity: isCollapsed ? 0 : 1, // Hide badge when collapsed
-      transition: 'opacity 0.3s ease'
+      display: isCollapsed ? 'none' : 'inline-block'
     },
-    // NEW: Tooltip styles for collapsed state
     tooltip: {
-      position: 'absolute',
-      left: '100%',
-      top: '50%',
-      transform: 'translateY(-50%)',
-      marginLeft: '8px',
+      position: 'fixed',
+      left: '70px',
       backgroundColor: '#374151',
       color: 'white',
-      padding: '6px 12px',
-      borderRadius: '6px',
-      fontSize: '12px',
+      padding: '8px 12px',
+      borderRadius: '8px',
+      fontSize: '13px',
       fontWeight: '500',
       whiteSpace: 'nowrap',
-      zIndex: 1002,
+      zIndex: 10000,
       boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
-      opacity: 0,
-      visibility: 'hidden',
-      transition: 'all 0.2s ease',
       pointerEvents: 'none'
-    },
-    tooltipVisible: {
-      opacity: 1,
-      visibility: 'visible'
     },
     tooltipArrow: {
       position: 'absolute',
@@ -452,291 +445,342 @@ function Sidebar() {
       transform: 'translateY(-50%)',
       width: 0,
       height: 0,
-      borderTop: '4px solid transparent',
-      borderBottom: '4px solid transparent',
-      borderRight: '4px solid #374151'
+      borderTop: '5px solid transparent',
+      borderBottom: '5px solid transparent',
+      borderRight: '5px solid #374151'
     }
   };
 
-  // NEW: Component for navigation items with tooltips
   const NavItem = ({ item, isAdmin = false, isActiveItem, onNavigate }) => {
     const [showTooltip, setShowTooltip] = useState(false);
+    const [tooltipY, setTooltipY] = useState(0);
     const IconComponent = item.icon;
     const itemStyles = isAdmin ? styles.adminNavItem : styles.navItem;
     const activeStyles = isAdmin ? styles.adminNavItemActive : styles.navItemActive;
     const hoverStyles = isAdmin ? styles.adminNavItemHover : styles.navItemHover;
 
+    const handleMouseEnter = (e) => {
+      if (isCollapsed) {
+        const rect = e.currentTarget.getBoundingClientRect();
+        setTooltipY(rect.top + rect.height / 2);
+        setShowTooltip(true);
+      }
+      if (!isActiveItem) {
+        Object.assign(e.currentTarget.style, hoverStyles);
+      }
+    };
+
+    const handleMouseLeave = (e) => {
+      if (isCollapsed) {
+        setShowTooltip(false);
+      }
+      if (!isActiveItem) {
+        e.currentTarget.style.backgroundColor = 'transparent';
+        e.currentTarget.style.borderRadius = isCollapsed ? '0' : '12px';
+        e.currentTarget.style.transform = 'none';
+        e.currentTarget.style.border = 'none';
+        e.currentTarget.style.boxShadow = 'none';
+      }
+    };
+
     return (
-      <div
-        style={{
-          ...itemStyles,
-          ...(isActiveItem ? activeStyles : {}),
-          position: 'relative'
-        }}
-        onClick={() => onNavigate(item.path)}
-        onMouseEnter={(e) => {
-          if (isCollapsed) {
-            setShowTooltip(true);
-          }
-          if (!isActiveItem) {
-            Object.assign(e.target.style, hoverStyles);
-          }
-        }}
-        onMouseLeave={(e) => {
-          if (isCollapsed) {
-            setShowTooltip(false);
-          }
-          if (!isActiveItem) {
-            e.target.style.backgroundColor = 'transparent';
-            e.target.style.borderRadius = '0';
-            e.target.style.transform = 'translateX(0)';
-          }
-        }}
-      >
-        <IconComponent size={20} style={styles.icon} />
-        <span style={styles.label}>{item.label}</span>
-        {user?.role === 'admin' && item.id === 'admin' && (
-          <span style={styles.adminBadge}>
-            ADMIN
-          </span>
-        )}
+      <>
+        <div
+          style={{
+            ...itemStyles,
+            ...(isActiveItem ? activeStyles : {})
+          }}
+          onClick={() => onNavigate(item.path)}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+        >
+          <IconComponent size={20} style={styles.icon} />
+          <span style={styles.label}>{item.label}</span>
+          {user?.role === 'admin' && item.id === 'admin' && (
+            <span style={styles.adminBadge}>ADMIN</span>
+          )}
+        </div>
         
-        {/* Tooltip for collapsed state */}
-        {isCollapsed && (
+        {isCollapsed && showTooltip && (
           <div 
             style={{
               ...styles.tooltip,
-              ...(showTooltip ? styles.tooltipVisible : {})
+              top: `${tooltipY}px`,
+              transform: 'translateY(-50%)'
             }}
           >
-            {item.label}
             <div style={styles.tooltipArrow} />
+            {item.label}
           </div>
         )}
-      </div>
+      </>
     );
   };
 
   return (
-    <div style={styles.sidebar}>
-      {/* Add CSS for floating animations */}
-      <style>
-        {`
-          /* FLOATING BACKGROUND SYMBOLS ANIMATIONS */
-          @keyframes floatAround1 {
-            0%, 100% { transform: translate(0, 0) rotate(-15deg); }
-            25% { transform: translate(20px, -15px) rotate(-10deg); }
-            50% { transform: translate(-10px, 20px) rotate(-20deg); }
-            75% { transform: translate(15px, 5px) rotate(-12deg); }
-          }
+    <>
+      <div style={styles.sidebar}>
+        <style>
+          {`
+            @keyframes floatAround1 {
+              0%, 100% { transform: translate(0, 0) rotate(-15deg); }
+              25% { transform: translate(20px, -15px) rotate(-10deg); }
+              50% { transform: translate(-10px, 20px) rotate(-20deg); }
+              75% { transform: translate(15px, 5px) rotate(-12deg); }
+            }
 
-          @keyframes floatAround2 {
-            0%, 100% { transform: translate(0, 0) rotate(20deg); }
-            33% { transform: translate(-20px, 10px) rotate(25deg); }
-            66% { transform: translate(25px, -8px) rotate(15deg); }
-          }
+            @keyframes floatAround2 {
+              0%, 100% { transform: translate(0, 0) rotate(20deg); }
+              33% { transform: translate(-20px, 10px) rotate(25deg); }
+              66% { transform: translate(25px, -8px) rotate(15deg); }
+            }
 
-          @keyframes floatAround3 {
-            0%, 100% { transform: translate(0, 0) rotate(-25deg); }
-            20% { transform: translate(-15px, -20px) rotate(-20deg); }
-            40% { transform: translate(20px, 15px) rotate(-30deg); }
-            60% { transform: translate(-8px, -10px) rotate(-22deg); }
-            80% { transform: translate(12px, 18px) rotate(-28deg); }
-          }
+            @keyframes floatAround3 {
+              0%, 100% { transform: translate(0, 0) rotate(-25deg); }
+              20% { transform: translate(-15px, -20px) rotate(-20deg); }
+              40% { transform: translate(20px, 15px) rotate(-30deg); }
+              60% { transform: translate(-8px, -10px) rotate(-22deg); }
+              80% { transform: translate(12px, 18px) rotate(-28deg); }
+            }
 
-          @keyframes floatAround4 {
-            0%, 100% { transform: translate(0, 0) rotate(30deg); }
-            50% { transform: translate(-30px, 25px) rotate(35deg); }
-          }
+            @keyframes floatAround4 {
+              0%, 100% { transform: translate(0, 0) rotate(30deg); }
+              50% { transform: translate(-30px, 25px) rotate(35deg); }
+            }
 
-          @keyframes floatAround5 {
-            0%, 100% { transform: translate(0, 0) rotate(-10deg); }
-            25% { transform: translate(15px, -20px) rotate(-5deg); }
-            50% { transform: translate(-25px, 15px) rotate(-15deg); }
-            75% { transform: translate(20px, 10px) rotate(-8deg); }
-          }
+            @keyframes floatAround5 {
+              0%, 100% { transform: translate(0, 0) rotate(-10deg); }
+              25% { transform: translate(15px, -20px) rotate(-5deg); }
+              50% { transform: translate(-25px, 15px) rotate(-15deg); }
+              75% { transform: translate(20px, 10px) rotate(-8deg); }
+            }
 
-          @keyframes floatAround6 {
-            0%, 100% { transform: translate(0, 0) rotate(15deg); }
-            33% { transform: translate(-12px, -15px) rotate(20deg); }
-            66% { transform: translate(25px, 20px) rotate(10deg); }
-          }
+            @keyframes floatAround6 {
+              0%, 100% { transform: translate(0, 0) rotate(15deg); }
+              33% { transform: translate(-12px, -15px) rotate(20deg); }
+              66% { transform: translate(25px, 20px) rotate(10deg); }
+            }
 
-          @keyframes driftSlow {
-            0%, 100% { transform: translate(0, 0) rotate(35deg); }
-            25% { transform: translate(-25px, 15px) rotate(40deg); }
-            50% { transform: translate(15px, -25px) rotate(30deg); }
-            75% { transform: translate(-8px, 30px) rotate(38deg); }
-          }
+            @keyframes driftSlow {
+              0%, 100% { transform: translate(0, 0) rotate(35deg); }
+              25% { transform: translate(-25px, 15px) rotate(40deg); }
+              50% { transform: translate(15px, -25px) rotate(30deg); }
+              75% { transform: translate(-8px, 30px) rotate(38deg); }
+            }
 
-          @keyframes gentleDrift {
-            0%, 100% { transform: translate(0, 0) rotate(-20deg); }
-            50% { transform: translate(20px, -30px) rotate(-15deg); }
-          }
+            @keyframes gentleDrift {
+              0%, 100% { transform: translate(0, 0) rotate(-20deg); }
+              50% { transform: translate(20px, -30px) rotate(-15deg); }
+            }
 
-          .floating-symbol {
-            animation-timing-function: ease-in-out;
-            animation-iteration-count: infinite;
-          }
+            .floating-symbol {
+              animation-timing-function: ease-in-out;
+              animation-iteration-count: infinite;
+            }
 
-          .floating-symbol:nth-child(1) { animation: floatAround1 12s infinite; }
-          .floating-symbol:nth-child(2) { animation: floatAround2 15s infinite; animation-delay: -2s; }
-          .floating-symbol:nth-child(3) { animation: floatAround3 10s infinite; animation-delay: -4s; }
-          .floating-symbol:nth-child(4) { animation: floatAround4 18s infinite; animation-delay: -6s; }
-          .floating-symbol:nth-child(5) { animation: floatAround5 14s infinite; animation-delay: -1s; }
-          .floating-symbol:nth-child(6) { animation: floatAround6 11s infinite; animation-delay: -5s; }
-          .floating-symbol:nth-child(7) { animation: driftSlow 20s infinite; animation-delay: -8s; }
-          .floating-symbol:nth-child(8) { animation: gentleDrift 16s infinite; animation-delay: -3s; }
-        `}
-      </style>
+            .floating-symbol:nth-child(1) { animation: floatAround1 12s infinite; }
+            .floating-symbol:nth-child(2) { animation: floatAround2 15s infinite; animation-delay: -2s; }
+            .floating-symbol:nth-child(3) { animation: floatAround3 10s infinite; animation-delay: -4s; }
+            .floating-symbol:nth-child(4) { animation: floatAround4 18s infinite; animation-delay: -6s; }
+            .floating-symbol:nth-child(5) { animation: floatAround5 14s infinite; animation-delay: -1s; }
+            .floating-symbol:nth-child(6) { animation: floatAround6 11s infinite; animation-delay: -5s; }
+            .floating-symbol:nth-child(7) { animation: driftSlow 20s infinite; animation-delay: -8s; }
+            .floating-symbol:nth-child(8) { animation: gentleDrift 16s infinite; animation-delay: -3s; }
 
-      {/* Background Code Symbols - Enhanced with floating animations */}
-      <div style={styles.backgroundSymbols}>
-        <div className="floating-symbol" style={{
-          ...styles.codeSymbol,
-          left: '25%', top: '15%', color: '#2E3344', transform: 'rotate(-15deg)'
-        }}>&#60;/&#62;</div>
-        <div className="floating-symbol" style={{
-          ...styles.codeSymbol,
-          left: '75%', top: '30%', color: '#ABB5CE', transform: 'rotate(20deg)'
-        }}>&#60;/&#62;</div>
-        <div className="floating-symbol" style={{
-          ...styles.codeSymbol,
-          left: '15%', top: '45%', color: '#6C758E', transform: 'rotate(-25deg)'
-        }}>&#60;/&#62;</div>
-        <div className="floating-symbol" style={{
-          ...styles.codeSymbol,
-          left: '85%', top: '60%', color: '#292A2E', transform: 'rotate(30deg)'
-        }}>&#60;/&#62;</div>
-        <div className="floating-symbol" style={{
-          ...styles.codeSymbol,
-          left: '35%', top: '75%', color: '#3A4158', transform: 'rotate(-10deg)'
-        }}>&#60;/&#62;</div>
-        <div className="floating-symbol" style={{
-          ...styles.codeSymbol,
-          left: '65%', top: '85%', color: '#5A6B8C', transform: 'rotate(15deg)'
-        }}>&#60;/&#62;</div>
-        <div className="floating-symbol" style={{
-          ...styles.codeSymbol,
-          left: '10%', top: '25%', color: '#4F5A7A', transform: 'rotate(35deg)'
-        }}>&#60;/&#62;</div>
-        <div className="floating-symbol" style={{
-          ...styles.codeSymbol,
-          left: '90%', top: '40%', color: '#8A94B8', transform: 'rotate(-20deg)'
-        }}>&#60;/&#62;</div>
-      </div>
+            nav::-webkit-scrollbar {
+              width: 4px;
+            }
 
-      {/* Logo Section */}
-      <div style={styles.logo}>
-        <div style={styles.logoContainer}>
-          <div style={styles.logoIcon}>
-            <img 
-              src="/images/logo/logotwo.png" 
-              alt="TechSync Logo" 
-              style={styles.logoImage}
-            />
+            nav::-webkit-scrollbar-track {
+              background: transparent;
+            }
+
+            nav::-webkit-scrollbar-thumb {
+              background: rgba(255, 255, 255, 0.2);
+              border-radius: 2px;
+            }
+
+            nav::-webkit-scrollbar-thumb:hover {
+              background: rgba(255, 255, 255, 0.3);
+            }
+          `}
+        </style>
+
+        <div style={styles.backgroundSymbols}>
+          <div className="floating-symbol" style={{
+            ...styles.codeSymbol,
+            left: '25%', top: '15%', color: '#2E3344'
+          }}>&#60;/&#62;</div>
+          <div className="floating-symbol" style={{
+            ...styles.codeSymbol,
+            left: '75%', top: '30%', color: '#ABB5CE'
+          }}>&#60;/&#62;</div>
+          <div className="floating-symbol" style={{
+            ...styles.codeSymbol,
+            left: '15%', top: '45%', color: '#6C758E'
+          }}>&#60;/&#62;</div>
+          <div className="floating-symbol" style={{
+            ...styles.codeSymbol,
+            left: '85%', top: '60%', color: '#292A2E'
+          }}>&#60;/&#62;</div>
+          <div className="floating-symbol" style={{
+            ...styles.codeSymbol,
+            left: '35%', top: '75%', color: '#3A4158'
+          }}>&#60;/&#62;</div>
+          <div className="floating-symbol" style={{
+            ...styles.codeSymbol,
+            left: '65%', top: '85%', color: '#5A6B8C'
+          }}>&#60;/&#62;</div>
+          <div className="floating-symbol" style={{
+            ...styles.codeSymbol,
+            left: '10%', top: '25%', color: '#4F5A7A'
+          }}>&#60;/&#62;</div>
+          <div className="floating-symbol" style={{
+            ...styles.codeSymbol,
+            left: '90%', top: '40%', color: '#8A94B8'
+          }}>&#60;/&#62;</div>
+        </div>
+
+        <div style={styles.logo}>
+          <div style={styles.logoContainer}>
+            <div style={styles.logoIcon}>
+              <img 
+                src="/images/logo/TechSyncLogo.png" 
+                alt="TechSync Logo" 
+                style={styles.logoImage}
+              />
+            </div>
+            <h1 style={styles.logoText}>TechSync</h1>
           </div>
-          <h1 style={styles.logoText}>TechSync</h1>
+        </div>
+
+        <nav style={styles.nav}>
+          <div style={styles.navSection}>
+            {mainNavItems.map((item) => (
+              <NavItem
+                key={item.id}
+                item={item}
+                isActiveItem={isActive(item.path)}
+                onNavigate={handleNavigation}
+              />
+            ))}
+
+            {adminNavItems.length > 0 && (
+              <>
+                <div style={styles.adminSeparator}></div>
+                {adminNavItems.map((item) => (
+                  <NavItem
+                    key={item.id}
+                    item={item}
+                    isAdmin={true}
+                    isActiveItem={isActive(item.path)}
+                    onNavigate={handleNavigation}
+                  />
+                ))}
+              </>
+            )}
+          </div>
+
+          <div style={{ ...styles.navSection, ...styles.bottomNav }}>
+            {bottomNavItems.map((item) => (
+              <NavItem
+                key={item.id}
+                item={item}
+                isActiveItem={isActive(item.path)}
+                onNavigate={handleNavigation}
+              />
+            ))}
+          </div>
+        </nav>
+
+        <div style={styles.userSection}>
+          <div style={styles.userItem}>
+            <div
+              ref={avatarRef}
+              style={styles.userInfo}
+              onClick={handleAvatarClick}
+              onMouseEnter={(e) => {
+                Object.assign(e.currentTarget.style, styles.userInfoHover);
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+                e.currentTarget.style.transform = 'translateY(0)';
+              }}
+            >
+              <div style={styles.userAvatar}>
+                {user?.full_name?.charAt(0)?.toUpperCase() || 
+                 user?.username?.charAt(0)?.toUpperCase() || 'U'}
+              </div>
+              <div style={styles.userDetails}>
+                <div style={styles.userName}>
+                  {user?.full_name || user?.username || 'User'}
+                </div>
+                {(user?.role === 'admin' || user?.role === 'moderator') && (
+                  <div style={styles.userRole}>
+                    {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <button
+              style={styles.threeDots}
+              onClick={handleThreeDotsClick}
+              onMouseEnter={(e) => {
+                Object.assign(e.target.style, styles.threeDotsHover);
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
+                e.target.style.color = '#9ca3af';
+                e.target.style.transform = 'translateY(0)';
+              }}
+            >
+              ⋮
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Navigation */}
-      <nav style={styles.nav}>
-        <div style={styles.navSection}>
-          {/* Main Navigation Items (for all users) */}
-          {mainNavItems.map((item) => (
-            <NavItem
-              key={item.id}
-              item={item}
-              isActiveItem={isActive(item.path)}
-              onNavigate={handleNavigation}
-            />
-          ))}
-
-          {/* Admin/Moderator Navigation Items (only for admin/moderator) */}
-          {adminNavItems.length > 0 && (
-            <>
-              <div style={styles.adminSeparator}></div>
-              {adminNavItems.map((item) => (
-                <NavItem
-                  key={item.id}
-                  item={item}
-                  isAdmin={true}
-                  isActiveItem={isActive(item.path)}
-                  onNavigate={handleNavigation}
-                />
-              ))}
-            </>
-          )}
-        </div>
-
-        {/* Bottom Navigation - Help Center */}
-        <div style={{ ...styles.navSection, ...styles.bottomNav }}>
-          {bottomNavItems.map((item) => (
-            <NavItem
-              key={item.id}
-              item={item}
-              isActiveItem={isActive(item.path)}
-              onNavigate={handleNavigation}
-            />
-          ))}
-        </div>
-      </nav>
-
-      {/* User Section with Clickable Profile and Three Dots Menu */}
-      <div style={styles.userSection}>
-        <div style={styles.userItem}>
+      {/* RENDER MENU OUTSIDE SIDEBAR USING PORTAL-LIKE APPROACH */}
+      {showUserMenu && (
+        <div 
+          className="user-menu-container"
+          style={{
+            position: 'fixed',
+            top: `${menuPosition.top}px`,
+            left: `${menuPosition.left}px`,
+            width: '200px',
+            backgroundColor: '#1a1c20',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: '12px',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+            zIndex: 10002,
+            overflow: 'hidden',
+            backdropFilter: 'blur(20px)'
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
           <div
-            style={styles.userInfo}
-            onClick={handleProfileClick}
+            style={styles.menuItem}
+            onClick={handleProfileMenuClick}
             onMouseEnter={(e) => {
-              Object.assign(e.target.style, styles.userInfoHover);
+              Object.assign(e.target.style, styles.menuItemHover);
             }}
             onMouseLeave={(e) => {
               e.target.style.backgroundColor = 'transparent';
-              e.target.style.transform = 'translateY(0)';
+              e.target.style.color = '#d1d5db';
             }}
           >
-            <div style={styles.userAvatar}>
-              {user?.full_name?.charAt(0)?.toUpperCase() || 
-               user?.username?.charAt(0)?.toUpperCase() || 'U'}
-            </div>
-            <div style={styles.userDetails}>
-              <div style={styles.userName}>
-                {user?.full_name || user?.username || 'User'}
-              </div>
-              {/* Show user role if admin or moderator */}
-              {(user?.role === 'admin' || user?.role === 'moderator') && (
-                <div style={styles.userRole}>
-                  {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-                </div>
-              )}
-            </div>
+            <User size={16} style={styles.menuItemIcon} />
+            Profile Settings
           </div>
-          
-          {/* Three dots menu - hidden when collapsed */}
-          <button
-            style={styles.threeDots}
-            onClick={handleThreeDotsClick}
-            onMouseEnter={(e) => {
-              Object.assign(e.target.style, styles.threeDotsHover);
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
-              e.target.style.color = '#9ca3af';
-              e.target.style.transform = 'translateY(0)';
-            }}
-          >
-            ⋮
-          </button>
-        </div>
-
-        {/* User Menu */}
-        {showUserMenu && (
-          <div style={styles.userMenu}>
+          {(user?.role === 'admin' || user?.role === 'moderator') && (
             <div
               style={styles.menuItem}
-              onClick={handleProfileClick}
+              onClick={() => {
+                navigate('/admin');
+                setShowUserMenu(false);
+              }}
               onMouseEnter={(e) => {
                 Object.assign(e.target.style, styles.menuItemHover);
               }}
@@ -745,47 +789,27 @@ function Sidebar() {
                 e.target.style.color = '#d1d5db';
               }}
             >
-              <User size={16} style={styles.menuItemIcon} />
-              Profile Settings
+              <Shield size={16} style={styles.menuItemIcon} />
+              Admin Dashboard
             </div>
-            {/* Admin menu item (only for admins) */}
-            {(user?.role === 'admin' || user?.role === 'moderator') && (
-              <div
-                style={styles.menuItem}
-                onClick={() => {
-                  navigate('/admin');
-                  setShowUserMenu(false);
-                }}
-                onMouseEnter={(e) => {
-                  Object.assign(e.target.style, styles.menuItemHover);
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.backgroundColor = 'transparent';
-                  e.target.style.color = '#d1d5db';
-                }}
-              >
-                <Shield size={16} style={styles.menuItemIcon} />
-                Admin Dashboard
-              </div>
-            )}
-            <div
-              style={{ ...styles.menuItem, ...styles.menuItemLast }}
-              onClick={handleLogout}
-              onMouseEnter={(e) => {
-                Object.assign(e.target.style, styles.menuItemHover);
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.backgroundColor = 'transparent';
-                e.target.style.color = '#d1d5db';
-              }}
-            >
-              <LogOut size={16} style={styles.menuItemIcon} />
-              Logout
-            </div>
+          )}
+          <div
+            style={{ ...styles.menuItem, ...styles.menuItemLast }}
+            onClick={handleLogout}
+            onMouseEnter={(e) => {
+              Object.assign(e.target.style, styles.menuItemHover);
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.backgroundColor = 'transparent';
+              e.target.style.color = '#d1d5db';
+            }}
+          >
+            <LogOut size={16} style={styles.menuItemIcon} />
+            Logout
           </div>
-        )}
-      </div>
-    </div>
+        </div>
+      )}
+    </>
   );
 }
 

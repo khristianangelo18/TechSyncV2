@@ -1,7 +1,8 @@
-// frontend/src/pages/project/ProjectFiles.js - WITH FLOATING ANIMATIONS
+// frontend/src/pages/project/ProjectFiles.js - WITH SIDEBAR TOGGLE
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { githubService } from '../../services/githubService';
+import { PanelLeft } from 'lucide-react';
 
 // Background symbols component - WITH FLOATING ANIMATIONS
 const BackgroundSymbols = () => (
@@ -142,7 +143,7 @@ const BackgroundSymbols = () => (
       `}
     </style>
     
-    <div style={{
+     <div style={{
       position: 'fixed',
       top: 0,
       left: 0,
@@ -389,6 +390,33 @@ const BackgroundSymbols = () => (
 function ProjectFiles() {
   const { projectId } = useParams();
   
+  // NEW STATE: Track sidebar collapsed state
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    const saved = localStorage.getItem('projectSidebarCollapsed');
+    return saved === 'true';
+  });
+
+  // NEW: Function to toggle sidebar
+  const toggleSidebar = () => {
+    const newCollapsedState = !isSidebarCollapsed;
+    setIsSidebarCollapsed(newCollapsedState);
+    localStorage.setItem('projectSidebarCollapsed', newCollapsedState.toString());
+    
+    window.dispatchEvent(new CustomEvent('projectSidebarToggle', {
+      detail: { collapsed: newCollapsedState }
+    }));
+  };
+
+  // NEW: Sync with sidebar toggle events
+  useEffect(() => {
+    const handleSidebarToggle = (event) => {
+      setIsSidebarCollapsed(event.detail.collapsed);
+    };
+
+    window.addEventListener('projectSidebarToggle', handleSidebarToggle);
+    return () => window.removeEventListener('projectSidebarToggle', handleSidebarToggle);
+  }, []);
+
   // State management
   const [isGitHubConnected, setIsGitHubConnected] = useState(false);
   const [githubUser, setGitHubUser] = useState(null);
@@ -597,6 +625,26 @@ function ProjectFiles() {
   const breadcrumbParts = currentPath ? currentPath.split('/').filter(part => part) : [];
 
   const styles = {
+    // NEW: Toggle button styles
+    toggleButton: {
+      position: 'fixed',
+      top: '20px',
+      left: isSidebarCollapsed ? '100px' : '290px',
+      zIndex: 1100,
+      width: '40px',
+      height: '40px',
+      borderRadius: '10px',
+      backgroundColor: 'rgba(26, 28, 32, 0.95)',
+      border: '1px solid rgba(255, 255, 255, 0.2)',
+      color: '#9ca3af',
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      transition: 'all 0.3s ease',
+      backdropFilter: 'blur(20px)',
+      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)'
+    },
     container: {
       minHeight: 'calc(100vh - 40px)',
       backgroundColor: '#0F1116',
@@ -605,8 +653,8 @@ function ProjectFiles() {
       overflow: 'hidden',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       padding: '20px',
-      paddingLeft: '270px',
-      marginLeft: '-150px'
+      paddingLeft: '120px',  // Changed from 270px to 120px
+      transition: 'padding-left 0.3s ease'
     },
     header: {
       position: 'relative',
@@ -888,17 +936,15 @@ function ProjectFiles() {
       fontWeight: '500',
       transition: 'all 0.3s ease'
     },
-    loadingState: {
-      position: 'relative',
-      zIndex: 10,
+    loading: {
       display: 'flex',
       flexDirection: 'row',
-      alignItems: 'center',
       justifyContent: 'center',
+      alignItems: 'center',
       gap: '15px',
-      padding: '60px',
-      color: '#9ca3af',
-      fontSize: '18px'
+      minHeight: '400px',
+      fontSize: '18px',
+      color: '#9ca3af'
     },
     errorState: {
       position: 'relative',
@@ -959,178 +1005,258 @@ function ProjectFiles() {
 
   if (loading) {
     return (
-      <div style={styles.container}>
-        <BackgroundSymbols />
-        <div style={styles.loadingState}>
-          <div style={{
-            width: '48px',
-            height: '48px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }} className="global-loading-spinner">
-            <img 
-              src="/images/logo/TechSyncLogo.png" 
-              alt="TechSync Logo" 
-              style={{
-                width: '125%',
-                height: '125%',
-                objectFit: 'contain'
-              }}
-            />
+      <>
+        <button
+          style={styles.toggleButton}
+          onClick={toggleSidebar}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.15)';
+            e.currentTarget.style.color = '#3b82f6';
+            e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.4)';
+            e.currentTarget.style.transform = 'scale(1.05)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(26, 28, 32, 0.95)';
+            e.currentTarget.style.color = '#9ca3af';
+            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+            e.currentTarget.style.transform = 'scale(1)';
+          }}
+          aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          <PanelLeft size={20} />
+        </button>
+
+        <div style={styles.container}>
+          <BackgroundSymbols />
+          <div style={styles.loading}>
+            <div style={{
+              width: '48px',
+              height: '48px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }} className="global-loading-spinner">
+              <img 
+                src="/images/logo/TechSyncLogo.png" 
+                alt="TechSync Logo" 
+                style={{
+                  width: '125%',
+                  height: '125%',
+                  objectFit: 'contain'
+                }}
+              />
+            </div>
+            <span>Loading GitHub integration...</span>
           </div>
-          <span>Loading GitHub integration...</span>
         </div>
-      </div>
+      </>
     );
   }
 
   return (
-    <div style={styles.container}>
-      <BackgroundSymbols />
+    <>
+      {/* Sidebar Toggle Button - OUTSIDE CONTAINER */}
+      <button
+        style={styles.toggleButton}
+        onClick={toggleSidebar}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.15)';
+          e.currentTarget.style.color = '#3b82f6';
+          e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.4)';
+          e.currentTarget.style.transform = 'scale(1.05)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.backgroundColor = 'rgba(26, 28, 32, 0.95)';
+          e.currentTarget.style.color = '#9ca3af';
+          e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+          e.currentTarget.style.transform = 'scale(1)';
+        }}
+        aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+      >
+        <PanelLeft size={20} />
+      </button>
 
-      <div style={styles.header}>
-        <h1 style={styles.title}>Files</h1>
-        <p style={styles.subtitle}>Project files and GitHub repository integration</p>
-      </div>
+      <div style={styles.container}>
+        <BackgroundSymbols />
 
-      {error && error !== 'access_denied' && (
-        <div style={styles.errorState}>
-          {error}
+        <div style={styles.header}>
+          <h1 style={styles.title}>Files</h1>
+          <p style={styles.subtitle}>Project files and GitHub repository integration</p>
         </div>
-      )}
 
-      {error === 'access_denied' && projectRepository && (
-        <div style={styles.accessDeniedSection}>
-          <h3 style={styles.accessDeniedTitle}>🔒 Repository Access Required</h3>
-          <p style={styles.accessDeniedText}>
-            A repository is connected to this project, but you don't have access to view its contents.
-          </p>
-          <div style={styles.accessDeniedSteps}>
-            <strong>To gain access:</strong>
-            <ol style={styles.stepsList}>
-              <li style={styles.stepItem}>
-                Contact the project owner or repository owner
-              </li>
-              <li style={styles.stepItem}>
-                Ask them to add you as a collaborator to the repository: 
-                <br />
-                <span style={styles.repoFullName}>{projectRepository.repository_full_name}</span>
-              </li>
-              <li style={styles.stepItem}>
-                Once added, refresh this page to view the files
-              </li>
-            </ol>
+        {error && error !== 'access_denied' && (
+          <div style={styles.errorState}>
+            {error}
           </div>
-          <p style={styles.accessDeniedText}>
-            <small>
-              💡 Repository collaborators can be managed in GitHub under Settings → Manage access
-            </small>
-          </p>
-        </div>
-      )}
+        )}
 
-      {!isGitHubConnected ? (
-        <div style={styles.connectSection}>
-          <h2 style={styles.connectTitle}>Connect Your GitHub Account</h2>
-          <p style={styles.connectText}>Connect your GitHub account to browse and manage repository files directly in your project workspace.</p>
-          <button 
-            style={styles.connectButton} 
-            onClick={handleGitHubConnect}
-            onMouseEnter={(e) => {
-              e.target.style.transform = 'translateY(-2px)';
-              e.target.style.boxShadow = '0 6px 20px rgba(36, 41, 46, 0.4)';
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.transform = 'translateY(0)';
-              e.target.style.boxShadow = '0 4px 16px rgba(36, 41, 46, 0.3)';
-            }}
-          >
-            <span>📚</span>
-            Connect GitHub
-          </button>
-        </div>
-      ) : (
-        <>
-          <div style={styles.connectedInfo}>
-            <div style={styles.userInfo}>
-              <img 
-                src={githubUser?.github_avatar_url} 
-                alt={githubUser?.github_name} 
-                style={styles.avatar}
-              />
-              <div>
-                <div style={styles.userName}>{githubUser?.github_name || githubUser?.github_username}</div>
-                <div style={styles.userHandle}>@{githubUser?.github_username}</div>
-              </div>
+        {error === 'access_denied' && projectRepository && (
+          <div style={styles.accessDeniedSection}>
+            <h3 style={styles.accessDeniedTitle}>🔒 Repository Access Required</h3>
+            <p style={styles.accessDeniedText}>
+              A repository is connected to this project, but you don't have access to view its contents.
+            </p>
+            <div style={styles.accessDeniedSteps}>
+              <strong>To gain access:</strong>
+              <ol style={styles.stepsList}>
+                <li style={styles.stepItem}>
+                  Contact the project owner or repository owner
+                </li>
+                <li style={styles.stepItem}>
+                  Ask them to add you as a collaborator to the repository: 
+                  <br />
+                  <span style={styles.repoFullName}>{projectRepository.repository_full_name}</span>
+                </li>
+                <li style={styles.stepItem}>
+                  Once added, refresh this page to view the files
+                </li>
+              </ol>
             </div>
+            <p style={styles.accessDeniedText}>
+              <small>
+                💡 Repository collaborators can be managed in GitHub under Settings → Manage access
+              </small>
+            </p>
+          </div>
+        )}
+
+        {!isGitHubConnected ? (
+          <div style={styles.connectSection}>
+            <h2 style={styles.connectTitle}>Connect Your GitHub Account</h2>
+            <p style={styles.connectText}>Connect your GitHub account to browse and manage repository files directly in your project workspace.</p>
             <button 
-              style={styles.dangerButton} 
-              onClick={handleDisconnectGitHub}
+              style={styles.connectButton} 
+              onClick={handleGitHubConnect}
               onMouseEnter={(e) => {
-                e.target.style.transform = 'translateY(-1px)';
+                e.target.style.transform = 'translateY(-2px)';
+                e.target.style.boxShadow = '0 6px 20px rgba(36, 41, 46, 0.4)';
               }}
               onMouseLeave={(e) => {
                 e.target.style.transform = 'translateY(0)';
+                e.target.style.boxShadow = '0 4px 16px rgba(36, 41, 46, 0.3)';
               }}
             >
-              Disconnect
+              <span>📚</span>
+              Connect GitHub
             </button>
           </div>
+        ) : (
+          <>
+            <div style={styles.connectedInfo}>
+              <div style={styles.userInfo}>
+                <img 
+                  src={githubUser?.github_avatar_url} 
+                  alt={githubUser?.github_name} 
+                  style={styles.avatar}
+                />
+                <div>
+                  <div style={styles.userName}>{githubUser?.github_name || githubUser?.github_username}</div>
+                  <div style={styles.userHandle}>@{githubUser?.github_username}</div>
+                </div>
+              </div>
+              <button 
+                style={styles.dangerButton} 
+                onClick={handleDisconnectGitHub}
+                onMouseEnter={(e) => {
+                  e.target.style.transform = 'translateY(-1px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.transform = 'translateY(0)';
+                }}
+              >
+                Disconnect
+              </button>
+            </div>
 
-          {!projectRepository ? (
-            <div style={styles.repositorySection}>
-              <h3 style={styles.sectionTitle}>Connect Repository to Project</h3>
-              <p style={styles.sectionText}>Select a repository to connect to this project for file management.</p>
-              
-              {!showRepositorySelector ? (
-                <button 
-                  style={styles.button} 
-                  onClick={loadUserRepositories}
-                  disabled={loadingRepositories}
-                  onMouseEnter={(e) => {
-                    if (!e.target.disabled) {
-                      e.target.style.transform = 'translateY(-1px)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.transform = 'translateY(0)';
-                  }}
-                >
-                  {loadingRepositories ? 'Loading...' : 'Select Repository'}
-                </button>
-              ) : (
-                <div style={styles.repositorySelector}>
-                  <h4 style={styles.sectionTitle}>Your Repositories</h4>
-                  {repositories.map(repo => (
-                    <div 
-                      key={repo.id} 
-                      style={styles.repositoryItem}
-                      onClick={() => connectRepositoryToProject(repo)}
+            {!projectRepository ? (
+              <div style={styles.repositorySection}>
+                <h3 style={styles.sectionTitle}>Connect Repository to Project</h3>
+                <p style={styles.sectionText}>Select a repository to connect to this project for file management.</p>
+                
+                {!showRepositorySelector ? (
+                  <button 
+                    style={styles.button} 
+                    onClick={loadUserRepositories}
+                    disabled={loadingRepositories}
+                    onMouseEnter={(e) => {
+                      if (!e.target.disabled) {
+                        e.target.style.transform = 'translateY(-1px)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.transform = 'translateY(0)';
+                    }}
+                  >
+                    {loadingRepositories ? 'Loading...' : 'Select Repository'}
+                  </button>
+                ) : (
+                  <div style={styles.repositorySelector}>
+                    <h4 style={styles.sectionTitle}>Your Repositories</h4>
+                    {repositories.map(repo => (
+                      <div 
+                        key={repo.id} 
+                        style={styles.repositoryItem}
+                        onClick={() => connectRepositoryToProject(repo)}
+                        onMouseEnter={(e) => {
+                          e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
+                          e.target.style.transform = 'translateY(-1px)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.02)';
+                          e.target.style.transform = 'translateY(0)';
+                        }}
+                      >
+                        <div style={styles.repositoryItemName}>{repo.full_name}</div>
+                        {repo.description && (
+                          <div style={styles.repositoryDescription}>{repo.description}</div>
+                        )}
+                        <div style={styles.repositoryMeta}>
+                          {repo.language && <span>🔧 {repo.language}</span>}
+                          <span>⭐ {repo.stargazers_count}</span>
+                          <span>🍴 {repo.forks_count}</span>
+                          <span>{repo.private ? '🔒 Private' : '🌐 Public'}</span>
+                        </div>
+                      </div>
+                    ))}
+                    <button 
+                      style={styles.button} 
+                      onClick={() => setShowRepositorySelector(false)}
                       onMouseEnter={(e) => {
-                        e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
                         e.target.style.transform = 'translateY(-1px)';
                       }}
                       onMouseLeave={(e) => {
-                        e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.02)';
                         e.target.style.transform = 'translateY(0)';
                       }}
                     >
-                      <div style={styles.repositoryItemName}>{repo.full_name}</div>
-                      {repo.description && (
-                        <div style={styles.repositoryDescription}>{repo.description}</div>
-                      )}
-                      <div style={styles.repositoryMeta}>
-                        {repo.language && <span>🔧 {repo.language}</span>}
-                        <span>⭐ {repo.stargazers_count}</span>
-                        <span>🍴 {repo.forks_count}</span>
-                        <span>{repo.private ? '🔒 Private' : '🌐 Public'}</span>
-                      </div>
-                    </div>
-                  ))}
+                      Cancel
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div style={styles.repositorySection}>
+                <div style={styles.repositoryHeader}>
+                  <div style={styles.repositoryInfo}>
+                    <span style={styles.repositoryName}>📚 {projectRepository.repository_full_name}</span>
+                    {branches.length > 0 && error !== 'access_denied' && (
+                      <select 
+                        style={styles.branchSelector}
+                        value={currentBranch}
+                        onChange={(e) => handleBranchChange(e.target.value)}
+                      >
+                        {branches.map(branch => (
+                          <option key={branch.name} value={branch.name}>
+                            🌿 {branch.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
                   <button 
-                    style={styles.button} 
-                    onClick={() => setShowRepositorySelector(false)}
+                    style={styles.dangerButton} 
+                    onClick={disconnectRepositoryFromProject}
                     onMouseEnter={(e) => {
                       e.target.style.transform = 'translateY(-1px)';
                     }}
@@ -1138,146 +1264,113 @@ function ProjectFiles() {
                       e.target.style.transform = 'translateY(0)';
                     }}
                   >
-                    Cancel
+                    Disconnect Repository
                   </button>
                 </div>
-              )}
-            </div>
-          ) : (
-            <div style={styles.repositorySection}>
-              <div style={styles.repositoryHeader}>
-                <div style={styles.repositoryInfo}>
-                  <span style={styles.repositoryName}>📚 {projectRepository.repository_full_name}</span>
-                  {branches.length > 0 && error !== 'access_denied' && (
-                    <select 
-                      style={styles.branchSelector}
-                      value={currentBranch}
-                      onChange={(e) => handleBranchChange(e.target.value)}
-                    >
-                      {branches.map(branch => (
-                        <option key={branch.name} value={branch.name}>
-                          🌿 {branch.name}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-                <button 
-                  style={styles.dangerButton} 
-                  onClick={disconnectRepositoryFromProject}
-                  onMouseEnter={(e) => {
-                    e.target.style.transform = 'translateY(-1px)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.transform = 'translateY(0)';
-                  }}
-                >
-                  Disconnect Repository
-                </button>
-              </div>
 
-              {error !== 'access_denied' && (
-                <>
-                  {currentPath && (
-                    <div style={styles.breadcrumb}>
-                      <span 
-                        style={styles.breadcrumbLink}
-                        onClick={() => loadRepositoryContents(projectRepository.repository_full_name, currentBranch, '')}
-                        onMouseEnter={(e) => {
-                          e.target.style.color = '#60a5fa';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.target.style.color = '#3b82f6';
-                        }}
-                      >
-                        {projectRepository.repository_full_name.split('/')[1]}
-                      </span>
-                      {breadcrumbParts.map((part, index) => (
-                        <React.Fragment key={index}>
-                          <span> / </span>
-                          <span 
-                            style={styles.breadcrumbLink}
-                            onClick={() => {
-                              const path = breadcrumbParts.slice(0, index + 1).join('/');
-                              loadRepositoryContents(projectRepository.repository_full_name, currentBranch, path);
-                            }}
+                {error !== 'access_denied' && (
+                  <>
+                    {currentPath && (
+                      <div style={styles.breadcrumb}>
+                        <span 
+                          style={styles.breadcrumbLink}
+                          onClick={() => loadRepositoryContents(projectRepository.repository_full_name, currentBranch, '')}
+                          onMouseEnter={(e) => {
+                            e.target.style.color = '#60a5fa';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.target.style.color = '#3b82f6';
+                          }}
+                        >
+                          {projectRepository.repository_full_name.split('/')[1]}
+                        </span>
+                        {breadcrumbParts.map((part, index) => (
+                          <React.Fragment key={index}>
+                            <span> / </span>
+                            <span 
+                              style={styles.breadcrumbLink}
+                              onClick={() => {
+                                const path = breadcrumbParts.slice(0, index + 1).join('/');
+                                loadRepositoryContents(projectRepository.repository_full_name, currentBranch, path);
+                              }}
+                              onMouseEnter={(e) => {
+                                e.target.style.color = '#60a5fa';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.target.style.color = '#3b82f6';
+                              }}
+                            >
+                              {part}
+                            </span>
+                          </React.Fragment>
+                        ))}
+                      </div>
+                    )}
+
+                    {loadingContents ? (
+                      <div style={styles.loadingState}>Loading files...</div>
+                    ) : (
+                      <div style={styles.fileList}>
+                        {currentPath && (
+                          <div 
+                            style={{...styles.fileItem, ...styles.parentDirectory}}
+                            onClick={navigateToParent}
                             onMouseEnter={(e) => {
-                              e.target.style.color = '#60a5fa';
+                              e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
                             }}
                             onMouseLeave={(e) => {
-                              e.target.style.color = '#3b82f6';
+                              e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.02)';
                             }}
                           >
-                            {part}
-                          </span>
-                        </React.Fragment>
-                      ))}
-                    </div>
-                  )}
-
-                  {loadingContents ? (
-                    <div style={styles.loadingState}>Loading files...</div>
-                  ) : (
-                    <div style={styles.fileList}>
-                      {currentPath && (
-                        <div 
-                          style={{...styles.fileItem, ...styles.parentDirectory}}
-                          onClick={navigateToParent}
-                          onMouseEnter={(e) => {
-                            e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.02)';
-                          }}
-                        >
-                          <span style={styles.fileIcon}>📁</span>
-                          <span style={styles.fileName}>..</span>
-                        </div>
-                      )}
-                      
-                      {fileContents.map((file, index) => (
-                        <div 
-                          key={index}
-                          style={styles.fileItem}
-                          onClick={() => handleFileClick(file)}
-                          onMouseEnter={(e) => {
-                            e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.target.style.backgroundColor = 'transparent';
-                          }}
-                        >
-                          <span style={styles.fileIcon}>
-                            {file.type === 'dir' ? '📁' : '📄'}
-                          </span>
-                          <span style={styles.fileName}>{file.name}</span>
-                          {file.size && (
-                            <span style={styles.fileSize}>
-                              {githubService.formatFileSize(file.size)}
+                            <span style={styles.fileIcon}>📁</span>
+                            <span style={styles.fileName}>..</span>
+                          </div>
+                        )}
+                        
+                        {fileContents.map((file, index) => (
+                          <div 
+                            key={index}
+                            style={styles.fileItem}
+                            onClick={() => handleFileClick(file)}
+                            onMouseEnter={(e) => {
+                              e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.target.style.backgroundColor = 'transparent';
+                            }}
+                          >
+                            <span style={styles.fileIcon}>
+                              {file.type === 'dir' ? '📁' : '📄'}
                             </span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                            <span style={styles.fileName}>{file.name}</span>
+                            {file.size && (
+                              <span style={styles.fileSize}>
+                                {githubService.formatFileSize(file.size)}
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
 
-                  {selectedFile && (
-                    <div style={styles.fileViewer}>
-                      <div style={styles.fileViewerHeader}>
-                        📄 {selectedFile.name} ({githubService.formatFileSize(selectedFile.size)})
+                    {selectedFile && (
+                      <div style={styles.fileViewer}>
+                        <div style={styles.fileViewerHeader}>
+                          📄 {selectedFile.name} ({githubService.formatFileSize(selectedFile.size)})
+                        </div>
+                        <div style={styles.fileViewerContent}>
+                          {fileContent}
+                        </div>
                       </div>
-                      <div style={styles.fileViewerContent}>
-                        {fileContent}
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          )}
-        </>
-      )}
-    </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </>
   );
 }
 

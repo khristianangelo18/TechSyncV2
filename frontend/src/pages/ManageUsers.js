@@ -1,8 +1,8 @@
-// frontend/src/pages/ManageUsers.js - WITH ANIMATED BACKGROUND
+// frontend/src/pages/ManageUsers.js - WITH ANIMATED BACKGROUND AND SIDEBAR TOGGLE
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import AdminAPI from '../services/adminAPI';
-import { Users, Shield, UserX, UserCheck, Settings } from 'lucide-react';
+import { Users, Shield, UserX, UserCheck, Settings, PanelLeft } from 'lucide-react';
 
 const ManageUsers = () => {
   const { user: currentUser } = useAuth();
@@ -26,6 +26,12 @@ const ManageUsers = () => {
     suspended: '',
     page: 1,
     limit: 20
+  });
+
+  // NEW: Sidebar toggle state - initialize from localStorage with lazy initialization
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    const saved = localStorage.getItem('sidebarCollapsed');
+    return saved === 'true';
   });
 
   const colorVariants = ['slate', 'zinc', 'neutral', 'stone', 'gray', 'blue'];
@@ -52,6 +58,27 @@ const ManageUsers = () => {
   useEffect(() => {
     fetchUsers();
   }, [filters]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // NEW: Listen for sidebar state changes from Sidebar component
+  useEffect(() => {
+    const handleSidebarToggle = (event) => {
+      setIsSidebarCollapsed(event.detail.collapsed);
+    };
+
+    window.addEventListener('sidebarToggle', handleSidebarToggle);
+    return () => window.removeEventListener('sidebarToggle', handleSidebarToggle);
+  }, []);
+
+  // NEW: Function to toggle sidebar
+  const toggleSidebar = () => {
+    const newCollapsedState = !isSidebarCollapsed;
+    setIsSidebarCollapsed(newCollapsedState);
+    localStorage.setItem('sidebarCollapsed', newCollapsedState.toString());
+    
+    window.dispatchEvent(new CustomEvent('sidebarToggle', {
+      detail: { collapsed: newCollapsedState }
+    }));
+  };
 
   const handleDeleteConfirmationChange = useCallback((e) => {
     setDeleteConfirmation(e.target.value);
@@ -609,6 +636,26 @@ const ManageUsers = () => {
   });
 
   const styles = {
+    // NEW: Sidebar toggle button style
+    toggleButton: {
+      position: 'fixed',
+      top: '20px',
+      left: isSidebarCollapsed ? '100px' : '290px',
+      zIndex: 1100,
+      width: '40px',
+      height: '40px',
+      borderRadius: '10px',
+      backgroundColor: 'rgba(26, 28, 32, 0.95)',
+      border: '1px solid rgba(255, 255, 255, 0.2)',
+      color: '#9ca3af',
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      transition: 'all 0.3s ease',
+      backdropFilter: 'blur(20px)',
+      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)'
+    },
     container: {
       minHeight: 'calc(100vh - 40px)',
       backgroundColor: '#0F1116',
@@ -617,8 +664,8 @@ const ManageUsers = () => {
       overflow: 'hidden',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       padding: '20px',
-      paddingLeft: '270px',
-      marginLeft: '-150px'
+      paddingLeft: '120px',
+      transition: 'padding-left 0.3s ease'
     },
     backgroundSymbols: {
       position: 'fixed',
@@ -1029,8 +1076,10 @@ const ManageUsers = () => {
       position: 'relative',
       zIndex: 10,
       display: 'flex',
+      flexDirection: 'row',
       justifyContent: 'center',
       alignItems: 'center',
+      gap: '15px',
       minHeight: '400px',
       fontSize: '16px',
       color: '#9ca3af'
@@ -1183,6 +1232,178 @@ const ManageUsers = () => {
 
   if (currentUser?.role !== 'admin') {
     return (
+      <>
+        {/* NEW: Sidebar Toggle Button - OUTSIDE CONTAINER */}
+        <button
+          style={styles.toggleButton}
+          onClick={toggleSidebar}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.15)';
+            e.currentTarget.style.color = '#3b82f6';
+            e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.4)';
+            e.currentTarget.style.transform = 'scale(1.05)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(26, 28, 32, 0.95)';
+            e.currentTarget.style.color = '#9ca3af';
+            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+            e.currentTarget.style.transform = 'scale(1)';
+          }}
+          aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          <PanelLeft size={20} />
+        </button>
+
+        <div style={styles.container}>
+          <style dangerouslySetInnerHTML={{
+            __html: `
+              @keyframes floatAround1 {
+                0%, 100% { transform: translate(0, 0) rotate(-10.79deg); }
+                25% { transform: translate(30px, -20px) rotate(-5deg); }
+                50% { transform: translate(-15px, 25px) rotate(-15deg); }
+                75% { transform: translate(20px, 10px) rotate(-8deg); }
+              }
+              @keyframes floatAround2 {
+                0%, 100% { transform: translate(0, 0) rotate(-37.99deg); }
+                33% { transform: translate(-25px, 15px) rotate(-30deg); }
+                66% { transform: translate(35px, -10px) rotate(-45deg); }
+              }
+              @keyframes floatAround3 {
+                0%, 100% { transform: translate(0, 0) rotate(34.77deg); }
+                20% { transform: translate(-20px, -30px) rotate(40deg); }
+                40% { transform: translate(25px, 20px) rotate(28deg); }
+                60% { transform: translate(-10px, -15px) rotate(38deg); }
+                80% { transform: translate(15px, 25px) rotate(30deg); }
+              }
+              @keyframes floatAround4 {
+                0%, 100% { transform: translate(0, 0) rotate(28.16deg); }
+                50% { transform: translate(-40px, 30px) rotate(35deg); }
+              }
+              @keyframes floatAround5 {
+                0%, 100% { transform: translate(0, 0) rotate(24.5deg); }
+                25% { transform: translate(20px, -25px) rotate(30deg); }
+                50% { transform: translate(-30px, 20px) rotate(18deg); }
+                75% { transform: translate(25px, 15px) rotate(28deg); }
+              }
+              @keyframes floatAround6 {
+                0%, 100% { transform: translate(0, 0) rotate(25.29deg); }
+                33% { transform: translate(-15px, -20px) rotate(30deg); }
+                66% { transform: translate(30px, 25px) rotate(20deg); }
+              }
+              @keyframes driftSlow {
+                0%, 100% { transform: translate(0, 0) rotate(-19.68deg); }
+                25% { transform: translate(-35px, 20px) rotate(-25deg); }
+                50% { transform: translate(20px, -30px) rotate(-15deg); }
+                75% { transform: translate(-10px, 35px) rotate(-22deg); }
+              }
+              @keyframes gentleDrift {
+                0%, 100% { transform: translate(0, 0) rotate(-6.83deg); }
+                50% { transform: translate(25px, -40px) rotate(-2deg); }
+              }
+              @keyframes spiralFloat {
+                0%, 100% { transform: translate(0, 0) rotate(0deg); }
+                25% { transform: translate(20px, -20px) rotate(5deg); }
+                50% { transform: translate(0px, -40px) rotate(10deg); }
+                75% { transform: translate(-20px, -20px) rotate(5deg); }
+              }
+              @keyframes waveMotion {
+                0%, 100% { transform: translate(0, 0) rotate(15deg); }
+                25% { transform: translate(30px, 10px) rotate(20deg); }
+                50% { transform: translate(15px, -25px) rotate(10deg); }
+                75% { transform: translate(-15px, 10px) rotate(18deg); }
+              }
+              @keyframes circularDrift {
+                0%, 100% { transform: translate(0, 0) rotate(-45deg); }
+                25% { transform: translate(25px, 0px) rotate(-40deg); }
+                50% { transform: translate(25px, 25px) rotate(-50deg); }
+                75% { transform: translate(0px, 25px) rotate(-42deg); }
+              }
+              .floating-symbol {
+                animation-timing-function: ease-in-out;
+                animation-iteration-count: infinite;
+              }
+              .floating-symbol:nth-child(1) { animation: floatAround1 15s infinite; }
+              .floating-symbol:nth-child(2) { animation: floatAround2 18s infinite; animation-delay: -2s; }
+              .floating-symbol:nth-child(3) { animation: floatAround3 12s infinite; animation-delay: -5s; }
+              .floating-symbol:nth-child(4) { animation: floatAround4 20s infinite; animation-delay: -8s; }
+              .floating-symbol:nth-child(5) { animation: floatAround5 16s infinite; animation-delay: -3s; }
+              .floating-symbol:nth-child(6) { animation: floatAround6 14s infinite; animation-delay: -7s; }
+              .floating-symbol:nth-child(7) { animation: driftSlow 22s infinite; animation-delay: -10s; }
+              .floating-symbol:nth-child(8) { animation: gentleDrift 19s infinite; animation-delay: -1s; }
+              .floating-symbol:nth-child(9) { animation: spiralFloat 17s infinite; animation-delay: -6s; }
+              .floating-symbol:nth-child(10) { animation: waveMotion 13s infinite; animation-delay: -4s; }
+              .floating-symbol:nth-child(11) { animation: circularDrift 21s infinite; animation-delay: -9s; }
+              .floating-symbol:nth-child(12) { animation: floatAround1 16s infinite; animation-delay: -2s; }
+              .floating-symbol:nth-child(13) { animation: floatAround2 18s infinite; animation-delay: -11s; }
+              .floating-symbol:nth-child(14) { animation: floatAround3 14s infinite; animation-delay: -5s; }
+              .floating-symbol:nth-child(15) { animation: floatAround4 19s infinite; animation-delay: -7s; }
+              .floating-symbol:nth-child(16) { animation: floatAround5 23s infinite; animation-delay: -3s; }
+              .floating-symbol:nth-child(17) { animation: driftSlow 15s infinite; animation-delay: -8s; }
+              .floating-symbol:nth-child(18) { animation: gentleDrift 17s infinite; animation-delay: -1s; }
+              .floating-symbol:nth-child(19) { animation: spiralFloat 20s infinite; animation-delay: -12s; }
+              .floating-symbol:nth-child(20) { animation: waveMotion 18s infinite; animation-delay: -6s; }
+              .floating-symbol:nth-child(21) { animation: circularDrift 16s infinite; animation-delay: -4s; }
+            `
+          }} />
+          
+          <div style={styles.backgroundSymbols}>
+            <div className="floating-symbol" style={{...styles.codeSymbol, left: '52.81%', top: '48.12%', color: '#2E3344'}}>&#60;/&#62;</div>
+            <div className="floating-symbol" style={{...styles.codeSymbol, left: '28.19%', top: '71.22%', color: '#292A2E'}}>&#60;/&#62;</div>
+            <div className="floating-symbol" style={{...styles.codeSymbol, left: '95.09%', top: '48.12%', color: '#ABB5CE'}}>&#60;/&#62;</div>
+            <div className="floating-symbol" style={{...styles.codeSymbol, left: '86.46%', top: '15.33%', color: '#2E3344'}}>&#60;/&#62;</div>
+            <div className="floating-symbol" style={{...styles.codeSymbol, left: '7.11%', top: '80.91%', color: '#ABB5CE'}}>&#60;/&#62;</div>
+            <div className="floating-symbol" style={{...styles.codeSymbol, left: '48.06%', top: '8.5%', color: '#ABB5CE'}}>&#60;/&#62;</div>
+            <div className="floating-symbol" style={{...styles.codeSymbol, left: '72.84%', top: '4.42%', color: '#2E3344'}}>&#60;/&#62;</div>
+            <div className="floating-symbol" style={{...styles.codeSymbol, left: '9.6%', top: '0%', color: '#1F232E'}}>&#60;/&#62;</div>
+            <div className="floating-symbol" style={{...styles.codeSymbol, left: '31.54%', top: '54.31%', color: '#6C758E'}}>&#60;/&#62;</div>
+            <div className="floating-symbol" style={{...styles.codeSymbol, left: '25.28%', top: '15.89%', color: '#1F232E'}}>&#60;/&#62;</div>
+            <div className="floating-symbol" style={{...styles.codeSymbol, left: '48.55%', top: '82.45%', color: '#292A2E'}}>&#60;/&#62;</div>
+            <div className="floating-symbol" style={{...styles.codeSymbol, left: '24.41%', top: '92.02%', color: '#2E3344'}}>&#60;/&#62;</div>
+            <div className="floating-symbol" style={{...styles.codeSymbol, left: '0%', top: '12.8%', color: '#ABB5CE'}}>&#60;/&#62;</div>
+            <div className="floating-symbol" style={{...styles.codeSymbol, left: '81.02%', top: '94.27%', color: '#6C758E'}}>&#60;/&#62;</div>
+            <div className="floating-symbol" style={{...styles.codeSymbol, left: '96.02%', top: '0%', color: '#2E3344'}}>&#60;/&#62;</div>
+            <div className="floating-symbol" style={{...styles.codeSymbol, left: '0.07%', top: '41.2%', color: '#6C758E'}}>&#60;/&#62;</div>
+            <div className="floating-symbol" style={{...styles.codeSymbol, left: '15%', top: '35%', color: '#3A4158'}}>&#60;/&#62;</div>
+            <div className="floating-symbol" style={{...styles.codeSymbol, left: '65%', top: '25%', color: '#5A6B8C'}}>&#60;/&#62;</div>
+            <div className="floating-symbol" style={{...styles.codeSymbol, left: '85%', top: '65%', color: '#2B2F3E'}}>&#60;/&#62;</div>
+            <div className="floating-symbol" style={{...styles.codeSymbol, left: '42%', top: '35%', color: '#4F5A7A'}}>&#60;/&#62;</div>
+            <div className="floating-symbol" style={{...styles.codeSymbol, left: '12%', top: '60%', color: '#8A94B8'}}>&#60;/&#62;</div>
+          </div>
+
+          <div style={styles.emptyState}>
+            <h2>Access Denied</h2>
+            <p>You need admin privileges to manage users.</p>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <>
+      {/* NEW: Sidebar Toggle Button - OUTSIDE CONTAINER */}
+      <button
+        style={styles.toggleButton}
+        onClick={toggleSidebar}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.15)';
+          e.currentTarget.style.color = '#3b82f6';
+          e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.4)';
+          e.currentTarget.style.transform = 'scale(1.05)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.backgroundColor = 'rgba(26, 28, 32, 0.95)';
+          e.currentTarget.style.color = '#9ca3af';
+          e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+          e.currentTarget.style.transform = 'scale(1)';
+        }}
+        aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+      >
+        <PanelLeft size={20} />
+      </button>
+
       <div style={styles.container}>
         <style dangerouslySetInnerHTML={{
           __html: `
@@ -1247,6 +1468,14 @@ const ManageUsers = () => {
               50% { transform: translate(25px, 25px) rotate(-50deg); }
               75% { transform: translate(0px, 25px) rotate(-42deg); }
             }
+            @keyframes globalLogoRotate {
+              from { transform: rotate(0deg); }
+              to { transform: rotate(360deg); }
+            }
+
+            .global-loading-spinner {
+              animation: globalLogoRotate 2s linear infinite;
+            }
             .floating-symbol {
               animation-timing-function: ease-in-out;
               animation-iteration-count: infinite;
@@ -1272,6 +1501,12 @@ const ManageUsers = () => {
             .floating-symbol:nth-child(19) { animation: spiralFloat 20s infinite; animation-delay: -12s; }
             .floating-symbol:nth-child(20) { animation: waveMotion 18s infinite; animation-delay: -6s; }
             .floating-symbol:nth-child(21) { animation: circularDrift 16s infinite; animation-delay: -4s; }
+            
+            select option {
+              background-color: #1a1c20 !important;
+              color: white !important;
+              padding: 8px 12px !important;
+            }
           `
         }} />
         
@@ -1299,275 +1534,137 @@ const ManageUsers = () => {
           <div className="floating-symbol" style={{...styles.codeSymbol, left: '12%', top: '60%', color: '#8A94B8'}}>&#60;/&#62;</div>
         </div>
 
-        <div style={styles.emptyState}>
-          <h2>Access Denied</h2>
-          <p>You need admin privileges to manage users.</p>
+        <div style={styles.header}>
+          <h1 style={styles.title}>
+            <Users size={28} style={{ color: '#3b82f6' }} />
+            Manage Users
+          </h1>
+          <p style={styles.subtitle}>View and manage user accounts, roles, and permissions</p>
         </div>
+
+        {successMessage && (
+          <div style={styles.successMessage}>
+            {successMessage}
+          </div>
+        )}
+
+        {error && !showModal && (
+          <div style={styles.errorMessage}>
+            {error}
+          </div>
+        )}
+
+        <div style={styles.filtersContainer}>
+          <div style={styles.filtersGrid}>
+            <div style={styles.filterGroup}>
+              <label style={styles.filterLabel}>Search Users</label>
+              <input
+                type="text"
+                style={styles.input}
+                placeholder="Search by username, email, or name..."
+                value={filters.search}
+                onChange={(e) => handleFilterChange('search', e.target.value)}
+              />
+            </div>
+            
+            <div style={styles.filterGroup}>
+              <label style={styles.filterLabel}>Role</label>
+              <select
+                style={styles.select}
+                value={filters.role}
+                onChange={(e) => handleFilterChange('role', e.target.value)}
+              >
+                <option value="">All Roles</option>
+                <option value="user">User</option>
+                <option value="moderator">Moderator</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+            
+            <div style={styles.filterGroup}>
+              <label style={styles.filterLabel}>Status</label>
+              <select
+                style={styles.select}
+                value={filters.status}
+                onChange={(e) => handleFilterChange('status', e.target.value)}
+              >
+                <option value="">All Status</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+            
+            <div style={styles.filterGroup}>
+              <label style={styles.filterLabel}>Suspended</label>
+              <select
+                style={styles.select}
+                value={filters.suspended}
+                onChange={(e) => handleFilterChange('suspended', e.target.value)}
+              >
+                <option value="">All</option>
+                <option value="true">Suspended</option>
+                <option value="false">Not Suspended</option>
+              </select>
+            </div>
+            
+            <div style={styles.filterGroup}>
+              <button
+                style={styles.clearButton}
+                onClick={() => setFilters({
+                  search: '',
+                  role: '',
+                  status: '',
+                  suspended: '',
+                  page: 1,
+                  limit: 20
+                })}
+                onMouseEnter={(e) => {
+                  e.target.style.backgroundColor = '#4b5563';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.backgroundColor = '#6b7280';
+                }}
+              >
+                Clear Filters
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {loading ? (
+          <div style={styles.loading}>
+            <div style={{
+              width: '48px',
+              height: '48px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }} className="global-loading-spinner">
+              <img 
+                src="/images/logo/TechSyncLogo.png" 
+                alt="TechSync Logo" 
+                style={{
+                  width: '125%',
+                  height: '125%',
+                  objectFit: 'contain'
+                }}
+              />
+            </div>
+            <span>Loading users...</span>
+          </div>
+        ) : users.length === 0 ? (
+          <div style={styles.emptyState}>
+            <p>No users found matching your criteria.</p>
+          </div>
+        ) : (
+          <div style={styles.usersGrid}>
+            {users.map((user, index) => renderUserCard(user, index))}
+          </div>
+        )}
+
+        <ActionModal />
       </div>
-    );
-  }
-
-  return (
-    <div style={styles.container}>
-      <style dangerouslySetInnerHTML={{
-        __html: `
-          @keyframes floatAround1 {
-            0%, 100% { transform: translate(0, 0) rotate(-10.79deg); }
-            25% { transform: translate(30px, -20px) rotate(-5deg); }
-            50% { transform: translate(-15px, 25px) rotate(-15deg); }
-            75% { transform: translate(20px, 10px) rotate(-8deg); }
-          }
-          @keyframes floatAround2 {
-            0%, 100% { transform: translate(0, 0) rotate(-37.99deg); }
-            33% { transform: translate(-25px, 15px) rotate(-30deg); }
-            66% { transform: translate(35px, -10px) rotate(-45deg); }
-          }
-          @keyframes floatAround3 {
-            0%, 100% { transform: translate(0, 0) rotate(34.77deg); }
-            20% { transform: translate(-20px, -30px) rotate(40deg); }
-            40% { transform: translate(25px, 20px) rotate(28deg); }
-            60% { transform: translate(-10px, -15px) rotate(38deg); }
-            80% { transform: translate(15px, 25px) rotate(30deg); }
-          }
-          @keyframes floatAround4 {
-            0%, 100% { transform: translate(0, 0) rotate(28.16deg); }
-            50% { transform: translate(-40px, 30px) rotate(35deg); }
-          }
-          @keyframes floatAround5 {
-            0%, 100% { transform: translate(0, 0) rotate(24.5deg); }
-            25% { transform: translate(20px, -25px) rotate(30deg); }
-            50% { transform: translate(-30px, 20px) rotate(18deg); }
-            75% { transform: translate(25px, 15px) rotate(28deg); }
-          }
-          @keyframes floatAround6 {
-            0%, 100% { transform: translate(0, 0) rotate(25.29deg); }
-            33% { transform: translate(-15px, -20px) rotate(30deg); }
-            66% { transform: translate(30px, 25px) rotate(20deg); }
-          }
-          @keyframes driftSlow {
-            0%, 100% { transform: translate(0, 0) rotate(-19.68deg); }
-            25% { transform: translate(-35px, 20px) rotate(-25deg); }
-            50% { transform: translate(20px, -30px) rotate(-15deg); }
-            75% { transform: translate(-10px, 35px) rotate(-22deg); }
-          }
-          @keyframes gentleDrift {
-            0%, 100% { transform: translate(0, 0) rotate(-6.83deg); }
-            50% { transform: translate(25px, -40px) rotate(-2deg); }
-          }
-          @keyframes spiralFloat {
-            0%, 100% { transform: translate(0, 0) rotate(0deg); }
-            25% { transform: translate(20px, -20px) rotate(5deg); }
-            50% { transform: translate(0px, -40px) rotate(10deg); }
-            75% { transform: translate(-20px, -20px) rotate(5deg); }
-          }
-          @keyframes waveMotion {
-            0%, 100% { transform: translate(0, 0) rotate(15deg); }
-            25% { transform: translate(30px, 10px) rotate(20deg); }
-            50% { transform: translate(15px, -25px) rotate(10deg); }
-            75% { transform: translate(-15px, 10px) rotate(18deg); }
-          }
-          @keyframes circularDrift {
-            0%, 100% { transform: translate(0, 0) rotate(-45deg); }
-            25% { transform: translate(25px, 0px) rotate(-40deg); }
-            50% { transform: translate(25px, 25px) rotate(-50deg); }
-            75% { transform: translate(0px, 25px) rotate(-42deg); }
-          }
-          @keyframes globalLogoRotate {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-          }
-
-          .global-loading-spinner {
-            animation: globalLogoRotate 2s linear infinite;
-          }
-          .floating-symbol {
-            animation-timing-function: ease-in-out;
-            animation-iteration-count: infinite;
-          }
-          .floating-symbol:nth-child(1) { animation: floatAround1 15s infinite; }
-          .floating-symbol:nth-child(2) { animation: floatAround2 18s infinite; animation-delay: -2s; }
-          .floating-symbol:nth-child(3) { animation: floatAround3 12s infinite; animation-delay: -5s; }
-          .floating-symbol:nth-child(4) { animation: floatAround4 20s infinite; animation-delay: -8s; }
-          .floating-symbol:nth-child(5) { animation: floatAround5 16s infinite; animation-delay: -3s; }
-          .floating-symbol:nth-child(6) { animation: floatAround6 14s infinite; animation-delay: -7s; }
-          .floating-symbol:nth-child(7) { animation: driftSlow 22s infinite; animation-delay: -10s; }
-          .floating-symbol:nth-child(8) { animation: gentleDrift 19s infinite; animation-delay: -1s; }
-          .floating-symbol:nth-child(9) { animation: spiralFloat 17s infinite; animation-delay: -6s; }
-          .floating-symbol:nth-child(10) { animation: waveMotion 13s infinite; animation-delay: -4s; }
-          .floating-symbol:nth-child(11) { animation: circularDrift 21s infinite; animation-delay: -9s; }
-          .floating-symbol:nth-child(12) { animation: floatAround1 16s infinite; animation-delay: -2s; }
-          .floating-symbol:nth-child(13) { animation: floatAround2 18s infinite; animation-delay: -11s; }
-          .floating-symbol:nth-child(14) { animation: floatAround3 14s infinite; animation-delay: -5s; }
-          .floating-symbol:nth-child(15) { animation: floatAround4 19s infinite; animation-delay: -7s; }
-          .floating-symbol:nth-child(16) { animation: floatAround5 23s infinite; animation-delay: -3s; }
-          .floating-symbol:nth-child(17) { animation: driftSlow 15s infinite; animation-delay: -8s; }
-          .floating-symbol:nth-child(18) { animation: gentleDrift 17s infinite; animation-delay: -1s; }
-          .floating-symbol:nth-child(19) { animation: spiralFloat 20s infinite; animation-delay: -12s; }
-          .floating-symbol:nth-child(20) { animation: waveMotion 18s infinite; animation-delay: -6s; }
-          .floating-symbol:nth-child(21) { animation: circularDrift 16s infinite; animation-delay: -4s; }
-          
-          select option {
-            background-color: #1a1c20 !important;
-            color: white !important;
-            padding: 8px 12px !important;
-          }
-        `
-      }} />
-      
-      <div style={styles.backgroundSymbols}>
-        <div className="floating-symbol" style={{...styles.codeSymbol, left: '52.81%', top: '48.12%', color: '#2E3344'}}>&#60;/&#62;</div>
-        <div className="floating-symbol" style={{...styles.codeSymbol, left: '28.19%', top: '71.22%', color: '#292A2E'}}>&#60;/&#62;</div>
-        <div className="floating-symbol" style={{...styles.codeSymbol, left: '95.09%', top: '48.12%', color: '#ABB5CE'}}>&#60;/&#62;</div>
-        <div className="floating-symbol" style={{...styles.codeSymbol, left: '86.46%', top: '15.33%', color: '#2E3344'}}>&#60;/&#62;</div>
-        <div className="floating-symbol" style={{...styles.codeSymbol, left: '7.11%', top: '80.91%', color: '#ABB5CE'}}>&#60;/&#62;</div>
-        <div className="floating-symbol" style={{...styles.codeSymbol, left: '48.06%', top: '8.5%', color: '#ABB5CE'}}>&#60;/&#62;</div>
-        <div className="floating-symbol" style={{...styles.codeSymbol, left: '72.84%', top: '4.42%', color: '#2E3344'}}>&#60;/&#62;</div>
-        <div className="floating-symbol" style={{...styles.codeSymbol, left: '9.6%', top: '0%', color: '#1F232E'}}>&#60;/&#62;</div>
-        <div className="floating-symbol" style={{...styles.codeSymbol, left: '31.54%', top: '54.31%', color: '#6C758E'}}>&#60;/&#62;</div>
-        <div className="floating-symbol" style={{...styles.codeSymbol, left: '25.28%', top: '15.89%', color: '#1F232E'}}>&#60;/&#62;</div>
-        <div className="floating-symbol" style={{...styles.codeSymbol, left: '48.55%', top: '82.45%', color: '#292A2E'}}>&#60;/&#62;</div>
-        <div className="floating-symbol" style={{...styles.codeSymbol, left: '24.41%', top: '92.02%', color: '#2E3344'}}>&#60;/&#62;</div>
-        <div className="floating-symbol" style={{...styles.codeSymbol, left: '0%', top: '12.8%', color: '#ABB5CE'}}>&#60;/&#62;</div>
-        <div className="floating-symbol" style={{...styles.codeSymbol, left: '81.02%', top: '94.27%', color: '#6C758E'}}>&#60;/&#62;</div>
-        <div className="floating-symbol" style={{...styles.codeSymbol, left: '96.02%', top: '0%', color: '#2E3344'}}>&#60;/&#62;</div>
-        <div className="floating-symbol" style={{...styles.codeSymbol, left: '0.07%', top: '41.2%', color: '#6C758E'}}>&#60;/&#62;</div>
-        <div className="floating-symbol" style={{...styles.codeSymbol, left: '15%', top: '35%', color: '#3A4158'}}>&#60;/&#62;</div>
-        <div className="floating-symbol" style={{...styles.codeSymbol, left: '65%', top: '25%', color: '#5A6B8C'}}>&#60;/&#62;</div>
-        <div className="floating-symbol" style={{...styles.codeSymbol, left: '85%', top: '65%', color: '#2B2F3E'}}>&#60;/&#62;</div>
-        <div className="floating-symbol" style={{...styles.codeSymbol, left: '42%', top: '35%', color: '#4F5A7A'}}>&#60;/&#62;</div>
-        <div className="floating-symbol" style={{...styles.codeSymbol, left: '12%', top: '60%', color: '#8A94B8'}}>&#60;/&#62;</div>
-      </div>
-
-      <div style={styles.header}>
-        <h1 style={styles.title}>
-          <Users size={28} style={{ color: '#3b82f6' }} />
-          Manage Users
-        </h1>
-        <p style={styles.subtitle}>View and manage user accounts, roles, and permissions</p>
-      </div>
-
-      {successMessage && (
-        <div style={styles.successMessage}>
-          {successMessage}
-        </div>
-      )}
-
-      {error && !showModal && (
-        <div style={styles.errorMessage}>
-          {error}
-        </div>
-      )}
-
-      <div style={styles.filtersContainer}>
-        <div style={styles.filtersGrid}>
-          <div style={styles.filterGroup}>
-            <label style={styles.filterLabel}>Search Users</label>
-            <input
-              type="text"
-              style={styles.input}
-              placeholder="Search by username, email, or name..."
-              value={filters.search}
-              onChange={(e) => handleFilterChange('search', e.target.value)}
-            />
-          </div>
-          
-          <div style={styles.filterGroup}>
-            <label style={styles.filterLabel}>Role</label>
-            <select
-              style={styles.select}
-              value={filters.role}
-              onChange={(e) => handleFilterChange('role', e.target.value)}
-            >
-              <option value="">All Roles</option>
-              <option value="user">User</option>
-              <option value="moderator">Moderator</option>
-              <option value="admin">Admin</option>
-            </select>
-          </div>
-          
-          <div style={styles.filterGroup}>
-            <label style={styles.filterLabel}>Status</label>
-            <select
-              style={styles.select}
-              value={filters.status}
-              onChange={(e) => handleFilterChange('status', e.target.value)}
-            >
-              <option value="">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
-          </div>
-          
-          <div style={styles.filterGroup}>
-            <label style={styles.filterLabel}>Suspended</label>
-            <select
-              style={styles.select}
-              value={filters.suspended}
-              onChange={(e) => handleFilterChange('suspended', e.target.value)}
-            >
-              <option value="">All</option>
-              <option value="true">Suspended</option>
-              <option value="false">Not Suspended</option>
-            </select>
-          </div>
-          
-          <div style={styles.filterGroup}>
-            <button
-              style={styles.clearButton}
-              onClick={() => setFilters({
-                search: '',
-                role: '',
-                status: '',
-                suspended: '',
-                page: 1,
-                limit: 20
-              })}
-              onMouseEnter={(e) => {
-                e.target.style.backgroundColor = '#4b5563';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.backgroundColor = '#6b7280';
-              }}
-            >
-              Clear Filters
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {loading ? (
-        <div style={styles.loading}>
-          <div style={{
-            width: '48px',
-            height: '48px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }} className="global-loading-spinner">
-            <img 
-               src="/images/logo/TechSyncLogo.png" 
-               alt="TechSync Logo" 
-               style={{
-               width: '125%',
-               height: '125%',
-               objectFit: 'contain'
-            }}
-          />
-          </div>
-          <span>Loading users...</span>
-        </div>
-      ) : users.length === 0 ? (
-        <div style={styles.emptyState}>
-          <p>No users found matching your criteria.</p>
-        </div>
-      ) : (
-        <div style={styles.usersGrid}>
-          {users.map((user, index) => renderUserCard(user, index))}
-        </div>
-      )}
-
-      <ActionModal />
-    </div>
+    </>
   );
 };
 

@@ -1,9 +1,10 @@
-// frontend/src/pages/project/ProjectDashboard.js - WITH FLOATING ANIMATIONS
+// frontend/src/pages/project/ProjectDashboard.js - WITH SIDEBAR TOGGLE
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { projectService } from '../../services/projectService';
 import { taskService } from '../../services/taskService';
 import { useAuth } from '../../contexts/AuthContext';
+import { PanelLeft } from 'lucide-react';
 
 // Background symbols component - WITH FLOATING ANIMATIONS
 const BackgroundSymbols = () => (
@@ -426,6 +427,33 @@ function ProjectDashboard() {
   const [loading, setLoading] = useState(true);
   const [loadingActivity, setLoadingActivity] = useState(true);
 
+  // NEW STATE: Track sidebar collapsed state
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    const saved = localStorage.getItem('projectSidebarCollapsed');
+    return saved === 'true';
+  });
+
+  // NEW: Function to toggle sidebar
+  const toggleSidebar = () => {
+    const newCollapsedState = !isSidebarCollapsed;
+    setIsSidebarCollapsed(newCollapsedState);
+    localStorage.setItem('projectSidebarCollapsed', newCollapsedState.toString());
+    
+    window.dispatchEvent(new CustomEvent('projectSidebarToggle', {
+      detail: { collapsed: newCollapsedState }
+    }));
+  };
+
+  // NEW: Sync with sidebar toggle events
+  useEffect(() => {
+    const handleSidebarToggle = (event) => {
+      setIsSidebarCollapsed(event.detail.collapsed);
+    };
+
+    window.addEventListener('projectSidebarToggle', handleSidebarToggle);
+    return () => window.removeEventListener('projectSidebarToggle', handleSidebarToggle);
+  }, []);
+
   // Fetch all dashboard data
   const fetchDashboardData = useCallback(async () => {
     try {
@@ -595,6 +623,26 @@ function ProjectDashboard() {
   };
 
   const styles = {
+    // NEW: Toggle button styles
+    toggleButton: {
+      position: 'fixed',
+      top: '20px',
+      left: isSidebarCollapsed ? '100px' : '290px',
+      zIndex: 1100,
+      width: '40px',
+      height: '40px',
+      borderRadius: '10px',
+      backgroundColor: 'rgba(26, 28, 32, 0.95)',
+      border: '1px solid rgba(255, 255, 255, 0.2)',
+      color: '#9ca3af',
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      transition: 'all 0.3s ease',
+      backdropFilter: 'blur(20px)',
+      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)'
+    },
     container: {
       minHeight: 'calc(100vh - 40px)',
       backgroundColor: '#0F1116',
@@ -603,8 +651,8 @@ function ProjectDashboard() {
       overflow: 'hidden',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       padding: '20px',
-      paddingLeft: '270px',
-      marginLeft: '-150px'
+      paddingLeft: '120px',
+      transition: 'padding-left 0.3s ease'
     },
     header: {
       position: 'relative',
@@ -835,166 +883,198 @@ function ProjectDashboard() {
 
   if (loading) {
     return (
-      <div style={styles.container}>
-        <BackgroundSymbols />
-        <div style={styles.loading}>
-          <div style={{
-            width: '48px',
-            height: '48px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }} className="global-loading-spinner">
-            <img 
-              src="/images/logo/TechSyncLogo.png" 
-              alt="TechSync Logo" 
-              style={{
-                width: '125%',
-                height: '125%',
-                objectFit: 'contain'
-              }}
-            />
+      <>
+        {/* Sidebar Toggle Button - OUTSIDE CONTAINER */}
+        <button
+          style={styles.toggleButton}
+          onClick={toggleSidebar}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.15)';
+            e.currentTarget.style.color = '#3b82f6';
+            e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.4)';
+            e.currentTarget.style.transform = 'scale(1.05)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(26, 28, 32, 0.95)';
+            e.currentTarget.style.color = '#9ca3af';
+            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+            e.currentTarget.style.transform = 'scale(1)';
+          }}
+          aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          <PanelLeft size={20} />
+        </button>
+
+        <div style={styles.container}>
+          <BackgroundSymbols />
+          <div style={styles.loading}>
+            <div style={{
+              width: '48px',
+              height: '48px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }} className="global-loading-spinner">
+              <img 
+                src="/images/logo/TechSyncLogo.png" 
+                alt="TechSync Logo" 
+                style={{
+                  width: '125%',
+                  height: '125%',
+                  objectFit: 'contain'
+                }}
+              />
+            </div>
+            <span>Loading project dashboard...</span>
           </div>
-          <span>Loading project dashboard...</span>
         </div>
-      </div>
+      </>
     );
   }
 
   if (!project) {
     return (
-      <div style={styles.container}>
-        <BackgroundSymbols />
-        <div style={styles.loading}>Project not found</div>
-      </div>
+      <>
+        {/* Sidebar Toggle Button */}
+        <button
+          style={styles.toggleButton}
+          onClick={toggleSidebar}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.15)';
+            e.currentTarget.style.color = '#3b82f6';
+            e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.4)';
+            e.currentTarget.style.transform = 'scale(1.05)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(26, 28, 32, 0.95)';
+            e.currentTarget.style.color = '#9ca3af';
+            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+            e.currentTarget.style.transform = 'scale(1)';
+          }}
+          aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          <PanelLeft size={20} />
+        </button>
+
+        <div style={styles.container}>
+          <BackgroundSymbols />
+          <div style={styles.loading}>Project not found</div>
+        </div>
+      </>
     );
   }
 
   return (
-    <div style={styles.container}>
-      <BackgroundSymbols />
+    <>
+      {/* Sidebar Toggle Button - OUTSIDE CONTAINER */}
+      <button
+        style={styles.toggleButton}
+        onClick={toggleSidebar}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.15)';
+          e.currentTarget.style.color = '#3b82f6';
+          e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.4)';
+          e.currentTarget.style.transform = 'scale(1.05)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.backgroundColor = 'rgba(26, 28, 32, 0.95)';
+          e.currentTarget.style.color = '#9ca3af';
+          e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+          e.currentTarget.style.transform = 'scale(1)';
+        }}
+        aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+      >
+        <PanelLeft size={20} />
+      </button>
 
-      {/* Header */}
-      <div style={styles.header}>
-        <div>
-          <h1 style={styles.title}>{project.title}</h1>
-          <p style={styles.subtitle}>Project Dashboard & Analytics</p>
-        </div>
-      </div>
+      <div style={styles.container}>
+        <BackgroundSymbols />
 
-      {/* Analytics Cards */}
-      <div style={styles.analyticsGrid}>
-        <div style={styles.analyticsCard}>
-          <div style={styles.analyticsHeader}>
-            <h3 style={styles.analyticsTitle}>Project Progress</h3>
-            <span style={styles.analyticsIcon}>📈</span>
-          </div>
-          <div style={styles.analyticsValue}>{analytics.completionRate}%</div>
-          <div style={styles.analyticsSubtext}>
-            {analytics.completedTasks} of {analytics.totalTasks} tasks completed
-          </div>
-          <div style={styles.progressBar}>
-            <div 
-              style={{
-                ...styles.progressFill,
-                width: `${analytics.completionRate}%`
-              }}
-            />
-          </div>
-        </div>
-
-        <div style={styles.analyticsCard}>
-          <div style={styles.analyticsHeader}>
-            <h3 style={styles.analyticsTitle}>Active Tasks</h3>
-            <span style={styles.analyticsIcon}>⚡</span>
-          </div>
-          <div style={styles.analyticsValue}>{analytics.activeTasks}</div>
-          <div style={styles.analyticsSubtext}>
-            Tasks in progress or pending review
+        {/* Header */}
+        <div style={styles.header}>
+          <div>
+            <h1 style={styles.title}>{project.title}</h1>
+            <p style={styles.subtitle}>Project Dashboard & Analytics</p>
           </div>
         </div>
 
-        <div style={styles.analyticsCard}>
-          <div style={styles.analyticsHeader}>
-            <h3 style={styles.analyticsTitle}>Overdue Tasks</h3>
-            <span style={styles.analyticsIcon}>⚠️</span>
-          </div>
-          <div style={{
-            ...styles.analyticsValue,
-            color: analytics.overdueTasksCount > 0 ? '#ef4444' : '#10b981'
-          }}>
-            {analytics.overdueTasksCount}
-          </div>
-          <div style={styles.analyticsSubtext}>
-            {analytics.overdueTasksCount > 0 ? 'Need immediate attention' : 'All tasks on track'}
-          </div>
-        </div>
-      </div>
-
-      {/* Announcements */}
-      <div style={styles.announcementsSection}>
-        <div style={styles.card}>
-          <h3 style={styles.cardTitle}>
-            📢 Announcements
-          </h3>
-          {dueTasks.length > 0 ? (
-            <div>
-              <p style={styles.description}>Tasks approaching their due dates:</p>
-              {dueTasks.map((task) => (
-                <div key={task.id} style={styles.taskItem}>
-                  <div style={styles.taskInfo}>
-                    <div style={styles.taskTitle}>{task.title}</div>
-                    <div style={styles.taskMeta}>
-                      <span 
-                        style={{
-                          ...styles.priorityBadge,
-                          backgroundColor: getPriorityColor(task.priority)
-                        }}
-                      >
-                        {task.priority?.toUpperCase() || 'MEDIUM'}
-                      </span>
-                      <span style={styles.dueBadge}>
-                        {formatDueDate(task.due_date)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
+        {/* Analytics Cards */}
+        <div style={styles.analyticsGrid}>
+          <div style={styles.analyticsCard}>
+            <div style={styles.analyticsHeader}>
+              <h3 style={styles.analyticsTitle}>Project Progress</h3>
+              <span style={styles.analyticsIcon}>📈</span>
             </div>
-          ) : (
-            <div style={styles.emptyState}>
-              No upcoming due dates. Great job staying on track! 🎉
+            <div style={styles.analyticsValue}>{analytics.completionRate}%</div>
+            <div style={styles.analyticsSubtext}>
+              {analytics.completedTasks} of {analytics.totalTasks} tasks completed
             </div>
-          )}
-        </div>
-      </div>
+            <div style={styles.progressBar}>
+              <div 
+                style={{
+                  ...styles.progressFill,
+                  width: `${analytics.completionRate}%`
+                }}
+              />
+            </div>
+          </div>
 
-      {/* Main Content Grid */}
-      <div style={styles.contentGrid}>
-        {/* Left Column */}
-        <div>
+          <div style={styles.analyticsCard}>
+            <div style={styles.analyticsHeader}>
+              <h3 style={styles.analyticsTitle}>Active Tasks</h3>
+              <span style={styles.analyticsIcon}>⚡</span>
+            </div>
+            <div style={styles.analyticsValue}>{analytics.activeTasks}</div>
+            <div style={styles.analyticsSubtext}>
+              Tasks in progress or pending review
+            </div>
+          </div>
+
+          <div style={styles.analyticsCard}>
+            <div style={styles.analyticsHeader}>
+              <h3 style={styles.analyticsTitle}>Overdue Tasks</h3>
+              <span style={styles.analyticsIcon}>⚠️</span>
+            </div>
+            <div style={{
+              ...styles.analyticsValue,
+              color: analytics.overdueTasksCount > 0 ? '#ef4444' : '#10b981'
+            }}>
+              {analytics.overdueTasksCount}
+            </div>
+            <div style={styles.analyticsSubtext}>
+              {analytics.overdueTasksCount > 0 ? 'Need immediate attention' : 'All tasks on track'}
+            </div>
+          </div>
+        </div>
+
+        {/* Announcements */}
+        <div style={styles.announcementsSection}>
           <div style={styles.card}>
             <h3 style={styles.cardTitle}>
-              🕐 Recent Activity
+              📢 Announcements
             </h3>
-            {loadingActivity ? (
-              <div style={styles.emptyState}>Loading activity...</div>
-            ) : memberActivity.length > 0 ? (
+            {dueTasks.length > 0 ? (
               <div>
-                {memberActivity.map((activity) => (
-                  <div key={activity.id} style={styles.activityItem}>
-                    <span style={styles.activityIcon}>
-                      {getActivityIcon(activity.type)}
-                    </span>
-                    <div style={styles.activityContent}>
-                      <div style={styles.activityText}>
-                        <strong>{activity.user.full_name || activity.user.username}</strong> {activity.action}
-                        {activity.target && (
-                          <span style={styles.activityTarget}> "{activity.target}"</span>
-                        )}
-                      </div>
-                      <div style={styles.activityTime}>
-                        {formatTimeAgo(activity.timestamp)}
+                <p style={styles.description}>Tasks approaching their due dates:</p>
+                {dueTasks.map((task) => (
+                  <div key={task.id} style={styles.taskItem}>
+                    <div style={styles.taskInfo}>
+                      <div style={styles.taskTitle}>{task.title}</div>
+                      <div style={styles.taskMeta}>
+                        <span 
+                          style={{
+                            ...styles.priorityBadge,
+                            backgroundColor: getPriorityColor(task.priority)
+                          }}
+                        >
+                          {task.priority?.toUpperCase() || 'MEDIUM'}
+                        </span>
+                        <span style={styles.dueBadge}>
+                          {formatDueDate(task.due_date)}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -1002,56 +1082,96 @@ function ProjectDashboard() {
               </div>
             ) : (
               <div style={styles.emptyState}>
-                No recent activity. Get started by creating tasks or updating the project!
+                No upcoming due dates. Great job staying on track! 🎉
               </div>
             )}
           </div>
         </div>
 
-        {/* Right Column */}
-        <div>
-          <div style={styles.card}>
-            <h3 style={styles.cardTitle}>📊 Project Overview</h3>
-            <div style={styles.stat}>
-              <span style={styles.statLabel}>Status:</span>
-              <span style={styles.statValue}>{project.status?.toUpperCase()}</span>
-            </div>
-            <div style={styles.stat}>
-              <span style={styles.statLabel}>Difficulty:</span>
-              <span style={styles.statValue}>{project.difficulty_level?.toUpperCase()}</span>
-            </div>
-            <div style={styles.stat}>
-              <span style={styles.statLabel}>Duration:</span>
-              <span style={styles.statValue}>{project.estimated_duration_weeks} weeks</span>
-            </div>
-            <div style={styles.stat}>
-              <span style={styles.statLabel}>Team Size:</span>
-              <span style={styles.statValue}>
-                {project.current_members || 0}/{project.maximum_members} members
-              </span>
+        {/* Main Content Grid */}
+        <div style={styles.contentGrid}>
+          {/* Left Column */}
+          <div>
+            <div style={styles.card}>
+              <h3 style={styles.cardTitle}>
+                🕒 Recent Activity
+              </h3>
+              {loadingActivity ? (
+                <div style={styles.emptyState}>Loading activity...</div>
+              ) : memberActivity.length > 0 ? (
+                <div>
+                  {memberActivity.map((activity) => (
+                    <div key={activity.id} style={styles.activityItem}>
+                      <span style={styles.activityIcon}>
+                        {getActivityIcon(activity.type)}
+                      </span>
+                      <div style={styles.activityContent}>
+                        <div style={styles.activityText}>
+                          <strong>{activity.user.full_name || activity.user.username}</strong> {activity.action}
+                          {activity.target && (
+                            <span style={styles.activityTarget}> "{activity.target}"</span>
+                          )}
+                        </div>
+                        <div style={styles.activityTime}>
+                          {formatTimeAgo(activity.timestamp)}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={styles.emptyState}>
+                  No recent activity. Get started by creating tasks or updating the project!
+                </div>
+              )}
             </div>
           </div>
 
-          <div style={styles.card}>
-            <h3 style={styles.cardTitle}>📝 Description</h3>
-            <p style={styles.description}>{project.description}</p>
-          </div>
-
-          <div style={styles.card}>
-            <h3 style={styles.cardTitle}>💻 Technologies</h3>
-            {project.project_languages && project.project_languages.length > 0 ? (
-              project.project_languages.map((lang, index) => (
-                <span key={index} style={styles.tag}>
-                  {lang.programming_languages?.name || lang.name}
+          {/* Right Column */}
+          <div>
+            <div style={styles.card}>
+              <h3 style={styles.cardTitle}>📊 Project Overview</h3>
+              <div style={styles.stat}>
+                <span style={styles.statLabel}>Status:</span>
+                <span style={styles.statValue}>{project.status?.toUpperCase()}</span>
+              </div>
+              <div style={styles.stat}>
+                <span style={styles.statLabel}>Difficulty:</span>
+                <span style={styles.statValue}>{project.difficulty_level?.toUpperCase()}</span>
+              </div>
+              <div style={styles.stat}>
+                <span style={styles.statLabel}>Duration:</span>
+                <span style={styles.statValue}>{project.estimated_duration_weeks} weeks</span>
+              </div>
+              <div style={styles.stat}>
+                <span style={styles.statLabel}>Team Size:</span>
+                <span style={styles.statValue}>
+                  {project.current_members || 0}/{project.maximum_members} members
                 </span>
-              ))
-            ) : (
-              <p style={styles.description}>No technologies specified</p>
-            )}
+              </div>
+            </div>
+
+            <div style={styles.card}>
+              <h3 style={styles.cardTitle}>📝 Description</h3>
+              <p style={styles.description}>{project.description}</p>
+            </div>
+
+            <div style={styles.card}>
+              <h3 style={styles.cardTitle}>💻 Technologies</h3>
+              {project.project_languages && project.project_languages.length > 0 ? (
+                project.project_languages.map((lang, index) => (
+                  <span key={index} style={styles.tag}>
+                    {lang.programming_languages?.name || lang.name}
+                  </span>
+                ))
+              ) : (
+                <p style={styles.description}>No technologies specified</p>
+              )}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 

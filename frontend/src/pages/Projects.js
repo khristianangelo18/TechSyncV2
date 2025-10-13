@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { projectService } from '../services/projectService';
 import CreateProject from './CreateProject';
-import { Plus, User, Calendar, Users, Code } from 'lucide-react';
+import { Plus, User, Calendar, Users, Code, PanelLeft } from 'lucide-react';
 
 // Background symbols component with animations - MATCHING DASHBOARD
 const BackgroundSymbols = () => (
@@ -125,6 +125,7 @@ const BackgroundSymbols = () => (
       zIndex: 1,
       pointerEvents: 'none'
     }}>
+      {/* All floating symbols code here - keeping it the same */}
       <div className="floating-symbol" style={{
         position: 'absolute',
         fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
@@ -370,8 +371,35 @@ function Projects() {
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState({ show: false, project: null });
   const [deleting, setDeleting] = useState(false);
+  
+  // NEW STATE: Track sidebar collapsed state - read from localStorage
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    const saved = localStorage.getItem('sidebarCollapsed');
+    return saved === 'true';
+  });
 
   const colorVariants = ['slate', 'zinc', 'neutral', 'stone', 'gray', 'blue'];
+
+  // NEW: Listen for sidebar state changes from other components
+  useEffect(() => {
+    const handleSidebarToggle = (event) => {
+      setIsSidebarCollapsed(event.detail.collapsed);
+    };
+
+    window.addEventListener('sidebarToggle', handleSidebarToggle);
+    return () => window.removeEventListener('sidebarToggle', handleSidebarToggle);
+  }, []);
+
+  // NEW: Function to toggle sidebar
+  const toggleSidebar = () => {
+    const newCollapsedState = !isSidebarCollapsed;
+    setIsSidebarCollapsed(newCollapsedState);
+    localStorage.setItem('sidebarCollapsed', newCollapsedState.toString());
+    
+    window.dispatchEvent(new CustomEvent('sidebarToggle', {
+      detail: { collapsed: newCollapsedState }
+    }));
+  };
 
   useEffect(() => {
     fetchUserProjects();
@@ -621,6 +649,26 @@ function Projects() {
   };
 
   const styles = {
+    // NEW: Toggle button styles
+    toggleButton: {
+      position: 'fixed',
+      top: '20px',
+      left: isSidebarCollapsed ? '100px' : '290px',
+      zIndex: 1100,
+      width: '40px',
+      height: '40px',
+      borderRadius: '10px',
+      backgroundColor: 'rgba(26, 28, 32, 0.95)',
+      border: '1px solid rgba(255, 255, 255, 0.2)',
+      color: '#9ca3af',
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      transition: 'all 0.3s ease',
+      backdropFilter: 'blur(20px)',
+      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)'
+    },
     container: {
       minHeight: 'calc(100vh - 40px)',
       backgroundColor: '#0F1116',
@@ -629,8 +677,8 @@ function Projects() {
       overflow: 'hidden',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       padding: '20px',
-      paddingLeft: '270px',
-      marginLeft: '-150px'
+      paddingLeft: '120px',
+      transition: 'padding-left 0.3s ease'
     },
     header: {
       position: 'relative',
@@ -978,8 +1026,10 @@ function Projects() {
       position: 'relative',
       zIndex: 10,
       display: 'flex',
+      flexDirection: 'row',
       justifyContent: 'center',
       alignItems: 'center',
+      gap: '15px',
       minHeight: '400px',
       fontSize: '16px',
       color: '#9ca3af'
@@ -1098,195 +1148,267 @@ function Projects() {
 
   if (loading) {
     return (
-      <div style={styles.container}>
-        <BackgroundSymbols />
-        <div style={styles.loading}>
-          <div style={{
-            width: '48px',
-            height: '48px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }} className="global-loading-spinner">
-            <img 
-              src="/images/logo/TechSyncLogo.png" 
-              alt="TechSync Logo" 
-              style={{
-                width: '125%',
-                height: '125%',
-                objectFit: 'contain'
-              }}
-            />
+      <>
+        {/* Sidebar Toggle Button - OUTSIDE CONTAINER */}
+        <button
+          style={styles.toggleButton}
+          onClick={toggleSidebar}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.15)';
+            e.currentTarget.style.color = '#3b82f6';
+            e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.4)';
+            e.currentTarget.style.transform = 'scale(1.05)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(26, 28, 32, 0.95)';
+            e.currentTarget.style.color = '#9ca3af';
+            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+            e.currentTarget.style.transform = 'scale(1)';
+          }}
+          aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          <PanelLeft size={20} />
+        </button>
+
+        <div style={styles.container}>
+          <BackgroundSymbols />
+          <div style={styles.loading}>
+            <div style={{
+              width: '48px',
+              height: '48px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }} className="global-loading-spinner">
+              <img 
+                src="/images/logo/TechSyncLogo.png" 
+                alt="TechSync Logo" 
+                style={{
+                  width: '125%',
+                  height: '125%',
+                  objectFit: 'contain'
+                }}
+              />
+            </div>
+            <span>Loading projects...</span>
           </div>
-          <span>Loading projects...</span>
         </div>
-      </div>
+      </>
     );
   }
 
   if (error) {
     return (
-      <div style={styles.container}>
-        <BackgroundSymbols />
-        <div style={styles.error}>{error}</div>
-      </div>
+      <>
+        {/* Sidebar Toggle Button - OUTSIDE CONTAINER */}
+        <button
+          style={styles.toggleButton}
+          onClick={toggleSidebar}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.15)';
+            e.currentTarget.style.color = '#3b82f6';
+            e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.4)';
+            e.currentTarget.style.transform = 'scale(1.05)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(26, 28, 32, 0.95)';
+            e.currentTarget.style.color = '#9ca3af';
+            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+            e.currentTarget.style.transform = 'scale(1)';
+          }}
+          aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          <PanelLeft size={20} />
+        </button>
+
+        <div style={styles.container}>
+          <BackgroundSymbols />
+          <div style={styles.error}>{error}</div>
+        </div>
+      </>
     );
   }
 
   return (
-    <div style={styles.container}>
-      <BackgroundSymbols />
+    <>
+      {/* Sidebar Toggle Button - OUTSIDE CONTAINER */}
+      <button
+        style={styles.toggleButton}
+        onClick={toggleSidebar}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.15)';
+          e.currentTarget.style.color = '#3b82f6';
+          e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.4)';
+          e.currentTarget.style.transform = 'scale(1.05)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.backgroundColor = 'rgba(26, 28, 32, 0.95)';
+          e.currentTarget.style.color = '#9ca3af';
+          e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+          e.currentTarget.style.transform = 'scale(1)';
+        }}
+        aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+      >
+        <PanelLeft size={20} />
+      </button>
 
-      <div style={styles.header}>
-        <h1 style={styles.title}>
-          <Code size={28} style={{ color: '#3b82f6' }} />
-          My Projects
-        </h1>
-        <button
-          style={styles.createButton}
-          onClick={handleCreateProject}
-          onMouseEnter={(e) => {
-            e.target.style.transform = 'translateY(-2px)';
-            e.target.style.boxShadow = '0 6px 16px rgba(59, 130, 246, 0.4)';
-          }}
-          onMouseLeave={(e) => {
-            e.target.style.transform = 'translateY(0)';
-            e.target.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.3)';
-          }}
-        >
-          <Plus size={18} />
-          Create Project
-        </button>
-      </div>
+      <div style={styles.container}>
+        <BackgroundSymbols />
 
-      <div style={styles.tabsContainer}>
-        <button
-          style={{
-            ...styles.tab,
-            ...(activeTab === 'my' ? styles.activeTab : {})
-          }}
-          onClick={() => setActiveTab('my')}
-        >
-          <User size={16} />
-          My Projects
-          <span style={{
-            ...styles.tabCount,
-            ...(activeTab === 'my' ? styles.activeTabCount : {})
-          }}>
-            {myProjectsCount}
-          </span>
-        </button>
-        
-        <button
-          style={{
-            ...styles.tab,
-            ...(activeTab === 'joined' ? styles.activeTab : {})
-          }}
-          onClick={() => setActiveTab('joined')}
-        >
-          <Users size={16} />
-          Joined Projects
-          <span style={{
-            ...styles.tabCount,
-            ...(activeTab === 'joined' ? styles.activeTabCount : {})
-          }}>
-            {joinedProjectsCount}
-          </span>
-        </button>
-        
-        <button
-          style={{
-            ...styles.tab,
-            ...(activeTab === 'starred' ? styles.activeTab : {})
-          }}
-          onClick={() => setActiveTab('starred')}
-        >
-          ⭐ Starred
-          <span style={{
-            ...styles.tabCount,
-            ...(activeTab === 'starred' ? styles.activeTabCount : {})
-          }}>
-            {starredProjectsCount}
-          </span>
-        </button>
-      </div>
-
-      {filteredProjects.length > 0 ? (
-        <div style={styles.projectsGrid}>
-          {filteredProjects.map((project, index) => renderProjectCard(project, index))}
+        <div style={styles.header}>
+          <h1 style={styles.title}>
+            <Code size={28} style={{ color: '#3b82f6' }} />
+            My Projects
+          </h1>
+          <button
+            style={styles.createButton}
+            onClick={handleCreateProject}
+            onMouseEnter={(e) => {
+              e.target.style.transform = 'translateY(-2px)';
+              e.target.style.boxShadow = '0 6px 16px rgba(59, 130, 246, 0.4)';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.transform = 'translateY(0)';
+              e.target.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.3)';
+            }}
+          >
+            <Plus size={18} />
+            Create Project
+          </button>
         </div>
-      ) : (
-        <div style={styles.emptyState}>
-          <div style={styles.emptyStateIcon}>
-            {activeTab === 'my' ? '📁' : activeTab === 'joined' ? '👥' : '⭐'}
-          </div>
-          <div style={styles.emptyStateText}>
-            {activeTab === 'my' && "You haven't created any projects yet"}
-            {activeTab === 'joined' && "You haven't joined any projects yet"}
-            {activeTab === 'starred' && "You haven't starred any projects yet"}
-          </div>
-          <p style={styles.emptyStateSubtext}>
-            {activeTab === 'my' && "Click 'Create Project' to get started!"}
-            {activeTab === 'joined' && "Browse available projects to find one that interests you."}
-            {activeTab === 'starred' && "Star projects to save them for later."}
-          </p>
-        </div>
-      )}
 
-      {showCreateProject && (
-        <div style={styles.modal} onClick={handleCloseCreateProject}>
-          <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-            <CreateProject onClose={handleCloseCreateProject} />
-          </div>
+        <div style={styles.tabsContainer}>
+          <button
+            style={{
+              ...styles.tab,
+              ...(activeTab === 'my' ? styles.activeTab : {})
+            }}
+            onClick={() => setActiveTab('my')}
+          >
+            <User size={16} />
+            My Projects
+            <span style={{
+              ...styles.tabCount,
+              ...(activeTab === 'my' ? styles.activeTabCount : {})
+            }}>
+              {myProjectsCount}
+            </span>
+          </button>
+          
+          <button
+            style={{
+              ...styles.tab,
+              ...(activeTab === 'joined' ? styles.activeTab : {})
+            }}
+            onClick={() => setActiveTab('joined')}
+          >
+            <Users size={16} />
+            Joined Projects
+            <span style={{
+              ...styles.tabCount,
+              ...(activeTab === 'joined' ? styles.activeTabCount : {})
+            }}>
+              {joinedProjectsCount}
+            </span>
+          </button>
+          
+          <button
+            style={{
+              ...styles.tab,
+              ...(activeTab === 'starred' ? styles.activeTab : {})
+            }}
+            onClick={() => setActiveTab('starred')}
+          >
+            ⭐ Starred
+            <span style={{
+              ...styles.tabCount,
+              ...(activeTab === 'starred' ? styles.activeTabCount : {})
+            }}>
+              {starredProjectsCount}
+            </span>
+          </button>
         </div>
-      )}
 
-      {deleteConfirm.show && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.modalContent}>
-            <div style={styles.modalHeader}>
-              <h2 style={styles.modalTitle}>Delete Project</h2>
-              <p style={styles.modalMessage}>
-                Are you sure you want to delete{' '}
-                <span style={{fontWeight: 'bold', color: 'white'}}>"{deleteConfirm.project?.title}"</span>?
-                This action cannot be undone and will permanently remove all project data.
-              </p>
+        {filteredProjects.length > 0 ? (
+          <div style={styles.projectsGrid}>
+            {filteredProjects.map((project, index) => renderProjectCard(project, index))}
+          </div>
+        ) : (
+          <div style={styles.emptyState}>
+            <div style={styles.emptyStateIcon}>
+              {activeTab === 'my' ? '📁' : activeTab === 'joined' ? '👥' : '⭐'}
             </div>
-            <div style={styles.modalActions}>
-              <button
-                style={styles.cancelButton}
-                onClick={cancelDelete}
-                disabled={deleting}
-                onMouseEnter={(e) => {
-                  e.target.style.backgroundColor = '#4b5563';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.backgroundColor = '#6b7280';
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                style={{
-                  ...styles.confirmButton,
-                  ...(deleting ? styles.disabledButton : {})
-                }}
-                onClick={confirmDelete}
-                disabled={deleting}
-                onMouseEnter={(e) => {
-                  if (!deleting) e.target.style.backgroundColor = '#c53030';
-                }}
-                onMouseLeave={(e) => {
-                  if (!deleting) e.target.style.backgroundColor = '#dc3545';
-                }}
-              >
-                {deleting ? 'Deleting...' : 'Delete Project'}
-              </button>
+            <div style={styles.emptyStateText}>
+              {activeTab === 'my' && "You haven't created any projects yet"}
+              {activeTab === 'joined' && "You haven't joined any projects yet"}
+              {activeTab === 'starred' && "You haven't starred any projects yet"}
+            </div>
+            <p style={styles.emptyStateSubtext}>
+              {activeTab === 'my' && "Click 'Create Project' to get started!"}
+              {activeTab === 'joined' && "Browse available projects to find one that interests you."}
+              {activeTab === 'starred' && "Star projects to save them for later."}
+            </p>
+          </div>
+        )}
+
+        {showCreateProject && (
+          <div style={styles.modal} onClick={handleCloseCreateProject}>
+            <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+              <CreateProject onClose={handleCloseCreateProject} />
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+
+        {deleteConfirm.show && (
+          <div style={styles.modalOverlay}>
+            <div style={styles.modalContent}>
+              <div style={styles.modalHeader}>
+                <h2 style={styles.modalTitle}>Delete Project</h2>
+                <p style={styles.modalMessage}>
+                  Are you sure you want to delete{' '}
+                  <span style={{fontWeight: 'bold', color: 'white'}}>"{deleteConfirm.project?.title}"</span>?
+                  This action cannot be undone and will permanently remove all project data.
+                </p>
+              </div>
+              <div style={styles.modalActions}>
+                <button
+                  style={styles.cancelButton}
+                  onClick={cancelDelete}
+                  disabled={deleting}
+                  onMouseEnter={(e) => {
+                    e.target.style.backgroundColor = '#4b5563';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.backgroundColor = '#6b7280';
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  style={{
+                    ...styles.confirmButton,
+                    ...(deleting ? styles.disabledButton : {})
+                  }}
+                  onClick={confirmDelete}
+                  disabled={deleting}
+                  onMouseEnter={(e) => {
+                    if (!deleting) e.target.style.backgroundColor = '#c53030';
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!deleting) e.target.style.backgroundColor = '#dc3545';
+                  }}
+                >
+                  {deleting ? 'Deleting...' : 'Delete Project'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </>
   );
 }
 

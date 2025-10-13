@@ -591,7 +591,7 @@ const Features = () => {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <img 
-            src="/images/logo/TechSyncLogo.png"
+            src="/images/logo/techsyncinitiallogo.png"
             alt="TechSync Logo"
             style={{
               width: '40px',

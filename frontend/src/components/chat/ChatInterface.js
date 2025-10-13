@@ -170,15 +170,15 @@ const ChatInterface = ({ projectId }) => {
           }
         `}</style>
         
-        <div style={{   
-          flex: 1, 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center', 
-          backgroundColor: '#0F1116',
-          height: '100vh',
-          maxHeight: '100vh',
-          overflow: 'hidden'}}>
+        <div style={{
+          display: 'flex',
+          flexDirection: 'row',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: '15px',
+          minHeight: '400px',
+          fontSize: '18px',
+          color: '#9ca3af'}}>
           <div style={{ 
             display: 'flex', 
             alignItems: 'center', 

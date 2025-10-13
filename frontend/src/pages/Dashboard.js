@@ -9,7 +9,7 @@ import CreateProject from './CreateProject';
 import NotificationDropdown from '../components/Notifications/NotificationDropdown';
 import AIChatInterface from '../components/AIChat/AIChatInterface';
 import ProjectChallengeInterface from '../components/ProjectChallengeInterface'; // ADD THIS IMPORT
-import { Plus, Bell, Rocket, Code, Users, BookOpen, HelpCircle, LockKeyhole } from 'lucide-react';
+import { Plus, Bell, Rocket, Code, Users, BookOpen, HelpCircle, LockKeyhole, PanelLeft } from 'lucide-react';
 
 // Enhanced Project Card Component with subtle themed colors
 const EnhancedProjectCard = ({
@@ -546,6 +546,15 @@ function Dashboard() {
   const [showChallengeModal, setShowChallengeModal] = useState(false);
   const [selectedProjectForChallenge, setSelectedProjectForChallenge] = useState(null);
 
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    const saved = localStorage.getItem('sidebarCollapsed');
+    console.log('🏠 DASHBOARD MOUNT - localStorage:', saved, 'state will be:', saved === 'true');
+    return saved === 'true';
+  });
+
+  // Add debug log right after state declaration
+  console.log('🏠 DASHBOARD RENDER - isSidebarCollapsed:', isSidebarCollapsed, 'paddingLeft:', isSidebarCollapsed ? '120px' : '310px');
+ 
   const { 
     unreadCount, 
     notifications, 
@@ -554,6 +563,16 @@ function Dashboard() {
 
   // Subtle color variants for project cards - aligned with dark theme
   const colorVariants = ['slate', 'zinc', 'neutral', 'stone', 'gray', 'blue'];
+
+  const toggleSidebar = () => {
+    const newCollapsedState = !isSidebarCollapsed;
+    setIsSidebarCollapsed(newCollapsedState);
+    localStorage.setItem('sidebarCollapsed', newCollapsedState.toString());
+    
+    window.dispatchEvent(new CustomEvent('sidebarToggle', {
+      detail: { collapsed: newCollapsedState }
+    }));
+  };
 
   // Custom scrollbar styles for the project preview modal + dropdown styling + FLOATING ANIMATIONS
   const customScrollbarStyles = `
@@ -785,6 +804,15 @@ function Dashboard() {
       transition: filter 0.3s ease;
     }
   `;
+  useEffect(() => {
+    const handleSidebarToggle = (event) => {
+      console.log('🏠 DASHBOARD received toggle event:', event.detail.collapsed);
+      setIsSidebarCollapsed(event.detail.collapsed);
+    };
+
+    window.addEventListener('sidebarToggle', handleSidebarToggle);
+    return () => window.removeEventListener('sidebarToggle', handleSidebarToggle);
+  }, []);
 
   useEffect(() => {
     const fetchRecommendations = async () => {
@@ -1047,6 +1075,25 @@ function Dashboard() {
   };
 
   const styles = {
+    toggleButton: {
+      position: 'fixed',
+      top: '20px',
+      left: isSidebarCollapsed ? '100px' : '290px',
+      zIndex: 1100,
+      width: '40px',
+      height: '40px',
+      borderRadius: '10px',
+      backgroundColor: 'rgba(26, 28, 32, 0.95)',
+      border: '1px solid rgba(255, 255, 255, 0.2)',
+      color: '#9ca3af',
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      transition: 'all 0.3s ease',
+      backdropFilter: 'blur(20px)',
+      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)'
+    },
     container: {
       minHeight: 'calc(100vh - 40px)',
       backgroundColor: '#0F1116',
@@ -1055,8 +1102,8 @@ function Dashboard() {
       overflow: 'hidden',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       padding: '20px',
-      paddingLeft: '270px',
-      marginLeft: '-150px'
+      paddingLeft: '120px',
+      transition: 'padding-left 0.3s ease'
     },
     header: {
       position: 'relative',
@@ -1534,8 +1581,10 @@ function Dashboard() {
       position: 'relative',
       zIndex: 10,
       display: 'flex',
+      flexDirection: 'row',
       justifyContent: 'center',
       alignItems: 'center',
+      gap: '15px',
       minHeight: '400px',
       fontSize: '16px',
       color: '#9ca3af'
@@ -1786,6 +1835,27 @@ function Dashboard() {
 
   return (
     <>
+      {/* Sidebar Toggle Button - OUTSIDE CONTAINER */}
+      <button
+        style={styles.toggleButton}
+        onClick={toggleSidebar}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.15)';
+          e.currentTarget.style.color = '#3b82f6';
+          e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.4)';
+          e.currentTarget.style.transform = 'scale(1.05)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.backgroundColor = 'rgba(26, 28, 32, 0.95)';
+          e.currentTarget.style.color = '#9ca3af';
+          e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+          e.currentTarget.style.transform = 'scale(1)';
+        }}
+        aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+      >
+        <PanelLeft size={20} />
+      </button>
       {/* Add custom scrollbar styles + floating animations */}
       <style dangerouslySetInnerHTML={{ __html: customScrollbarStyles }} />
       

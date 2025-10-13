@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import ChallengeForm from '../components/ChallengeForm';
 import ChallengeAPI from '../services/challengeAPI';
-import { Plus, Search, Filter, X, Edit3, Trash2, Clock, Users, Code } from 'lucide-react';
+import { Plus, Search, Filter, X, Edit3, Trash2, Clock, Users, Code, PanelLeft } from 'lucide-react';
 
 // Background symbols component with animations
 const BackgroundSymbols = () => (
@@ -362,6 +362,33 @@ const ChallengeManagement = () => {
   });
   const [languages, setLanguages] = useState([]);
   const [showFilters, setShowFilters] = useState(false);
+  
+  // Sidebar state - initialize from localStorage with lazy initialization
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    const saved = localStorage.getItem('sidebarCollapsed');
+    return saved === 'true';
+  });
+
+  // Listen for sidebar state changes from Sidebar component
+  useEffect(() => {
+    const handleSidebarToggle = (event) => {
+      setIsSidebarCollapsed(event.detail.collapsed);
+    };
+
+    window.addEventListener('sidebarToggle', handleSidebarToggle);
+    return () => window.removeEventListener('sidebarToggle', handleSidebarToggle);
+  }, []);
+
+  // Function to toggle sidebar
+  const toggleSidebar = () => {
+    const newCollapsedState = !isSidebarCollapsed;
+    setIsSidebarCollapsed(newCollapsedState);
+    localStorage.setItem('sidebarCollapsed', newCollapsedState.toString());
+    
+    window.dispatchEvent(new CustomEvent('sidebarToggle', {
+      detail: { collapsed: newCollapsedState }
+    }));
+  };
 
   const sanitizeFilters = (filters) => {
     const sanitized = {};
@@ -526,6 +553,26 @@ const ChallengeManagement = () => {
   };
 
   const styles = {
+    // Sidebar toggle button style
+    toggleButton: {
+      position: 'fixed',
+      top: '20px',
+      left: isSidebarCollapsed ? '100px' : '290px',
+      zIndex: 1100,
+      width: '40px',
+      height: '40px',
+      borderRadius: '10px',
+      backgroundColor: 'rgba(26, 28, 32, 0.95)',
+      border: '1px solid rgba(255, 255, 255, 0.2)',
+      color: '#9ca3af',
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      transition: 'all 0.3s ease',
+      backdropFilter: 'blur(20px)',
+      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)'
+    },
     container: {
       minHeight: 'calc(100vh - 40px)',
       backgroundColor: '#0F1116',
@@ -534,8 +581,8 @@ const ChallengeManagement = () => {
       overflow: 'hidden',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       padding: '20px',
-      paddingLeft: '270px',
-      marginLeft: '-150px'
+      paddingLeft: '120px',
+      transition: 'padding-left 0.3s ease'
     },
     header: {
       position: 'relative',
@@ -709,8 +756,10 @@ const ChallengeManagement = () => {
       position: 'relative',
       zIndex: 10,
       display: 'flex',
+      flexDirection: 'row',
       justifyContent: 'center',
       alignItems: 'center',
+      gap: '15px',
       minHeight: '400px',
       fontSize: '16px',
       color: '#9ca3af'
@@ -856,157 +905,243 @@ const ChallengeManagement = () => {
 
   if (showCreateForm) {
     return (
-      <div style={styles.container}>
-        <BackgroundSymbols />
-        <div style={styles.header}>
-          <h1 style={styles.title}>
-            <Plus size={28} style={{ color: '#3b82f6' }} />
-            Create New Challenge
-          </h1>
-          <button
-            onClick={() => setShowCreateForm(false)}
-            style={styles.cancelButton}
-            onMouseEnter={(e) => {
-              e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.15)';
-              e.target.style.transform = 'translateY(-1px)';
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
-              e.target.style.transform = 'translateY(0)';
-            }}
-          >
-            Cancel
-          </button>
+      <>
+        <button
+          style={styles.toggleButton}
+          onClick={toggleSidebar}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.15)';
+            e.currentTarget.style.color = '#3b82f6';
+            e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.4)';
+            e.currentTarget.style.transform = 'scale(1.05)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(26, 28, 32, 0.95)';
+            e.currentTarget.style.color = '#9ca3af';
+            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+            e.currentTarget.style.transform = 'scale(1)';
+          }}
+          aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          <PanelLeft size={20} />
+        </button>
+
+        <div style={styles.container}>
+          <BackgroundSymbols />
+          <div style={styles.header}>
+            <h1 style={styles.title}>
+              <Plus size={28} style={{ color: '#3b82f6' }} />
+              Create New Challenge
+            </h1>
+            <button
+              onClick={() => setShowCreateForm(false)}
+              style={styles.cancelButton}
+              onMouseEnter={(e) => {
+                e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.15)';
+                e.target.style.transform = 'translateY(-1px)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+                e.target.style.transform = 'translateY(0)';
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+          <div style={{ position: 'relative', zIndex: 10 }}>
+            <ChallengeForm
+              onSuccess={handleCreateSuccess}
+              onCancel={() => setShowCreateForm(false)}
+              languages={languages}
+            />
+          </div>
         </div>
-        <div style={{ position: 'relative', zIndex: 10 }}>
-          <ChallengeForm
-            onSuccess={handleCreateSuccess}
-            onCancel={() => setShowCreateForm(false)}
-            languages={languages}
-          />
-        </div>
-      </div>
+      </>
     );
   }
 
   if (editingChallenge) {
     return (
-      <div style={styles.container}>
-        <BackgroundSymbols />
-        <div style={styles.header}>
-          <h1 style={styles.title}>
-            <Edit3 size={28} style={{ color: '#f59e0b' }} />
-            Edit Challenge
-          </h1>
-          <button
-            onClick={() => setEditingChallenge(null)}
-            style={styles.cancelButton}
-            onMouseEnter={(e) => {
-              e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.15)';
-              e.target.style.transform = 'translateY(-1px)';
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
-              e.target.style.transform = 'translateY(0)';
-            }}
-          >
-            Cancel
-          </button>
+      <>
+        <button
+          style={styles.toggleButton}
+          onClick={toggleSidebar}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.15)';
+            e.currentTarget.style.color = '#3b82f6';
+            e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.4)';
+            e.currentTarget.style.transform = 'scale(1.05)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(26, 28, 32, 0.95)';
+            e.currentTarget.style.color = '#9ca3af';
+            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+            e.currentTarget.style.transform = 'scale(1)';
+          }}
+          aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          <PanelLeft size={20} />
+        </button>
+
+        <div style={styles.container}>
+          <BackgroundSymbols />
+          <div style={styles.header}>
+            <h1 style={styles.title}>
+              <Edit3 size={28} style={{ color: '#f59e0b' }} />
+              Edit Challenge
+            </h1>
+            <button
+              onClick={() => setEditingChallenge(null)}
+              style={styles.cancelButton}
+              onMouseEnter={(e) => {
+                e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.15)';
+                e.target.style.transform = 'translateY(-1px)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+                e.target.style.transform = 'translateY(0)';
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+          <div style={{ position: 'relative', zIndex: 10 }}>
+            <ChallengeForm
+              initialData={editingChallenge}
+              onSuccess={handleEditSuccess}
+              onCancel={() => setEditingChallenge(null)}
+              languages={languages}
+            />
+          </div>
         </div>
-        <div style={{ position: 'relative', zIndex: 10 }}>
-          <ChallengeForm
-            initialData={editingChallenge}
-            onSuccess={handleEditSuccess}
-            onCancel={() => setEditingChallenge(null)}
-            languages={languages}
-          />
-        </div>
-      </div>
+      </>
     );
   }
 
   return (
-    <div style={styles.container}>
-      <BackgroundSymbols />
+    <>
+      <button
+        style={styles.toggleButton}
+        onClick={toggleSidebar}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.15)';
+          e.currentTarget.style.color = '#3b82f6';
+          e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.4)';
+          e.currentTarget.style.transform = 'scale(1.05)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.backgroundColor = 'rgba(26, 28, 32, 0.95)';
+          e.currentTarget.style.color = '#9ca3af';
+          e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+          e.currentTarget.style.transform = 'scale(1)';
+        }}
+        aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+      >
+        <PanelLeft size={20} />
+      </button>
 
-      <div style={styles.header}>
-        <div style={styles.headerLeft}>
-          <h1 style={styles.title}>
-            <Code size={28} style={{ color: '#3b82f6' }} />
-            Challenge Management
-          </h1>
-        </div>
-        <button
-          onClick={() => setShowCreateForm(true)}
-          style={styles.createButton}
-          onMouseEnter={(e) => {
-            e.target.style.transform = 'translateY(-2px)';
-            e.target.style.boxShadow = '0 6px 16px rgba(59, 130, 246, 0.4)';
-          }}
-          onMouseLeave={(e) => {
-            e.target.style.transform = 'translateY(0)';
-            e.target.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.3)';
-          }}
-        >
-          <Plus size={18} />
-          Create New Challenge
-        </button>
-      </div>
+      <div style={styles.container}>
+        <BackgroundSymbols />
 
-      {error && (
-        <div style={styles.error}>
-          {error}
-          <button 
-            onClick={() => setError('')}
-            style={styles.dismissButton}
+        <div style={styles.header}>
+          <div style={styles.headerLeft}>
+            <h1 style={styles.title}>
+              <Code size={28} style={{ color: '#3b82f6' }} />
+              Challenge Management
+            </h1>
+          </div>
+          <button
+            onClick={() => setShowCreateForm(true)}
+            style={styles.createButton}
             onMouseEnter={(e) => {
-              e.target.style.transform = 'scale(1.1)';
+              e.target.style.transform = 'translateY(-2px)';
+              e.target.style.boxShadow = '0 6px 16px rgba(59, 130, 246, 0.4)';
             }}
             onMouseLeave={(e) => {
-              e.target.style.transform = 'scale(1)';
+              e.target.style.transform = 'translateY(0)';
+              e.target.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.3)';
             }}
           >
-            <X size={16} />
+            <Plus size={18} />
+            Create New Challenge
           </button>
         </div>
-      )}
 
-      {!loading && challenges.length > 0 && (
-        <div style={styles.filterSection}>
-          <div style={styles.filterHeader}>
-            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold', color: 'white' }}>
-              Filter & Search Challenges
-            </h3>
-            <button
-              style={styles.filterToggle}
-              onClick={() => setShowFilters(!showFilters)}
+        {error && (
+          <div style={styles.error}>
+            {error}
+            <button 
+              onClick={() => setError('')}
+              style={styles.dismissButton}
               onMouseEnter={(e) => {
-                e.target.style.backgroundColor = '#3b82f6';
-                e.target.style.color = 'white';
+                e.target.style.transform = 'scale(1.1)';
               }}
               onMouseLeave={(e) => {
-                e.target.style.backgroundColor = 'transparent';
-                e.target.style.color = '#3b82f6';
+                e.target.style.transform = 'scale(1)';
               }}
             >
-              <Filter size={16} />
-              {showFilters ? 'Hide Filters' : 'Show Filters'}
+              <X size={16} />
             </button>
           </div>
+        )}
 
-          {showFilters && (
-            <>
-              <div style={styles.filterControls}>
-                <div style={styles.filterGroup}>
-                  <label style={styles.filterLabel}>Search Challenges</label>
-                  <div style={styles.searchContainer}>
-                    <Search size={16} style={styles.searchIcon} />
-                    <input
-                      type="text"
-                      placeholder="Search by title or description..."
-                      value={filters.search}
-                      onChange={(e) => handleFilterChange('search', e.target.value)}
-                      style={styles.searchInput}
+        {!loading && challenges.length > 0 && (
+          <div style={styles.filterSection}>
+            <div style={styles.filterHeader}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold', color: 'white' }}>
+                Filter & Search Challenges
+              </h3>
+              <button
+                style={styles.filterToggle}
+                onClick={() => setShowFilters(!showFilters)}
+                onMouseEnter={(e) => {
+                  e.target.style.backgroundColor = '#3b82f6';
+                  e.target.style.color = 'white';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.backgroundColor = 'transparent';
+                  e.target.style.color = '#3b82f6';
+                }}
+              >
+                <Filter size={16} />
+                {showFilters ? 'Hide Filters' : 'Show Filters'}
+              </button>
+            </div>
+
+            {showFilters && (
+              <>
+                <div style={styles.filterControls}>
+                  <div style={styles.filterGroup}>
+                    <label style={styles.filterLabel}>Search Challenges</label>
+                    <div style={styles.searchContainer}>
+                      <Search size={16} style={styles.searchIcon} />
+                      <input
+                        type="text"
+                        placeholder="Search by title or description..."
+                        value={filters.search}
+                        onChange={(e) => handleFilterChange('search', e.target.value)}
+                        style={styles.searchInput}
+                        onFocus={(e) => {
+                          e.target.style.borderColor = '#3b82f6';
+                          e.target.style.boxShadow = '0 0 0 2px rgba(59, 130, 246, 0.2)';
+                        }}
+                        onBlur={(e) => {
+                          e.target.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                          e.target.style.boxShadow = 'none';
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={styles.filterGroup}>
+                    <label style={styles.filterLabel}>Difficulty Level</label>
+                    <select
+                      value={filters.difficulty_level}
+                      onChange={(e) => handleFilterChange('difficulty_level', e.target.value)}
+                      style={styles.filterSelect}
                       onFocus={(e) => {
                         e.target.style.borderColor = '#3b82f6';
                         e.target.style.boxShadow = '0 0 0 2px rgba(59, 130, 246, 0.2)';
@@ -1015,200 +1150,183 @@ const ChallengeManagement = () => {
                         e.target.style.borderColor = 'rgba(255, 255, 255, 0.2)';
                         e.target.style.boxShadow = 'none';
                       }}
-                    />
+                    >
+                      <option value="">All Difficulties</option>
+                      <option value="easy">Easy</option>
+                      <option value="medium">Medium</option>
+                      <option value="hard">Hard</option>
+                      <option value="expert">Expert</option>
+                    </select>
+                  </div>
+
+                  <div style={styles.filterGroup}>
+                    <label style={styles.filterLabel}>Programming Language</label>
+                    <select
+                      value={filters.programming_language_id}
+                      onChange={(e) => handleFilterChange('programming_language_id', e.target.value)}
+                      style={styles.filterSelect}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = '#3b82f6';
+                        e.target.style.boxShadow = '0 0 0 2px rgba(59, 130, 246, 0.2)';
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                        e.target.style.boxShadow = 'none';
+                      }}
+                    >
+                      <option value="">All Languages</option>
+                      {languages.map(lang => (
+                        <option key={lang.id} value={lang.id}>
+                          {lang.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
-                <div style={styles.filterGroup}>
-                  <label style={styles.filterLabel}>Difficulty Level</label>
-                  <select
-                    value={filters.difficulty_level}
-                    onChange={(e) => handleFilterChange('difficulty_level', e.target.value)}
-                    style={styles.filterSelect}
-                    onFocus={(e) => {
-                      e.target.style.borderColor = '#3b82f6';
-                      e.target.style.boxShadow = '0 0 0 2px rgba(59, 130, 246, 0.2)';
+                <div style={{ textAlign: 'right' }}>
+                  <button
+                    onClick={clearFilters}
+                    style={styles.clearButton}
+                    onMouseEnter={(e) => {
+                      e.target.style.backgroundColor = '#4b5563';
+                      e.target.style.transform = 'translateY(-1px)';
                     }}
-                    onBlur={(e) => {
-                      e.target.style.borderColor = 'rgba(255, 255, 255, 0.2)';
-                      e.target.style.boxShadow = 'none';
+                    onMouseLeave={(e) => {
+                      e.target.style.backgroundColor = '#6b7280';
+                      e.target.style.transform = 'translateY(0)';
                     }}
                   >
-                    <option value="">All Difficulties</option>
-                    <option value="easy">Easy</option>
-                    <option value="medium">Medium</option>
-                    <option value="hard">Hard</option>
-                    <option value="expert">Expert</option>
-                  </select>
+                    <X size={16} />
+                    Clear Filters
+                  </button>
                 </div>
-
-                <div style={styles.filterGroup}>
-                  <label style={styles.filterLabel}>Programming Language</label>
-                  <select
-                    value={filters.programming_language_id}
-                    onChange={(e) => handleFilterChange('programming_language_id', e.target.value)}
-                    style={styles.filterSelect}
-                    onFocus={(e) => {
-                      e.target.style.borderColor = '#3b82f6';
-                      e.target.style.boxShadow = '0 0 0 2px rgba(59, 130, 246, 0.2)';
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.borderColor = 'rgba(255, 255, 255, 0.2)';
-                      e.target.style.boxShadow = 'none';
-                    }}
-                  >
-                    <option value="">All Languages</option>
-                    {languages.map(lang => (
-                      <option key={lang.id} value={lang.id}>
-                        {lang.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div style={{ textAlign: 'right' }}>
-                <button
-                  onClick={clearFilters}
-                  style={styles.clearButton}
-                  onMouseEnter={(e) => {
-                    e.target.style.backgroundColor = '#4b5563';
-                    e.target.style.transform = 'translateY(-1px)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.backgroundColor = '#6b7280';
-                    e.target.style.transform = 'translateY(0)';
-                  }}
-                >
-                  <X size={16} />
-                  Clear Filters
-                </button>
-              </div>
-            </>
-          )}
-
-          <div style={styles.resultsCount}>
-            Showing {challenges.length} challenge{challenges.length !== 1 ? 's' : ''}
-            {(filters.difficulty_level || filters.programming_language_id || filters.search) && (
-              <span style={{ color: '#60a5fa', fontWeight: '500' }}> (filtered)</span>
+              </>
             )}
-          </div>
-        </div>
-      )}
 
-      {loading ? (
-        <div style={styles.loading}>
-          <div style={{
-            width: '48px',
-            height: '48px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }} className="global-loading-spinner">
-            <img 
-               src="/images/logo/TechSyncLogo.png" 
-               alt="TechSync Logo" 
-               style={{
-               width: '125%',
-               height: '125%',
-               objectFit: 'contain'
-            }}
-          />
-          </div>
-          <span>Loading personalized recommendation...</span>
-        </div>
-      ) : challenges.length === 0 ? (
-        <div style={styles.empty}>
-          No challenges found. Create your first challenge!
-        </div>
-      ) : (
-        <div style={styles.challengeGrid}>
-          {challenges.map((challenge) => (
-            <div 
-              key={challenge.id} 
-              style={styles.challengeCard}
-              onMouseEnter={(e) => {
-                Object.assign(e.currentTarget.style, styles.challengeCardHover);
-              }}
-              onMouseLeave={(e) => {
-                Object.assign(e.currentTarget.style, styles.challengeCard);
-              }}
-            >
-              <h3 style={styles.challengeTitle}>
-                <Code size={20} style={{ color: '#3b82f6' }} />
-                {challenge.title}
-              </h3>
-              
-              <p style={styles.challengeDescription}>
-                {challenge.description}
-              </p>
-              
-              <div style={styles.challengeMeta}>
-                <span 
-                  style={{
-                    ...styles.difficultyBadge,
-                    backgroundColor: getDifficultyColor(challenge.difficulty_level)
-                  }}
-                >
-                  {challenge.difficulty_level?.toUpperCase() || 'MEDIUM'}
-                </span>
-                
-                {challenge.programming_language && (
-                  <span style={styles.languageBadge}>
-                    <Code size={14} />
-                    {challenge.programming_language.name || challenge.programming_language}
-                  </span>
-                )}
-                
-                {challenge.time_limit_minutes && (
-                  <span style={styles.timeBadge}>
-                    <Clock size={14} />
-                    {challenge.time_limit_minutes} min
-                  </span>
-                )}
-              </div>
-
-              <div style={styles.challengeActions}>
-                <button
-                  onClick={() => setEditingChallenge(challenge)}
-                  style={styles.editButton}
-                  onMouseEnter={(e) => {
-                    e.target.style.backgroundColor = '#d97706';
-                    e.target.style.transform = 'translateY(-1px)';
-                    e.target.style.boxShadow = '0 4px 12px rgba(245, 158, 11, 0.3)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.backgroundColor = '#f59e0b';
-                    e.target.style.transform = 'translateY(0)';
-                    e.target.style.boxShadow = 'none';
-                  }}
-                >
-                  <Edit3 size={14} />
-                  Edit
-                </button>
-                <button
-                  onClick={() => handleDelete(challenge.id)}
-                  style={styles.deleteButton}
-                  onMouseEnter={(e) => {
-                    e.target.style.backgroundColor = '#dc2626';
-                    e.target.style.transform = 'translateY(-1px)';
-                    e.target.style.boxShadow = '0 4px 12px rgba(239, 68, 68, 0.3)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.backgroundColor = '#ef4444';
-                    e.target.style.transform = 'translateY(0)';
-                    e.target.style.boxShadow = 'none';
-                  }}
-                >
-                  <Trash2 size={14} />
-                  Delete
-                </button>
-              </div>
+            <div style={styles.resultsCount}>
+              Showing {challenges.length} challenge{challenges.length !== 1 ? 's' : ''}
+              {(filters.difficulty_level || filters.programming_language_id || filters.search) && (
+                <span style={{ color: '#60a5fa', fontWeight: '500' }}> (filtered)</span>
+              )}
             </div>
-          ))}
-        </div>
-      )}
-    </div>
+          </div>
+        )}
+
+        {loading ? (
+          <div style={styles.loading}>
+            <div style={{
+              width: '48px',
+              height: '48px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }} className="global-loading-spinner">
+              <img 
+                 src="/images/logo/TechSyncLogo.png" 
+                 alt="TechSync Logo" 
+                 style={{
+                 width: '125%',
+                 height: '125%',
+                 objectFit: 'contain'
+              }}
+            />
+            </div>
+            <span>Loading personalized recommendation...</span>
+          </div>
+        ) : challenges.length === 0 ? (
+          <div style={styles.empty}>
+            No challenges found. Create your first challenge!
+          </div>
+        ) : (
+          <div style={styles.challengeGrid}>
+            {challenges.map((challenge) => (
+              <div 
+                key={challenge.id} 
+                style={styles.challengeCard}
+                onMouseEnter={(e) => {
+                  Object.assign(e.currentTarget.style, styles.challengeCardHover);
+                }}
+                onMouseLeave={(e) => {
+                  Object.assign(e.currentTarget.style, styles.challengeCard);
+                }}
+              >
+                <h3 style={styles.challengeTitle}>
+                  <Code size={20} style={{ color: '#3b82f6' }} />
+                  {challenge.title}
+                </h3>
+                
+                <p style={styles.challengeDescription}>
+                  {challenge.description}
+                </p>
+                
+                <div style={styles.challengeMeta}>
+                  <span 
+                    style={{
+                      ...styles.difficultyBadge,
+                      backgroundColor: getDifficultyColor(challenge.difficulty_level)
+                    }}
+                  >
+                    {challenge.difficulty_level?.toUpperCase() || 'MEDIUM'}
+                  </span>
+                  
+                  {challenge.programming_language && (
+                    <span style={styles.languageBadge}>
+                      <Code size={14} />
+                      {challenge.programming_language.name || challenge.programming_language}
+                    </span>
+                  )}
+                  
+                  {challenge.time_limit_minutes && (
+                    <span style={styles.timeBadge}>
+                      <Clock size={14} />
+                      {challenge.time_limit_minutes} min
+                    </span>
+                  )}
+                </div>
+
+                <div style={styles.challengeActions}>
+                  <button
+                    onClick={() => setEditingChallenge(challenge)}
+                    style={styles.editButton}
+                    onMouseEnter={(e) => {
+                      e.target.style.backgroundColor = '#d97706';
+                      e.target.style.transform = 'translateY(-1px)';
+                      e.target.style.boxShadow = '0 4px 12px rgba(245, 158, 11, 0.3)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.backgroundColor = '#f59e0b';
+                      e.target.style.transform = 'translateY(0)';
+                      e.target.style.boxShadow = 'none';
+                    }}
+                  >
+                    <Edit3 size={14} />
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(challenge.id)}
+                    style={styles.deleteButton}
+                    onMouseEnter={(e) => {
+                      e.target.style.backgroundColor = '#dc2626';
+                      e.target.style.transform = 'translateY(-1px)';
+                      e.target.style.boxShadow = '0 4px 12px rgba(239, 68, 68, 0.3)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.backgroundColor = '#ef4444';
+                      e.target.style.transform = 'translateY(0)';
+                      e.target.style.boxShadow = 'none';
+                    }}
+                  >
+                    <Trash2 size={14} />
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
   );
 };
 

@@ -608,7 +608,7 @@ const DevelopersPage = () => {
         {/* Logo + Name */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <img 
-            src="/images/logo/techsyncinitiallogo.png"
+            src="/images/logo/TechSyncLogo.png"
             alt="TechSync Logo"
             style={{
               width: '40px',

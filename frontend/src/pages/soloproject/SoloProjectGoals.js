@@ -134,6 +134,31 @@ const BackgroundSymbols = () => (
         .floating-symbol:nth-child(14) { animation: floatExtra6 15s infinite; animation-delay: -6s; }
         .floating-symbol:nth-child(15) { animation: floatAround1 13s infinite; animation-delay: -5s; }
         .floating-symbol:nth-child(16) { animation: floatAround2 16s infinite; animation-delay: -8s; }
+
+         /* Custom Scrollbar */
+          ::-webkit-scrollbar {
+            width: 10px;
+          }
+
+          ::-webkit-scrollbar-track {
+            background: rgba(26, 28, 32, 0.8);
+            border-radius: 5px;
+          }
+
+          ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 5px;
+            border: 2px solid rgba(26, 28, 32, 0.8);
+          }
+
+          ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.25);
+          }
+
+          * {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.15) rgba(26, 28, 32, 0.8);
+          }
       `}
     </style>
     
@@ -284,13 +309,18 @@ function SoloProjectGoals() {
     return () => { isMounted = false; };
   }, [projectId]);
 
-  // Auto-open create modal if came with intent
+  // ✅ FIXED: Auto-open or close modal based on URL query (works when navigating from dashboard)
   useEffect(() => {
-    if (createIntent && !showCreateModal) {
+    const params = new URLSearchParams(location.search);
+    const intent = params.get('intent');
+
+    if (intent === 'task' || intent === 'goal') {
       setShowCreateModal(true);
-      setNewItem(prev => ({ ...prev, type: createIntent }));
+      setNewItem(prev => ({ ...prev, type: intent }));
+    } else {
+      setShowCreateModal(false); // Close modal if intent param is removed
     }
-  }, [createIntent, showCreateModal]);
+  }, [location.search]);
 
   // ✅ NEW: Function to notify dashboard of changes
   const notifyDashboardUpdate = useCallback(async () => {
@@ -759,7 +789,7 @@ const styles = {
     position: 'fixed',
     top: '20px',
     left: isSidebarCollapsed ? '100px' : '290px',
-    zIndex: 1100,
+    zIndex: 999,  // Changed from 1100 to 999 (modal is at 1000)
     width: '40px',
     height: '40px',
     borderRadius: '10px',
@@ -1212,23 +1242,23 @@ const styles = {
     margin: 0
   },
   closeButton: {
-    background: 'none',
-    border: 'none',
-    color: '#9ca3af',
-    cursor: 'pointer',
-    padding: '8px',
-    borderRadius: '8px',
-    transition: 'all 0.2s ease',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    width: '40px',
-    height: '40px'
+    width: '36px',
+    height: '36px',
+    border: 'none',
+    borderRadius: '8px',
+    backgroundColor: 'transparent',
+    color: '#9ca3af',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease'
   },
   modalBody: {
     flex: 1,
     overflowY: 'auto',
-    padding: '0'
+    padding: '0',
+    maxHeight: 'calc(90vh - 220px)'
   },
   typeToggle: {
     display: 'flex',
@@ -1427,7 +1457,7 @@ const styles = {
                 }}
               />
             </div>
-            <span>Loading solo project dashboard...</span>
+            <span>Loading Tasks & Goals...</span>
           </div>
         </div>
       </>
@@ -1639,8 +1669,14 @@ const styles = {
                     setShowCreateModal(false);
                     setEditingItem(null);
                   }}
-                  onMouseEnter={(e) => e.target.style.backgroundColor = '#f1f5f9'}
-                  onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
+                    e.currentTarget.style.color = '#ef4444';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.color = '#9ca3af';
+                  }}
                 >
                   <X size={24} />
                 </button>
@@ -1657,16 +1693,6 @@ const styles = {
                       ...(newItem.type === 'task' ? styles.typeButtonActive : {})
                     }}
                     onClick={() => setNewItem({...newItem, type: 'task'})}
-                    onMouseEnter={(e) => {
-                      if (newItem.type !== 'task') {
-                        e.target.style.backgroundColor = '#f8fafc';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (newItem.type !== 'task') {
-                        e.target.style.backgroundColor = 'white';
-                      }
-                    }}
                   >
                     <CheckSquare size={16} />
                     Task
@@ -1678,16 +1704,6 @@ const styles = {
                       ...(newItem.type === 'goal' ? styles.typeButtonActive : {})
                     }}
                     onClick={() => setNewItem({...newItem, type: 'goal'})}
-                    onMouseEnter={(e) => {
-                      if (newItem.type !== 'goal') {
-                        e.target.style.backgroundColor = '#f8fafc';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (newItem.type !== 'goal') {
-                        e.target.style.backgroundColor = 'white';
-                      }
-                    }}
                   >
                     <Target size={16} />
                     Goal

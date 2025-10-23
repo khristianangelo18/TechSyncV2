@@ -430,7 +430,7 @@ function SoloProjectDashboard() {
       position: 'fixed',
       top: '20px',
       left: isSidebarCollapsed ? '100px' : '290px',
-      zIndex: 1100,
+      zIndex: 999,  // Changed from 1100 to 999 (modal is at 1000)
       width: '40px',
       height: '40px',
       borderRadius: '10px',

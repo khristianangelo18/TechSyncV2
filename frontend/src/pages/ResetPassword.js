@@ -789,7 +789,7 @@ const ResetPassword = () => {
                     >
                         <div style={styles.logoIcon} className="logo-icon">
                             <img 
-                                src="/images/logo/techsyncinitiallogo.png" 
+                                src="/images/logo/TechSyncLogo.png" 
                                 alt="TechSync Logo" 
                                 style={styles.logoImage}
                             />
